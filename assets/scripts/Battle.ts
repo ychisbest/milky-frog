@@ -1,7 +1,7 @@
 import { Color, Label, Node, Sprite, UITransform } from 'cc';
 import { Art } from './Art';
 import {
-    BASE_STATS, BLESSINGS, BlessingDef, BLOOD_MOON, BOSS_SCHEDULE, CharDef, ENDLESS_BOSS_INTERVAL, ENEMIES, EnemyDef, EVOLUTIONS, EvoDef, MAX_ENEMIES, MAX_PASSIVES, MAX_WEAPONS,
+    BASE_STATS, HERO_SCALE, BLESSINGS, BlessingDef, BLOOD_MOON, BOSS_SCHEDULE, CharDef, ENDLESS_BOSS_INTERVAL, ENEMIES, EnemyDef, EVOLUTIONS, EvoDef, MAX_ENEMIES, MAX_PASSIVES, MAX_WEAPONS,
     PASSIVES, PassiveDef, PlayerStats, POWERUPS, PX, SWARM_TIMES, WAVES, WEAPON_MAX_LEVEL, WEAPONS, WeaponDef,
     WeaponStats, WIN_TIME, xpForLevel,
 } from './Defs';
@@ -431,12 +431,13 @@ export class Battle {
         g.setScale(PX, PX, 1);
 
         this.player = mkNode('Player', playerLayer);
-        mkSprite(this.player, 'shadow', PX * 1.2).node.setPosition(0, -26);
-        this.playerSp = mkSprite(this.player, 'hero_hunter_0');
+        const half = (Art.f('hero_hunter_0').rect.height * HERO_SCALE) / 2;
+        mkSprite(this.player, 'shadow', PX * 1.7).node.setPosition(0, -half + 4);
+        this.playerSp = mkSprite(this.player, 'hero_hunter_0', HERO_SCALE);
         this.playerBody = this.playerSp.node;
-        mkRect(this.player, 44, 7, new Color(30, 10, 20, 255), 'hpBg').node.setPosition(0, -40);
+        mkRect(this.player, 44, 7, new Color(30, 10, 20, 255), 'hpBg').node.setPosition(0, -half - 8);
         this.hpFill = mkRect(this.player, 42, 5, new Color(230, 40, 50, 255), 'hpFill', 0, 0.5).node;
-        this.hpFill.setPosition(-21, -40);
+        this.hpFill.setPosition(-21, -half - 8);
     }
 
     setViewport(vw: number, vh: number) {
@@ -648,7 +649,7 @@ export class Battle {
             if (this.animT > 0.14) { this.animT = 0; this.animF = this.animF === 1 ? 2 : 1; }
         } else this.animF = 0;
         this.playerSp.spriteFrame = Art.f(this.char.sprite + '_' + this.animF);
-        this.playerBody.setScale(this.faceX * PX, PX, 1);
+        this.playerBody.setScale(this.faceX * HERO_SCALE, HERO_SCALE, 1);
         this.player.setPosition(this.px, this.py);
 
         this.iframe -= dt;

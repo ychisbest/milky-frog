@@ -157,6 +157,16 @@ const SFX = {
         for (const n of [84, 88, 91]) note(b, 0.45, 0.6, mtof(n), { duty: 0.5, vol: 0.08, vib: 0.01, r: 0.25 });
         return b;
     },
+    // 奶蛙"呱"：两声带颤音的低沉叫声
+    croak() {
+        const b = B(0.45);
+        for (const [t0, f0] of [[0, 230], [0.17, 190]]) {
+            note(b, t0, 0.12, t => f0 * (1 - t * 1.6) + Math.sin(t * 2 * Math.PI * 38) * 18, { type: 'saw', vol: 0.32, a: 0.008, r: 0.04 });
+            note(b, t0, 0.12, t => f0 * 2.02 * (1 - t * 1.6), { type: 'square', duty: 0.3, vol: 0.08, a: 0.008, r: 0.04 });
+            noise(b, t0, 0.05, { vol: 0.12, rate: 3000, decay: 40 });
+        }
+        return b;
+    },
     roar() {
         const b = B(1.6);
         note(b, 0, 1.3, t => 70 + Math.sin(t * 30) * 8 - t * 20, { type: 'saw', vol: 0.45, a: 0.08, r: 0.3 });

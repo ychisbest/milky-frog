@@ -1,3 +1,5 @@
+import { HERO_ART } from './HeroArt';
+
 // 纯数据的像素画生成器（不依赖 cc），所有贴图都在这里程序化绘制并打包成图集。
 // 坐标系：左上角为原点，y 向下。
 
@@ -117,95 +119,45 @@ const OUT = 0x1a1020;
 
 // ---------------------------------------------------------------- 角色
 
-interface Look {
-    skin: number; skinD: number; hair: number; hairL: number;
-    coat: number; coatD: number; coatL: number; cape: number; capeD: number;
-    pants: number; pantsD: number; extra?: 'hat' | 'hood' | 'helmet' | 'veil' | 'beard';
+// 角色列表（与 Defs.ts 中 CHARACTERS 的 sprite 对应：hero_<kind>_<帧>）
+export const HERO_KINDS = ['hunter', 'mage', 'rogue', 'knight', 'nun', 'pyro', 'bomber', 'sage'];
+
+// ---------------------------------------------------------------- 奶蛙（主角）
+// 角色像素图由 tools/import-heroes.py 从参考图导入（HeroArt.ts），这里解码并生成走路帧
+
+function decodeHero(a: { w: number; h: number; pal: string; px: string }) {
+    const c = new PixelCanvas(a.w, a.h);
+    const pal = a.pal.split(',').map(h => parseInt(h, 16));
+    const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-/:;<=>?@[]^_{|}~';
+    let i = 0, k = 0;
+    const s = a.px;
+    while (i < s.length) {
+        const ch = s[i++];
+        let n = 0;
+        while (i < s.length && s[i] >= '0' && s[i] <= '9') n = n * 10 + (s.charCodeAt(i++) - 48);
+        if (n === 0) n = 1;
+        const idx = ch === '.' ? -1 : ALPHA.indexOf(ch);
+        for (let m = 0; m < n; m++, k++) if (idx >= 0) c.px(k % a.w, Math.floor(k / a.w), pal[idx]);
+    }
+    return c;
 }
 
-export const LOOKS: Record<string, Look> = {
-    hunter: { skin: 0xf2c39b, skinD: 0xd08e6a, hair: 0x6b3420, hairL: 0x9a5530, coat: 0x3a62c4, coatD: 0x24418a, coatL: 0x6a8fe6, cape: 0xb52a32, capeD: 0x761a24, pants: 0x4a3a52, pantsD: 0x33283a },
-    mage:   { skin: 0xf6d0b0, skinD: 0xd8a07a, hair: 0xe8c050, hairL: 0xfff090, coat: 0x8040c0, coatD: 0x562a88, coatL: 0xb070f0, cape: 0x2a4ab0, capeD: 0x1a2e78, pants: 0x3a2a5a, pantsD: 0x281c40, extra: 'hat' },
-    rogue:  { skin: 0xe0a880, skinD: 0xb87a58, hair: 0x22222a, hairL: 0x44444e, coat: 0x2e6a3a, coatD: 0x1e4a28, coatL: 0x4e9a5a, cape: 0x4a4a52, capeD: 0x2e2e36, pants: 0x3a3226, pantsD: 0x28221a, extra: 'hood' },
-    knight: { skin: 0xf2c39b, skinD: 0xd08e6a, hair: 0x8a5a2a, hairL: 0xb07a40, coat: 0x9aa2b0, coatD: 0x6a7280, coatL: 0xd0d8e0, cape: 0xc03030, capeD: 0x801c1c, pants: 0x5a5a66, pantsD: 0x40404a, extra: 'helmet' },
-    nun:    { skin: 0xf6d6c0, skinD: 0xd8a890, hair: 0x2a2a34, hairL: 0x44445a, coat: 0x2a2a3a, coatD: 0x1a1a26, coatL: 0x4a4a60, cape: 0x2a2a3a, capeD: 0x1a1a26, pants: 0x2a2a3a, pantsD: 0x1a1a26, extra: 'veil' },
-    pyro:   { skin: 0xf6d0b0, skinD: 0xd8a07a, hair: 0xe04020, hairL: 0xff8040, coat: 0xc03020, coatD: 0x801818, coatL: 0xf06030, cape: 0xf0a020, capeD: 0xb07010, pants: 0x3a2020, pantsD: 0x281414, extra: 'hat' },
-    bomber: { skin: 0xe0a880, skinD: 0xb87a58, hair: 0x5a3a20, hairL: 0x7a5030, coat: 0x6a6a30, coatD: 0x4a4a20, coatL: 0x8a8a48, cape: 0x8a5a30, capeD: 0x5a3a20, pants: 0x3a3a2a, pantsD: 0x2a2a1e, extra: 'helmet' },
-    sage:   { skin: 0xe8b890, skinD: 0xc08a68, hair: 0xe8e8f0, hairL: 0xffffff, coat: 0x7a5a3a, coatD: 0x543c24, coatL: 0xa07a50, cape: 0x3a7a4a, capeD: 0x24543a, pants: 0x4a3a2a, pantsD: 0x34281c, extra: 'beard' },
-};
-
-function drawHero(f: number, L: Look) {
-    const c = new PixelCanvas(32, 32);
-    const GOLD = 0xf5c542, BELT = 0x6b3a1f, BOOT = 0x3a2418;
-    const oy = f === 1 ? 1 : 0;
-    const la = f === 1 ? -2 : f === 2 ? 2 : 0;
-    // 披风
-    c.rect(9, 15 + oy, 4, 10, L.capeD);
-    c.rect(8 - (f === 1 ? 1 : 0), 19 + oy, 2, 7, L.capeD);
-    c.rect(10, 15 + oy, 2, 4, L.cape);
-    // 腿
-    c.rect(13 + la, 23, 3, 5, L.pantsD);
-    c.rect(12 + la, 27, 4, 2, BOOT);
-    c.rect(17 - la, 23, 3, 5, L.pants);
-    c.rect(17 - la, 27, 4, 2, BOOT);
-    // 身体
-    c.rect(12, 15 + oy, 9, 8, L.coat);
-    c.rect(12, 15 + oy, 2, 8, L.coatD);
-    c.rect(19, 16 + oy, 1, 5, L.coatL);
-    c.rect(14, 15 + oy, 5, 1, L.extra === 'veil' ? 0xffffff : 0xe8e0d0);
-    c.rect(12, 21 + oy, 9, 2, BELT);
-    c.rect(16, 21 + oy, 2, 2, GOLD);
-    if (L.extra === 'veil') { c.rect(15, 16 + oy, 1, 4, GOLD); c.rect(14, 17 + oy, 3, 1, GOLD); }
-    // 头
-    c.rect(13, 7 + oy, 8, 8, L.skin);
-    c.rect(13, 7 + oy, 1, 8, L.skinD);
-    c.rect(14, 14 + oy, 6, 1, L.skinD);
-    // 头发
-    c.rect(12, 4 + oy, 10, 4, L.hair);
-    c.rect(12, 8 + oy, 3, 5, L.hair);
-    c.rect(20, 7 + oy, 2, 2, L.hair);
-    c.rect(15, 4 + oy, 4, 1, L.hairL);
-    c.px(11, 6 + oy, L.hair);
-    // 眼睛
-    c.rect(17, 10 + oy, 1, 2, OUT);
-    c.rect(20, 10 + oy, 1, 2, OUT);
-    c.px(19, 13 + oy, L.skinD);
-    // 装饰
-    switch (L.extra) {
-        case 'hat':
-            c.rect(10, 5 + oy, 14, 2, L.coatD);
-            c.poly([[12, 5 + oy], [22, 5 + oy], [19, 0], [15, 1]], L.coat);
-            c.rect(13, 3 + oy, 9, 1, GOLD);
-            break;
-        case 'hood':
-            c.rect(12, 3 + oy, 10, 4, L.cape);
-            c.rect(11, 5 + oy, 3, 9, L.cape);
-            c.rect(12, 3 + oy, 10, 1, L.capeD);
-            c.rect(16, 13 + oy, 5, 2, L.capeD);
-            break;
-        case 'helmet':
-            c.rect(12, 3 + oy, 10, 5, L.coatL);
-            c.rect(12, 3 + oy, 10, 1, 0xffffff);
-            c.rect(12, 8 + oy, 2, 5, L.coat);
-            c.rect(16, 8 + oy, 6, 1, L.coatD);
-            c.rect(16, 1 + oy, 2, 3, 0xc03030);
-            break;
-        case 'veil':
-            c.rect(11, 3 + oy, 11, 4, L.hair);
-            c.rect(10, 6 + oy, 4, 10, L.hair);
-            c.rect(14, 6 + oy, 8, 1, 0xffffff);
-            break;
-        case 'beard':
-            c.rect(15, 12 + oy, 7, 4, L.hair);
-            c.rect(16, 16 + oy, 4, 2, L.hair);
-            c.rect(17, 12 + oy, 3, 1, L.skinD);
-            break;
+// 以脚底为锚点缩放（走路的挤压 / 拉伸），所有帧画布尺寸一致，避免抖动
+function heroFrame(src: PixelCanvas, sx: number, sy: number) {
+    const w = Math.ceil(src.w * 1.06) + 2, h = Math.ceil(src.h * 1.04) + 1;
+    const c = new PixelCanvas(w, h);
+    const cx = w / 2, bottom = h;
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const u = Math.floor((x + 0.5 - cx) / sx + src.w / 2);
+            const v = Math.floor(src.h - (bottom - y - 0.5) / sy);
+            if (u < 0 || v < 0 || u >= src.w || v >= src.h) continue;
+            const i = (v * src.w + u) * 4;
+            if (!src.data[i + 3]) continue;
+            const o = (y * w + x) * 4;
+            c.data[o] = src.data[i]; c.data[o + 1] = src.data[i + 1]; c.data[o + 2] = src.data[i + 2]; c.data[o + 3] = 255;
+        }
     }
-    // 前臂
-    const ax = f === 1 ? 1 : f === 2 ? -1 : 0;
-    c.rect(17 + ax, 16 + oy, 3, 5, L.coatD);
-    c.rect(17 + ax, 21 + oy, 3, 2, L.skin);
-    c.outline(OUT);
     return c;
 }
 
@@ -1244,6 +1196,82 @@ function drawShieldPickup() {
     return c;
 }
 
+// ---------------------------------------------------------------- 开屏 / 标题背景
+
+function drawMoon() {
+    const c = new PixelCanvas(80, 80);
+    // 外层光晕
+    c.circle(40, 40, 39.5, 0xff3030, 22);
+    c.circle(40, 40, 35, 0xff4040, 36);
+    c.circle(40, 40, 30, 0xff5040, 56);
+    // 月面
+    c.circle(40, 40, 25, 0x9a1820);
+    c.circle(38.5, 38.5, 23.5, 0xc8242a);
+    c.circle(36, 35, 16, 0xdc3a36);
+    c.circle(33, 31, 7, 0xf06a5a);
+    // 环形山
+    for (const [x, y, r] of [[45, 47, 4.5], [31, 47, 3], [47, 32, 3], [38, 54, 2.2], [52, 41, 2]]) {
+        c.circle(x, y, r, 0x8a141c);
+        c.circle(x - 0.8, y - 0.8, r * 0.6, 0xb01e26);
+    }
+    return c;
+}
+
+function drawStar() {
+    const c = new PixelCanvas(5, 5);
+    c.rect(2, 0, 1, 5, 0xbfd8ff, 170);
+    c.rect(0, 2, 5, 1, 0xbfd8ff, 170);
+    c.px(2, 2, 0xffffff);
+    return c;
+}
+
+function drawEmber() {
+    const c = new PixelCanvas(5, 5);
+    c.circle(2.5, 2.5, 2.5, 0xff9a30, 110);
+    c.px(2, 2, 0xffe080);
+    return c;
+}
+
+function drawCloud() {
+    const c = new PixelCanvas(56, 14);
+    for (const [x, y, rx, ry] of [[12, 9, 11, 4], [26, 7, 13, 5], [40, 8, 12, 4.5], [48, 10, 8, 3]]) c.ellipse(x, y, rx, ry, 0x3a1428, 210);
+    for (const [x, y, rx] of [[24, 4, 9], [38, 5, 8]]) c.ellipse(x, y, rx, 1.6, 0x8a2a40, 200);
+    return c;
+}
+
+// 地平线剪影：起伏山丘 + 墓碑 + 枯树（横向无缝平铺，周期 128）
+function drawHills() {
+    const W = 128, H = 44;
+    const c = new PixelCanvas(W, H);
+    const ridge = (x: number) => 24 + Math.sin((x / W) * Math.PI * 2) * 5 + Math.sin((x / W) * Math.PI * 6 + 1) * 2.5;
+    for (let x = 0; x < W; x++) {
+        const top = Math.round(ridge(x));
+        c.rect(x, top, 1, H - top, 0x1a0c22);
+    }
+    // 墓碑
+    for (const gx of [18, 54, 97]) {
+        const t = Math.round(ridge(gx));
+        c.rect(gx, t - 7, 5, 8, 0x1a0c22);
+        c.rect(gx + 1, t - 8, 3, 1, 0x1a0c22);
+    }
+    // 十字架
+    const cx = 76, ct = Math.round(ridge(cx));
+    c.rect(cx, ct - 11, 2, 12, 0x1a0c22);
+    c.rect(cx - 3, ct - 8, 8, 2, 0x1a0c22);
+    // 枯树
+    const tx = 36, tt = Math.round(ridge(tx));
+    c.line(tx, tt, tx + 1, tt - 18, 0x1a0c22, 255, 2);
+    c.line(tx + 1, tt - 10, tx - 6, tt - 16, 0x1a0c22);
+    c.line(tx + 1, tt - 13, tx + 8, tt - 20, 0x1a0c22);
+    c.line(tx - 4, tt - 14, tx - 6, tt - 21, 0x1a0c22);
+    c.line(tx + 6, tt - 18, tx + 9, tt - 17, 0x1a0c22);
+    const tx2 = 115, tt2 = Math.round(ridge(tx2));
+    c.line(tx2, tt2, tx2, tt2 - 12, 0x1a0c22, 255, 2);
+    c.line(tx2, tt2 - 8, tx2 + 5, tt2 - 13, 0x1a0c22);
+    c.line(tx2, tt2 - 6, tx2 - 4, tt2 - 10, 0x1a0c22);
+    return c;
+}
+
 function white() {
     const c = new PixelCanvas(4, 4);
     c.rect(0, 0, 4, 4, 0xffffff);
@@ -1274,7 +1302,12 @@ function drawJoyKnob() {
 
 export function allSprites(): Record<string, PixelCanvas> {
     const s: Record<string, PixelCanvas> = {};
-    for (const k in LOOKS) for (let f = 0; f < 3; f++) s['hero_' + k + '_' + f] = drawHero(f, LOOKS[k]);
+    for (const k of HERO_KINDS) {
+        const base = decodeHero(HERO_ART[k]);
+        s['hero_' + k + '_0'] = heroFrame(base, 1, 1);
+        s['hero_' + k + '_1'] = heroFrame(base, 1.06, 0.94);
+        s['hero_' + k + '_2'] = heroFrame(base, 0.97, 1.04);
+    }
     for (let f = 0; f < 2; f++) {
         s['bat_' + f] = drawBat(f);
         s['slime_' + f] = drawSlime(f);
@@ -1342,6 +1375,11 @@ export function allSprites(): Record<string, PixelCanvas> {
     s.nuke = drawNuke();
     s.potion = drawPotion();
     s.shield = drawShieldPickup();
+    s.moon = drawMoon();
+    s.star = drawStar();
+    s.ember = drawEmber();
+    s.cloud = drawCloud();
+    s.hills = drawHills();
     s.coin = drawCoin();
     s.coinbag = drawCoinBag();
     return s;
@@ -1349,7 +1387,7 @@ export function allSprites(): Record<string, PixelCanvas> {
 
 export interface AtlasRect { x: number; y: number; w: number; h: number; }
 
-export function buildAtlas(size = 512) {
+export function buildAtlas(size = 1024) {
     const sprites = allSprites();
     const names = Object.keys(sprites).sort((a, b) => sprites[b].h - sprites[a].h);
     const data = new Uint8Array(size * size * 4);

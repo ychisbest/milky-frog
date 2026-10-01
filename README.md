@@ -1,4 +1,4 @@
-# 血月割草 Blood Moon Survivors
+# 奶蛙割草 Milky Frog Survivors
 
 类吸血鬼幸存者的 32×32 像素风竖屏割草游戏，Cocos Creator 3.8.8，目标平台：微信小游戏。
 
@@ -41,7 +41,7 @@
 **调试**：`AdConfig.ts` 中 `debugFake: true` 时，浏览器预览会把"看广告"模拟为直接发奖，便于测试流程；**上线前务必改回 `false`**。
 
 **上架注意：**
-- 微信后台：小游戏名称填「血月割草」，服务类目选休闲游戏，上传软著，完成小程序备案
+- 微信后台：小游戏名称填「奶蛙割草」，服务类目选休闲游戏，上传软著，完成小程序备案
 - 「设置 → 用户隐私保护指引」需如实填写（本游戏不调用需授权的隐私接口，广告由平台提供）
 - 未成年人防沉迷由微信小游戏平台统一处理
 - 分享按钮只分享战绩，**不发放任何奖励**（平台禁止诱导分享）
@@ -109,7 +109,9 @@
 | `assets/scripts/Battle.ts` | 战斗模拟：玩家、怪物、武器、拾取物、刷怪、进化、敌方子弹与危险区域 |
 | `assets/scripts/Bosses.ts` | 6 个 Boss 的 AI 与技能 |
 | `assets/scripts/Defs.ts` | 全部数值配置（怪物、波次、武器、被动、角色、商店） |
-| `assets/scripts/PixelArt.ts` | 程序化像素画，运行时打包成一张 512×512 图集 |
+| `assets/scripts/PixelArt.ts` | 程序化像素画（怪物、武器、道具、场景），运行时与角色图一起打包成一张 1024×1024 图集 |
+| `assets/scripts/HeroArt.ts` | 8 个奶蛙角色的像素数据（由导入工具自动生成，勿手改） |
+| `tools/import-heroes.py` | 角色导入工具：从 3×3 角色参考图（`tools/hero-reference.jpg`）切格、去背景、对齐像素网格、保护眼睛颜色，生成 `HeroArt.ts`。换图后运行 `python3 tools/import-heroes.py <图片>` 即可，角色与格子的对应关系在脚本开头 `HEROES` 中配置 |
 | `assets/scripts/Art.ts` | 把图集上传为贴图并生成 SpriteFrame |
 | `assets/scripts/Sound.ts` | 背景音乐 / 音效播放（带防叠音节流）、震动 |
 | `assets/scripts/Save.ts` | 本地存档 |

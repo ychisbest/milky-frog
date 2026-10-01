@@ -17,7 +17,7 @@ export class Sound {
         lightning: [0.6, 0.1], hurt: [0.7, 0.15], click: [0.7, 0.03],
         eshot: [0.4, 0.08], slam: [0.9, 0.2], dash: [0.7, 0.15], laser: [0.8, 0.5], teleport: [0.7, 0.3], roar: [1, 1],
         fire: [0.5, 0.08], throw: [0.4, 0.06], splash: [0.5, 0.1], boom: [0.7, 0.07], freeze: [0.7, 0.2], zap: [0.6, 0.1],
-        pew: [0.3, 0.05], power: [0.9, 0.3], card: [0.9, 0.2], achieve: [1, 0.5],
+        pew: [0.3, 0.05], power: [0.9, 0.3], card: [0.9, 0.2], achieve: [1, 0.5], croak: [0.9, 0.25],
     };
 
     static init(parent: Node) {

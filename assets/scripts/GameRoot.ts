@@ -6,6 +6,7 @@ import { EDITOR } from 'cc/env';
 import { AD_CONFIG } from './AdConfig';
 import { Ads, mgApi, RewardResult } from './Ads';
 import { Art } from './Art';
+import { Backdrop } from './Backdrop';
 import { Battle, blessingOptions, describe, Option } from './Battle';
 import { ACHIEVEMENTS, BlessingDef, BOSS_SCHEDULE, CHARACTERS, CharDef, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
 import { Save } from './Save';
@@ -19,10 +20,13 @@ export const DESIGN_W = 720;
 export const DESIGN_H = 1280;
 
 // 游戏名与适龄提示（上架前与微信后台填写的保持一致）
-export const GAME_NAME = '血月割草';
-export const GAME_SUBTITLE = 'BLOOD  MOON  SURVIVORS';
+export const GAME_NAME = '奶蛙割草';
+export const GAME_SUBTITLE = 'MILKY  FROG  SURVIVORS';
 export const AGE_RATING = '12+';
-const AGE_TIP = '本游戏适合 12 周岁及以上玩家。\n像素风格动作生存游戏，含卡通化的战斗内容，\n无真实血腥画面，无付费内容。\n请合理安排游戏时间。';
+export const GAME_VERSION = 'v1.0.0';
+// 点击主界面奶蛙时随机说的话
+const FROG_LINES = ['呱!', '割草去!', '呱呱呱~', '奶蛙出击!', '今天也要努力割草', '血月? 不怕!', '再来一局呱', '别戳了, 痒!'];
+const AGE_TIP = '本游戏适合 12 周岁及以上玩家。\n像素风格的奶蛙动作生存游戏，含卡通化的战斗内容，\n无真实血腥画面，无付费内容。\n请合理安排游戏时间。';
 const HEALTH_TIP = '抵制不良游戏，拒绝盗版游戏。\n注意自我保护，谨防受骗上当。\n适度游戏益脑，沉迷游戏伤身。\n合理安排时间，享受健康生活。';
 const C_AD = new Color(150, 90, 20, 255);
 
@@ -80,6 +84,24 @@ export class GameRoot extends Component {
     private comboSub!: Label;
     private bannerT = 0;
     private menuHero!: Sprite;
+    private menuBackdrop!: Backdrop;
+    private splashBackdrop!: Backdrop;
+    private menuTitle!: Node;
+    private menuTitleY = 0;
+    private titleSparks: { node: Node; sp: Sprite; ph: number }[] = [];
+    private menuHeroShadow!: Node;
+    private menuHeroScale = 3;
+    private menuHeroBaseY = 0;
+    private heroJumpY = 0;
+    private heroJumpV = 0;
+    private bubble!: Node;
+    private bubbleLabel!: Label;
+    private bubbleT = 0;
+    private splashLogo!: Node;
+    private splashHero!: Sprite;
+    private splashHeroBaseY = 0;
+    private splashFill!: Node;
+    private splashLoad!: Label;
     private refreshers: (() => void)[] = []; // 各界面的刷新函数
     private cards: { node: Node; icon: Sprite; name: Label; tag: Label; desc: Label; border: Sprite; fill: Sprite }[] = [];
     private cardMode: 'level' | 'blessing' = 'level';
@@ -155,7 +177,7 @@ export class GameRoot extends Component {
             const cv = (globalThis as any).canvas;
             if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) { /* 截图失败则使用默认分享图 */ }
-        const title = b.won ? `我在《${GAME_NAME}》中击败了死神！你也来试试？` : `我在血月中坚持了 ${this.fmtTime(b.time)}，击杀 ${b.kills} 只怪物，你能撑多久？`;
+        const title = b.won ? `我的奶蛙在《${GAME_NAME}》里击败了死神！你也来试试？` : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
         try { w.shareAppMessage({ title, imageUrl }); } catch (e) { /* 忽略 */ }
     }
 
@@ -164,7 +186,7 @@ export class GameRoot extends Component {
         if (!w) return;
         try {
             if (w.showShareMenu) w.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-            const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}：我在血月中坚持了 ${this.fmtTime(Save.data.bestTime)}，你能撑多久？` : `${GAME_NAME}：像素割草，血月生存 15 分钟！` });
+            const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(Save.data.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在血月下活过 15 分钟！` });
             if (w.onShareAppMessage) w.onShareAppMessage(msg);
             if (w.onShareTimeline) w.onShareTimeline(msg);
         } catch (e) { /* 忽略 */ }
@@ -332,12 +354,69 @@ export class GameRoot extends Component {
     private buildMenu() {
         const s = this.screen('menu');
         const top = this.top;
-        mkLabel(s, GAME_NAME, 96, C_RED, 'center', 6).node.setPosition(0, top - 170);
-        mkLabel(s, GAME_SUBTITLE, 28, C_GOLD, 'center', 4).node.setPosition(0, top - 250);
-        // 适龄提示标识（点击查看说明）
+        const btnTop = this.bottom + 120 + 4 * 100;
+        const horizon = btnTop + 70;
+        const titleY = this.menuTitleY = top - 180;
+        // 动态夜景背景
+        this.menuBackdrop = new Backdrop(s, this.vw, this.vh, horizon, titleY - 10);
+
+        // 标题：投影 + 描边 + 闪光
+        this.menuTitle = mkNode('title', s);
+        this.menuTitle.setPosition(0, titleY);
+        mkLabel(this.menuTitle, GAME_NAME, 104, new Color(60, 6, 16, 255), 'center', 0).node.setPosition(6, -8);
+        mkLabel(this.menuTitle, GAME_NAME, 104, new Color(255, 236, 120, 255), 'center', 8);
+        mkLabel(this.menuTitle, GAME_SUBTITLE, 28, new Color(255, 120, 110, 255), 'center', 4).node.setPosition(0, -84);
+        this.titleSparks = [];
+        for (const [x, y] of [[-250, 50], [235, 60], [-205, -55], [262, -30], [-120, 78], [140, -78]]) {
+            const sp = mkSprite(this.menuTitle, 'star', 2.4);
+            sp.node.setPosition(x, y);
+            this.titleSparks.push({ node: sp.node, sp, ph: Math.random() * 6.28 });
+        }
+
+        // 主角（只显示当前角色）：根据可用空间自适应大小，点击会跳一下并说话
+        const heroH = Art.f('hero_hunter_0').rect.height;
+        const avail = titleY - 130 - horizon;
+        const sc = this.menuHeroScale = Math.max(1.8, Math.min(3.4, (avail - 30) / heroH));
+        this.menuHeroBaseY = horizon - 6 + (heroH * sc) / 2;
+        this.menuHeroShadow = mkSprite(s, 'shadow', sc * 1.7).node;
+        this.menuHeroShadow.setPosition(0, horizon - 4);
+        this.menuHero = mkSprite(s, 'hero_hunter_0', sc);
+        this.menuHero.node.setPosition(0, this.menuHeroBaseY);
+        this.menuHero.node.on(Node.EventType.TOUCH_END, () => this.heroHop());
+        // 说话气泡
+        this.bubble = mkPanel(s, 240, 60, new Color(255, 255, 255, 250), new Color(30, 20, 40, 255)).node;
+        this.bubbleLabel = mkLabel(this.bubble, '', 26, new Color(40, 24, 30, 255), 'center', 0);
+        mkRect(this.bubble, 14, 14, new Color(255, 255, 255, 250), 'tail').node.setPosition(-60, -34);
+        this.bubble.active = false;
+        // 角色名牌（点击进入角色选择）
+        const plate = mkPanel(s, 230, 52, new Color(36, 20, 50, 235));
+        plate.node.setPosition(this.vw / 2 - 135, horizon + 34);
+        const name = mkLabel(plate.node, '', 22, C_WHITE, 'center', 2);
+        plate.node.on(Node.EventType.TOUCH_END, () => { Sound.play('click'); this.setState('chars'); });
+
+        // 顶部：金币、每日奖励、适龄
+        const goldPanel = mkPanel(s, 200, 56, new Color(36, 20, 50, 235));
+        goldPanel.node.setPosition(-this.vw / 2 + 116, top - 40);
+        mkSprite(goldPanel.node, 'coin', 3).node.setPosition(-68, 0);
+        const gold = mkLabel(goldPanel.node, '', 28, C_GOLD, 'left', 3);
+        gold.node.setPosition(-46, 0);
+        const daily = mkLabel(s, '今日首局 金币×2', 20, new Color(255, 214, 90, 255), 'left', 3);
+        daily.node.setPosition(-this.vw / 2 + 18, top - 88);
         const age = mkPanel(s, 76, 76, new Color(30, 120, 60, 255), new Color(255, 255, 255, 255));
         age.node.setPosition(this.vw / 2 - 52, top - 40);
         mkLabel(age.node, AGE_RATING, 28, C_WHITE, 'center', 2);
+
+        const best = mkLabel(s, '', 22, C_GREY, 'center', 2);
+        best.node.setPosition(0, this.bottom + 46);
+        mkLabel(s, GAME_VERSION, 16, new Color(120, 110, 140, 255), 'left', 2).node.setPosition(-this.vw / 2 + 12, this.bottom + 14);
+
+        mkButton(s, '开始游戏', 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
+        mkButton(s, '选择角色', 440, 84, () => this.setState('chars'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 104);
+        mkButton(s, '永久强化', 440, 84, () => this.setState('shop'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 200);
+        mkButton(s, '成就', 212, 80, () => this.setState('achv'), C_BTN_BLUE, 30).node.setPosition(-114, btnTop - 296);
+        mkButton(s, '设置', 212, 80, () => this.setState('settings'), C_BTN_GREY, 30).node.setPosition(114, btnTop - 296);
+
+        // 适龄提示面板（最后创建，位于最上层）
         this.ageNode = mkPanel(s, 600, 300).node;
         this.ageNode.setPosition(0, this.vh * 0.05);
         mkLabel(this.ageNode, '适龄提示', 34, C_GOLD, 'center', 3).node.setPosition(0, 100);
@@ -345,37 +424,59 @@ export class GameRoot extends Component {
         mkLabel(this.ageNode, '点击关闭', 18, C_GREY, 'center', 2).node.setPosition(0, -120);
         this.ageNode.active = false;
         this.ageNode.on(Node.EventType.TOUCH_END, () => { this.ageNode.active = false; });
-        age.node.on(Node.EventType.TOUCH_END, () => {
-            Sound.play('click');
-            this.ageNode.setSiblingIndex(s.children.length - 1); // 置于最上层
-            this.ageNode.active = true;
-        });
-        const heroY = top - 250 - Math.min(260, this.vh * 0.2);
-        this.menuHero = mkSprite(s, 'hero_hunter_0', 7);
-        this.menuHero.node.setPosition(-90, heroY);
-        mkSprite(s, 'reaper_0', 4.5).node.setPosition(130, heroY + 20);
-        const name = mkLabel(s, '', 28, C_WHITE, 'center', 3);
-        name.node.setPosition(-90, heroY - 130);
+        age.node.on(Node.EventType.TOUCH_END, () => { Sound.play('click'); this.ageNode.active = true; });
 
-        mkSprite(s, 'coin', 3).node.setPosition(-this.vw / 2 + 40, top - 40);
-        const gold = mkLabel(s, '', 30, C_GOLD, 'left', 3);
-        gold.node.setPosition(-this.vw / 2 + 64, top - 40);
-
-        const best = mkLabel(s, '', 22, C_GREY, 'center', 2);
-        best.node.setPosition(0, this.bottom + 46);
-        const btnTop = this.bottom + 120 + 4 * 100;
-        mkButton(s, '开始游戏', 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
-        mkButton(s, '选择角色', 440, 84, () => this.setState('chars'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 104);
-        mkButton(s, '永久强化', 440, 84, () => this.setState('shop'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 200);
-        mkButton(s, '成就', 212, 80, () => this.setState('achv'), C_BTN_BLUE, 30).node.setPosition(-114, btnTop - 296);
-        mkButton(s, '设置', 212, 80, () => this.setState('settings'), C_BTN_GREY, 30).node.setPosition(114, btnTop - 296);
         this.refreshers.push(() => {
             const c = this.selectedChar();
-            name.string = `${c.name} · ${c.title}`;
+            this.menuHero.spriteFrame = Art.f(c.sprite + '_0');
+            name.string = `${c.name} · ${c.title}  ›`;
             gold.string = String(Save.data.gold);
+            daily.node.active = Save.data.bonusDay !== new Date().toDateString();
             const d = Save.data;
             best.string = (d.runs ? `最佳：存活 ${this.fmtTime(d.bestTime)}  ·  击杀 ${d.bestKills}  ·  等级 ${d.bestLevel}` : '存活 15 分钟即可获胜') + (d.endlessBest ? `\n无尽模式最佳 ${this.fmtTime(d.endlessBest)}` : '') + `   成就 ${d.achievements.length}/${ACHIEVEMENTS.length}`;
         });
+    }
+
+    // 点击主角：跳一下、说句话、呱一声
+    private heroHop() {
+        if (this.heroJumpY > 0) return;
+        this.heroJumpV = 760;
+        this.bubbleLabel.string = FROG_LINES[Math.floor(Math.random() * FROG_LINES.length)];
+        this.bubbleT = 1.6;
+        Sound.play('croak');
+        vibrate();
+    }
+
+    private updateMenuFx(dt: number) {
+        this.menuBackdrop.update(dt);
+        const t = this.t;
+        this.menuTitle.setPosition(0, this.menuTitleY + Math.sin(t * 1.6) * 6);
+        const ts = 1 + Math.sin(t * 2.2) * 0.012;
+        this.menuTitle.setScale(ts, ts, 1);
+        for (const sp of this.titleSparks) {
+            const k = 0.5 + 0.5 * Math.sin(t * 3 + sp.ph);
+            sp.sp.color = new Color(255, 255, 255, Math.round(255 * k));
+            const sc = 1.6 + 1.2 * k;
+            sp.node.setScale(sc, sc, 1);
+        }
+        // 主角：跳跃物理 + 呼吸动画
+        if (this.heroJumpV !== 0 || this.heroJumpY > 0) {
+            this.heroJumpV -= 2400 * dt;
+            this.heroJumpY += this.heroJumpV * dt;
+            if (this.heroJumpY <= 0) { this.heroJumpY = 0; this.heroJumpV = 0; }
+        }
+        const c = this.selectedChar();
+        const f = this.heroJumpY > 0 ? 2 : Math.floor(t / 0.45) % 2;
+        this.menuHero.spriteFrame = Art.f(c.sprite + '_' + f);
+        this.menuHero.node.setPosition(0, this.menuHeroBaseY + this.heroJumpY);
+        const ss = this.menuHeroScale * 1.7 * Math.max(0.5, 1 - this.heroJumpY / 260);
+        this.menuHeroShadow.setScale(ss, this.menuHeroScale * 1.3 * Math.max(0.5, 1 - this.heroJumpY / 260), 1);
+        if (this.bubbleT > 0) {
+            this.bubbleT -= dt;
+            this.bubble.active = this.bubbleT > 0;
+            const hh = Art.f(c.sprite + '_0').rect.height * this.menuHeroScale;
+            this.bubble.setPosition(110, this.menuHeroBaseY + this.heroJumpY + hh / 2 + 10);
+        }
     }
 
     private buildChars() {
@@ -390,7 +491,7 @@ export class GameRoot extends Component {
             const col = i % 2, row = Math.floor(i / 2);
             const card = mkPanel(s, cw, ch);
             card.node.setPosition((col - 0.5) * (cw + 14), y0 - ch / 2 - row * (ch + 14));
-            const spr = mkSprite(card.node, c.sprite + '_0', Math.min(4, ch / 50));
+            const spr = mkSprite(card.node, c.sprite + '_0', Math.min(2.2, (ch - 30) / 70));
             spr.node.setPosition(-100, 14);
             mkLabel(card.node, c.name, 30, C_WHITE, 'left', 3).node.setPosition(-30, ch / 2 - 34);
             mkLabel(card.node, c.title, 20, C_GREY, 'left', 2).node.setPosition(-30, ch / 2 - 66);
@@ -690,19 +791,54 @@ export class GameRoot extends Component {
         mkButton(s, '放弃', 260, 80, () => this.endRun(false), C_BTN_GREY, 28).node.setPosition(0, -this.vh * 0.2);
     }
 
-    // 启动页：健康游戏忠告 + 适龄提示（法规要求）
+    // 启动页：动态夜景 + Logo 弹出 + 加载条 + 健康游戏忠告 + 适龄提示（法规要求）
     private buildSplash() {
         const s = this.screen('splash');
-        mkRect(s, this.vw, this.vh, new Color(10, 8, 14, 255), 'bg');
-        mkLabel(s, GAME_NAME, 96, C_RED, 'center', 6).node.setPosition(0, this.vh * 0.18);
-        mkLabel(s, GAME_SUBTITLE, 26, C_GOLD, 'center', 3).node.setPosition(0, this.vh * 0.18 - 80);
-        mkLabel(s, '健康游戏忠告', 28, C_WHITE, 'center', 2).node.setPosition(0, -this.vh * 0.12);
-        mkLabel(s, HEALTH_TIP, 22, C_GREY, 'center', 2).node.setPosition(0, -this.vh * 0.21);
+        const horizon = -this.vh * 0.05;
+        this.splashBackdrop = new Backdrop(s, this.vw, this.vh, horizon, this.vh * 0.2);
+        this.splashLogo = mkNode('logo', s);
+        this.splashLogo.setPosition(0, this.vh * 0.21);
+        mkLabel(this.splashLogo, GAME_NAME, 104, new Color(60, 6, 16, 255), 'center', 0).node.setPosition(6, -8);
+        mkLabel(this.splashLogo, GAME_NAME, 104, new Color(255, 236, 120, 255), 'center', 8);
+        mkLabel(this.splashLogo, GAME_SUBTITLE, 28, new Color(255, 120, 110, 255), 'center', 4).node.setPosition(0, -84);
+        const heroH = Art.f('hero_hunter_0').rect.height;
+        const hs = 2.4;
+        this.splashHeroBaseY = horizon - 6 + (heroH * hs) / 2;
+        mkSprite(s, 'shadow', hs * 1.7).node.setPosition(0, horizon - 4);
+        this.splashHero = mkSprite(s, 'hero_hunter_0', hs);
+        this.splashHero.node.setPosition(0, this.splashHeroBaseY);
+        // 加载条
+        const barY = -this.vh * 0.12;
+        this.splashLoad = mkLabel(s, '', 22, new Color(230, 220, 240, 255), 'center', 2, true);
+        this.splashLoad.node.setPosition(0, barY + 32);
+        mkRect(s, 448, 22, new Color(20, 10, 30, 255), 'barBg').node.setPosition(0, barY);
+        this.splashFill = mkRect(s, 440, 14, new Color(255, 214, 90, 255), 'barFill', 0, 0.5).node;
+        this.splashFill.setPosition(-220, barY);
+        mkLabel(s, '健康游戏忠告', 26, C_WHITE, 'center', 2).node.setPosition(0, -this.vh * 0.2);
+        mkLabel(s, HEALTH_TIP, 21, new Color(200, 190, 210, 255), 'center', 2).node.setPosition(0, -this.vh * 0.285);
         const age = mkPanel(s, 76, 76, new Color(30, 120, 60, 255), new Color(255, 255, 255, 255));
         age.node.setPosition(this.vw / 2 - 52, this.top - 40);
         mkLabel(age.node, AGE_RATING, 28, C_WHITE, 'center', 2);
         s.addComponent(UITransform).setContentSize(this.vw, this.vh);
         s.on(Node.EventType.TOUCH_END, () => { if (this.splashT > 1) this.afterSplash(); });
+        this.refreshers.push(() => { this.splashHero.spriteFrame = Art.f(this.selectedChar().sprite + '_0'); });
+    }
+
+    private updateSplashFx(dt: number) {
+        this.splashBackdrop.update(dt);
+        const t = this.splashT;
+        // Logo 弹出（easeOutBack）
+        const k = Math.min(1, t / 0.6);
+        const e = 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2);
+        const sc = Math.max(0.01, e) * (1 + Math.sin(this.t * 2) * 0.01);
+        this.splashLogo.setScale(sc, sc, 1);
+        // 奶蛙一蹦一蹦
+        const hop = Math.abs(Math.sin(t * 4.5)) * 26;
+        this.splashHero.node.setPosition(0, this.splashHeroBaseY + hop);
+        this.splashHero.spriteFrame = Art.f(this.selectedChar().sprite + (hop > 8 ? '_2' : '_1'));
+        const p = Math.min(1, t / 2.3);
+        this.splashFill.setScale(p, 1, 1);
+        this.splashLoad.string = `正在召唤奶蛙… ${Math.floor(p * 100)}%`;
     }
 
     private afterSplash() {
@@ -1111,6 +1247,7 @@ export class GameRoot extends Component {
         this.layout();
         if (this.state === 'splash') {
             this.splashT += dt;
+            this.updateSplashFx(dt);
             if (this.splashT > 2.5) this.afterSplash();
         } else if (this.state === 'revive') {
             if (!Ads.showing) this.reviveT -= dt;
@@ -1137,10 +1274,7 @@ export class GameRoot extends Component {
             else this.checkRewards();
         } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'privacy' || this.state === 'splash') {
             b.idle(dt);
-            if (this.state === 'menu') {
-                const f = (Math.floor(this.t / 0.18) % 2) + 1;
-                this.menuHero.spriteFrame = Art.f(this.selectedChar().sprite + '_' + f);
-            }
+            if (this.state === 'menu') this.updateMenuFx(dt);
         }
         this.updateHud(dt);
         if (this.toastT > 0) {
