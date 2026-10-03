@@ -259,7 +259,23 @@ const SFX = {
         noise(b, 0, 0.3, { vol: 0.25, rate: 1500, rateEnd: 9000, decay: 6, a: 0.1 });
         [57, 64, 69].forEach(n => note(b, 0.25, 0.3, mtof(n), { vol: 0.12, duty: 0.25, r: 0.15 }));
         return b;
+    },    // 棱镜激光：短促明亮的"啾——"，0.18 秒，与光束动画（0.2 秒）同步
+    beam() {
+        const b = B(0.2);
+        note(b, 0, 0.12, sweep(1800, 900, 0.12), { type: 'sine', vol: 0.22, a: 0.002, r: 0.05 });
+        note(b, 0, 0.1, sweep(3600, 1800, 0.1), { type: 'square', duty: 0.125, vol: 0.04, r: 0.03 });
+        noise(b, 0, 0.12, { vol: 0.06, rate: 18000, rateEnd: 9000, decay: 30 });
+        return b;
     },
+    // 奶蛙倒下：三连下行音 + 轻柔的"噗"
+    faint() {
+        const b = B(1.0);
+        [76, 72, 67].forEach((n, i) => note(b, i * 0.16, 0.14, mtof(n), { type: 'square', duty: 0.25, vol: 0.14, r: 0.05 }));
+        note(b, 0.5, 0.35, sweep(300, 90, 0.35), { type: 'tri', vol: 0.35, r: 0.1 });
+        noise(b, 0.5, 0.3, { vol: 0.12, rate: 3000, rateEnd: 800, decay: 6 });
+        return b;
+    },
+
 };
 
 // ------------------------------------------------------------------ 背景音乐
@@ -352,7 +368,10 @@ function bgmBoss() {
 }
 
 console.log('生成音效 →', OUT_DIR);
-for (const k in SFX) save(k, SFX[k](), 96);
+// ONLY=beam,faint 只生成指定音效（不改动其他已有音频）
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
+for (const k in SFX) if (!ONLY || ONLY.includes(k)) save(k, SFX[k](), 96);
+if (ONLY) process.exit(0);
 console.log('生成背景音乐');
 save('bgm_battle', bgmBattle(), 64);
 save('bgm_menu', bgmMenu(), 64);

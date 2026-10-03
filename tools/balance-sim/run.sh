@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 SKILL=${1:-average}; N=${2:-20}; R=${3:-5}
 mkdir -p out
 npx -y esbuild@0.23 meta.ts --bundle --platform=node --format=esm --outfile=out/meta.mjs --alias:cc=./cc.ts --alias:cc/env=./env.ts --log-level=warning || exit 1
-for i in $(seq 1 $N); do SKILL=$SKILL RUNS=$R node out/meta.mjs 2>/dev/null | tail -1 > out/${SKILL}_$i.json & done; wait
+for i in $(seq 1 $N); do SKILL=$SKILL RUNS=$R EXCLUDE=$EXCLUDE LITE=$LITE NIGHTMARE=$NIGHTMARE node out/meta.mjs 2>/dev/null | tail -1 > out/${SKILL}_$i.json & done; wait
 python3 - "$SKILL" "$N" <<'PY'
 import json,sys,statistics as st
 skill,n=sys.argv[1],int(sys.argv[2])

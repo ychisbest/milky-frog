@@ -8,7 +8,8 @@ import { Ads, mgApi, RewardResult } from './Ads';
 import { Art } from './Art';
 import { Backdrop } from './Backdrop';
 import { Battle, blessingOptions, describe, Option } from './Battle';
-import { ACHIEVEMENTS, BlessingDef, BOSS_SCHEDULE, CHARACTERS, CharDef, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
+import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
+import { Recorder } from './Recorder';
 import { Save } from './Save';
 import { Sound, vibrate } from './Sound';
 import { blockTouches, Button, mkButton, mkLabel, mkNode, mkPanel, mkRect, mkSprite } from './UiKit';
@@ -25,12 +26,21 @@ export const GAME_SUBTITLE = 'MILKY  FROG  SURVIVORS';
 export const AGE_RATING = '12+';
 export const GAME_VERSION = 'v1.0.0';
 // 点击主界面奶蛙时随机说的话
-const FROG_LINES = ['呱!', '割草去!', '呱呱呱~', '奶蛙出击!', '今天也要努力割草', '血月? 不怕!', '再来一局呱', '别戳了, 痒!'];
-const AGE_TIP = '本游戏适合 12 周岁及以上玩家。\n像素风格的奶蛙动作生存游戏，含卡通化的战斗内容，\n无真实血腥画面，无付费内容。\n请合理安排游戏时间。';
+const FROG_LINES = ['呱!', '割草去!', '呱呱呱~', '奶蛙出击!', '今天也要努力割草', '红月? 不怕!', '再来一局呱', '别戳了, 痒!'];
+const AGE_TIP = [
+    '1. 本游戏是一款休闲动作类游戏，适用于年满 12 周岁及以上的用户，',
+    '    建议未成年人在家长监护下使用游戏产品。',
+    '2. 本游戏为卡通像素画风，角色与怪物均为可爱的卡通形象，',
+    '    对抗内容轻度、无血腥恐怖画面，无基于真实历史和现实事件的改编内容。',
+    '3. 本游戏无需注册账号，没有充值和付费内容，',
+    '    游戏内金币只能通过游玩免费获得，不能交易。',
+    '4. 游戏有助于锻炼反应能力与策略规划能力，',
+    '    请合理安排游戏时间，注意劳逸结合。',
+].join('\n');
 const HEALTH_TIP = '抵制不良游戏，拒绝盗版游戏。\n注意自我保护，谨防受骗上当。\n适度游戏益脑，沉迷游戏伤身。\n合理安排时间，享受健康生活。';
 const C_AD = new Color(150, 90, 20, 255);
 
-type State = 'splash' | 'privacy' | 'menu' | 'chars' | 'shop' | 'settings' | 'achv' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'result';
+type State = 'splash' | 'privacy' | 'menu' | 'daily' | 'chars' | 'shop' | 'settings' | 'achv' | 'codex' | 'signin' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'victory' | 'dying' | 'result';
 
 const C_WHITE = new Color(255, 255, 255, 255);
 const C_GOLD = new Color(255, 214, 90, 255);
@@ -118,6 +128,10 @@ export class GameRoot extends Component {
     private resultStats!: Label;
     private resultList!: Node;
     private resultHint!: Label;
+    private dailyRun = false;
+    private newStage = '';
+    private newChar = '';
+    private dailyReward = 0;
     // 广告相关
     private adRevived = false;
     private adRerolls = 0;
@@ -133,17 +147,31 @@ export class GameRoot extends Component {
     private chestAdBtn!: Button;
     private goldAdBtn!: Button;
     private shareBtn!: Button;
+    private recBtn!: Button;
     private splashT = 0;
     private ageNode!: Node;
     private toast!: Label;
     private toastT = 0;
+    // 新手引导（首局）：-1 = 不显示
+    private tutStep = -1;
+    private tutT = 0;
+    private tutX0 = 0;
+    private tutY0 = 0;
+    private tutNode!: Node;
+    private tutLabel!: Label;
+    private tutBg!: Sprite;
+    private tutJoy!: Node;
+    private tutKnob!: Node;
 
     onLoad() {
         view.setDesignResolutionSize(DESIGN_W, DESIGN_H, ResolutionPolicy.FIXED_WIDTH);
         Save.load();
+        this.autoLite();
         Art.init();
         Sound.init(this.node);
         Ads.init();
+        Recorder.init();
+        Recorder.onReady = () => { if (this.state === 'result') this.refreshAll(); };
         const cam = this.getComponent(Canvas)?.cameraComponent;
         if (cam) cam.clearColor = new Color(18, 22, 18, 255);
         this.battle = new Battle(this.node);
@@ -159,6 +187,20 @@ export class GameRoot extends Component {
         this.battle.setPlayerVisible(false);
         this.splashT = 0;
         this.setState('splash');
+    }
+
+    // 首次启动按机型性能自动开启性能模式（安卓微信提供 benchmarkLevel：-1 未知，0~50 越高越好）
+    private autoLite() {
+        const d = Save.data;
+        if (d.liteChecked) return;
+        d.liteChecked = true;
+        try {
+            const w = mgApi();
+            const info = w && w.getSystemInfoSync ? w.getSystemInfoSync() : null;
+            const lvl = info && typeof info.benchmarkLevel === 'number' ? info.benchmarkLevel : -1;
+            if (lvl >= 0 && lvl < 15) d.lite = true;
+        } catch (e) { /* 忽略 */ }
+        Save.save();
     }
 
     onDestroy() {
@@ -177,7 +219,7 @@ export class GameRoot extends Component {
             const cv = (globalThis as any).canvas;
             if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) { /* 截图失败则使用默认分享图 */ }
-        const title = b.won ? `我的奶蛙在《${GAME_NAME}》里击败了死神！你也来试试？` : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
+        const title = b.won ? `我的奶蛙在《${GAME_NAME}》里击败了暗夜魔术师！你也来试试？` : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
         try { w.shareAppMessage({ title, imageUrl }); } catch (e) { /* 忽略 */ }
     }
 
@@ -186,7 +228,7 @@ export class GameRoot extends Component {
         if (!w) return;
         try {
             if (w.showShareMenu) w.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-            const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(Save.data.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在血月下活过 15 分钟！` });
+            const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(Save.data.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在红月下坚持 15 分钟！` });
             if (w.onShareAppMessage) w.onShareAppMessage(msg);
             if (w.onShareTimeline) w.onShareTimeline(msg);
         } catch (e) { /* 忽略 */ }
@@ -275,9 +317,25 @@ export class GameRoot extends Component {
         this.buildChest();
         this.buildResult();
         this.buildAchievements();
+        this.buildDaily();
+        this.buildCodex();
+        this.buildVictory();
+        this.buildDying();
+        this.buildSignin();
         this.buildRevive();
         this.buildSplash();
         this.buildPrivacy();
+
+        this.buildTutorial();
+
+        // 适龄提示弹窗（最上层，启动页与主菜单的标识都能打开）
+        this.ageNode = mkPanel(this.ui, 680, 420).node;
+        this.ageNode.setPosition(0, this.vh * 0.05);
+        mkLabel(this.ageNode, '适龄提示', 34, C_GOLD, 'center', 3).node.setPosition(0, 165);
+        mkLabel(this.ageNode, AGE_TIP, 19, C_WHITE, 'left', 2).node.setPosition(-315, 0);
+        mkLabel(this.ageNode, '点击关闭', 18, C_GREY, 'center', 2).node.setPosition(0, -180);
+        this.ageNode.active = false;
+        this.ageNode.on(Node.EventType.TOUCH_END, () => { this.ageNode.active = false; });
 
         this.toast = mkLabel(this.ui, '', 30, C_WHITE, 'center', 4);
         this.toast.node.setPosition(0, -this.vh * 0.3);
@@ -303,7 +361,7 @@ export class GameRoot extends Component {
 
         this.timeLabel = mkLabel(hud, '00:00', 48, C_WHITE, 'center', 4, true);
         this.timeLabel.node.setPosition(0, top - 72);
-        this.killLabel = mkLabel(hud, '击杀 0', 24, C_WHITE, 'right', 3, true);
+        this.killLabel = mkLabel(hud, '击败 0', 24, C_WHITE, 'right', 3, true);
         this.killLabel.node.setPosition(R - 14, top - 58);
         mkSprite(hud, 'coin', 2.2).node.setPosition(R - 120, top - 92);
         this.goldLabel = mkLabel(hud, '0', 24, C_GOLD, 'right', 3, true);
@@ -326,7 +384,7 @@ export class GameRoot extends Component {
 
         this.comboLabel = mkLabel(hud, '', 40, C_WHITE, 'right', 4, true);
         this.comboLabel.node.setPosition(R - 20, top - 290);
-        this.comboSub = mkLabel(hud, '连杀', 22, C_WHITE, 'right', 3);
+        this.comboSub = mkLabel(hud, '连击', 22, C_WHITE, 'right', 3);
         this.comboSub.node.setPosition(R - 20, top - 325);
         this.buffLabel = mkLabel(hud, '', 22, new Color(255, 200, 220, 255), 'left', 3);
         this.buffLabel.node.setPosition(L + 16, top - 222);
@@ -334,6 +392,191 @@ export class GameRoot extends Component {
         this.bannerLabel = mkLabel(hud, '', 44, C_RED, 'center', 5);
         this.bannerLabel.node.setPosition(0, this.vh * 0.16);
         this.bannerLabel.node.active = false;
+    }
+
+    // ------------------------------------------------------------------ 胜利过渡动画
+
+    private winT = 0;
+    private winNode!: Node;
+    private winFlash!: Sprite;
+    private winRays!: Sprite;
+    private winTitle!: Label;
+    private winSub!: Label;
+
+    private buildVictory() {
+        const s = this.screen('victory');
+        this.winFlash = mkRect(s, this.vw, this.vh, new Color(255, 250, 220, 0), 'flash');
+        this.winNode = mkNode('win', s);
+        this.winNode.setPosition(0, this.vh * 0.16);
+        this.winRays = mkSprite(this.winNode, 'aura', 7);
+        this.winRays.color = new Color(255, 214, 90, 120);
+        this.winTitle = mkLabel(this.winNode, '胜利!', 110, C_GOLD, 'center', 9);
+        this.winSub = mkLabel(this.winNode, '', 34, C_WHITE, 'center', 4);
+        this.winSub.node.setPosition(0, -100);
+    }
+
+    private startVictory() {
+        const b = this.battle;
+        this.winT = 0;
+        this.winSub.string = b.daily ? '每日挑战成功!' : b.bossKills.includes('reaper') ? '击败了暗夜魔术师!' : '坚持了 15 分钟!';
+        this.onJoyEnd();
+        Sound.pauseBgm();
+        Sound.play('achieve');
+        vibrate(true);
+        this.setState('victory');
+    }
+
+    private updateVictory(dt: number) {
+        this.winT += dt;
+        const t = this.winT;
+        this.battle.celebrate(dt);
+        // 白光闪一下
+        this.winFlash.color = new Color(255, 250, 220, Math.floor(200 * Math.max(0, 1 - t * 2.5)));
+        // 标题弹出（easeOutBack），之后轻轻呼吸
+        const k = Math.min(1, Math.max(0, (t - 0.25) / 0.45));
+        const back = k === 0 ? 0 : 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
+        const breathe = 1 + Math.sin(t * 4) * 0.03 * (k >= 1 ? 1 : 0);
+        this.winTitle.node.setScale(back * breathe, back * breathe, 1);
+        this.winSub.node.active = t > 0.8;
+        const a = Math.floor(255 * Math.min(1, Math.max(0, (t - 0.8) / 0.4)));
+        this.winSub.color = new Color(255, 255, 255, a);
+        // 背后旋转的金色光环
+        this.winRays.node.angle = t * 40;
+        const rs = 7 * Math.min(1, t * 1.5);
+        this.winRays.node.setScale(rs, rs, 1);
+        if (t > 3.2) this.endRun(true);
+    }
+
+    // ------------------------------------------------------------------ 倒下动画
+
+    private dieT = 0;
+    private dieDim!: Sprite;
+    private dieLabel!: Label;
+
+    private buildDying() {
+        const s = this.screen('dying');
+        this.dieDim = mkRect(s, this.vw, this.vh, new Color(10, 4, 20, 0), 'dim');
+        this.dieLabel = mkLabel(s, '奶蛙倒下了…', 56, new Color(255, 230, 200, 255), 'center', 5);
+        this.dieLabel.node.setPosition(0, this.vh * 0.12);
+    }
+
+    private startDying() {
+        this.dieT = 0;
+        this.onJoyEnd();
+        Sound.pauseBgm();
+        Sound.play('faint');
+        vibrate(true);
+        this.setState('dying');
+    }
+
+    private updateDying(dt: number) {
+        this.dieT += dt;
+        const t = this.dieT;
+        this.battle.dying(dt);
+        this.dieDim.color = new Color(10, 4, 20, Math.floor(150 * Math.min(1, t / 1.2)));
+        const a = Math.floor(255 * Math.min(1, Math.max(0, (t - 0.7) / 0.4)));
+        this.dieLabel.color = new Color(255, 230, 200, a);
+        this.dieLabel.node.setScale(0.9 + 0.1 * Math.min(1, (t - 0.7) / 0.4), 0.9 + 0.1 * Math.min(1, Math.max(0, (t - 0.7) / 0.4)), 1);
+        if (t > 1.7) {
+            // 每局一次：可看广告复活（无广告时直接结算）
+            if (!this.adRevived && !this.battle.endless && Ads.canReward('revive')) this.setState('revive');
+            else this.endRun(false);
+        }
+    }
+
+    // ------------------------------------------------------------------ 新手引导
+
+    private static readonly TUT_TEXT = [
+        '按住屏幕任意位置 拖动来移动',
+        '武器会自动攻击 靠近小怪试试!',
+        '捡起蓝色宝石 攒满经验就能升级',
+        '三选一：新武器 或 强化道具',
+        '躲开怪物 坚持 15 分钟就胜利!',
+        'Boss 要来了! 看到红圈红线立刻躲开',
+    ];
+
+    private buildTutorial() {
+        const n = this.tutNode = mkNode('Tutorial', this.ui);
+        n.setPosition(0, this.bottom + 230);
+        this.tutBg = mkRect(n, this.vw - 40, 70, new Color(20, 12, 34, 210), 'tutBg');
+        this.tutLabel = mkLabel(n, '', 30, C_GOLD, 'center', 4);
+        this.tutJoy = mkSprite(n, 'joy_base', 3).node;
+        this.tutKnob = mkSprite(n, 'joy_knob', 3).node;
+        this.tutJoy.setPosition(0, 140);
+        n.active = false;
+    }
+
+    private tutStart() {
+        this.tutStep = !Save.data.tutDone && Save.data.runs === 0 && !this.dailyRun ? 0 : -1;
+        this.tutT = 0;
+        // 首局开局先不弹命运卡牌，让新手先熟悉移动（第一次升级后补发）
+        if (this.tutStep === 0) this.battle.pendingBlessings = 0;
+        this.tutX0 = this.battle.px;
+        this.tutY0 = this.battle.py;
+    }
+
+    private tutNext() {
+        this.tutStep++;
+        this.tutT = 0;
+        // 首局的开局命运卡牌推迟到第一次升级之后再给（先学移动，再学选卡）
+        if (this.tutStep === 4) this.battle.pendingBlessings++;
+        if (this.tutStep >= GameRoot.TUT_TEXT.length) this.tutFinish();
+    }
+
+    private tutFinish() {
+        this.tutStep = -1;
+        if (!Save.data.tutDone) { Save.data.tutDone = true; Save.save(); }
+    }
+
+    private updateTutorial(dt: number) {
+        const step = this.tutStep;
+        const st = this.state;
+        const show = step >= 0 && (st === 'play' || (st === 'levelup' && step === 3));
+        this.tutNode.active = show;
+        if (step < 0) return;
+        const b = this.battle;
+        if (st === 'play' || st === 'levelup') this.tutT += dt;
+        // 推进条件
+        if (step === 0 && Math.hypot(b.px - this.tutX0, b.py - this.tutY0) > 140) this.tutNext();
+        else if (step === 1 && b.kills >= 5) this.tutNext();
+        else if (step === 2 && st === 'levelup') this.tutNext();
+        else if (step === 3 && st === 'play') this.tutNext();
+        else if (step === 4) {
+            // 先提示目标，然后隐藏，等第一个 Boss 临近再出现最后一步
+            const nb = b.nextBoss();
+            if (this.tutT > 4) this.tutNode.active = false;
+            if (nb && nb.remain <= 12) this.tutNext();
+            else if (!nb) this.tutFinish();
+        } else if (step === 5 && this.tutT > 6) this.tutFinish();
+        if (this.tutStep < 0) { this.tutNode.active = false; return; }
+        const txt = GameRoot.TUT_TEXT[this.tutStep];
+        if (this.tutLabel.string !== txt) this.tutLabel.string = txt;
+        // 升级界面时引导条放到卡片下方
+        this.tutNode.setPosition(0, this.bottom + (st === 'levelup' ? 90 : 230));
+        const pulse = 0.85 + 0.15 * Math.sin(this.t * 6);
+        this.tutLabel.node.setScale(pulse * 0.1 + 0.9, pulse * 0.1 + 0.9, 1);
+        this.tutLabel.color = this.tutStep === 5 ? new Color(255, 110, 100, 255) : C_GOLD;
+        // 第一步：虚拟摇杆演示动画
+        const demo = this.tutStep === 0 && st === 'play';
+        this.tutJoy.active = this.tutKnob.active = demo;
+        if (demo) {
+            const a = this.t * 2.2;
+            this.tutKnob.setPosition(Math.cos(a) * 34, 140 + Math.sin(a * 2) * 18);
+        }
+    }
+
+    // 适龄提示标识（CADPA 规范：12+ 为蓝色，放在左上角，点击查看适龄提示）
+    private ageBadge(parent: Node, x: number, y: number) {
+        const p = mkPanel(parent, 84, 88, new Color(0, 112, 192, 255), new Color(255, 255, 255, 255));
+        p.node.setPosition(x, y);
+        mkLabel(p.node, AGE_RATING, 34, C_WHITE, 'center', 0).node.setPosition(0, 10);
+        mkLabel(p.node, 'CADPA', 15, C_WHITE, 'center', 0).node.setPosition(0, -26);
+        p.node.on(Node.EventType.TOUCH_END, () => { Sound.play('click'); this.showAgeTip(); });
+        return p;
+    }
+
+    private showAgeTip() {
+        if (this.ageNode) this.ageNode.active = true;
     }
 
     private screen(state: State): Node {
@@ -396,35 +639,51 @@ export class GameRoot extends Component {
 
         // 顶部：金币、每日奖励、适龄
         const goldPanel = mkPanel(s, 200, 56, new Color(36, 20, 50, 235));
-        goldPanel.node.setPosition(-this.vw / 2 + 116, top - 40);
+        goldPanel.node.setPosition(this.vw / 2 - 116, top - 40);
         mkSprite(goldPanel.node, 'coin', 3).node.setPosition(-68, 0);
         const gold = mkLabel(goldPanel.node, '', 28, C_GOLD, 'left', 3);
         gold.node.setPosition(-46, 0);
         const daily = mkLabel(s, '今日首局 金币×2', 20, new Color(255, 214, 90, 255), 'left', 3);
-        daily.node.setPosition(-this.vw / 2 + 18, top - 88);
-        const age = mkPanel(s, 76, 76, new Color(30, 120, 60, 255), new Color(255, 255, 255, 255));
-        age.node.setPosition(this.vw / 2 - 52, top - 40);
-        mkLabel(age.node, AGE_RATING, 28, C_WHITE, 'center', 2);
+        daily.node.setPosition(-this.vw / 2 + 108, top - 40);
+        // 限时活动提示
+        const ev = mkLabel(s, '', 22, new Color(255, 120, 90, 255), 'center', 3);
+        ev.node.setPosition(0, titleY - 128);
+        this.refreshers.push(() => {
+            const cur = activeEvent();
+            ev.node.active = !!cur;
+            if (cur && ev.string !== cur.badge) ev.string = cur.badge;
+        });
+        this.ageBadge(s, -this.vw / 2 + 56, top - 48);
 
         const best = mkLabel(s, '', 22, C_GREY, 'center', 2);
         best.node.setPosition(0, this.bottom + 46);
         mkLabel(s, GAME_VERSION, 16, new Color(120, 110, 140, 255), 'left', 2).node.setPosition(-this.vw / 2 + 12, this.bottom + 14);
 
         mkButton(s, '开始游戏', 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
-        mkButton(s, '选择角色', 440, 84, () => this.setState('chars'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 104);
+        // 签到入口（右上角适龄标识下方），未签到时亮红点
+        const sbtn = mkButton(s, '签到', 120, 60, () => this.setState('signin'), new Color(150, 60, 30, 255), 26);
+        sbtn.node.setPosition(this.vw / 2 - 80, this.top - 110);
+        const sdot = mkRect(sbtn.node, 16, 16, new Color(240, 60, 60, 255), 'dot');
+        sdot.node.setPosition(52, 22);
+        this.refreshers.push(() => { sdot.node.active = this.signDue(); });
+        const dbtn = mkButton(s, '每日挑战', 212, 84, () => this.setState('daily'), new Color(150, 60, 30, 255), 32);
+        dbtn.node.setPosition(-114, btnTop - 104);
+        // 今日挑战未完成时显示红点
+        const ddot = mkRect(dbtn.node, 18, 18, new Color(240, 60, 60, 255), 'dot');
+        ddot.node.setPosition(94, 30);
+        this.refreshers.push(() => { ddot.node.active = Save.data.dailyDone !== this.today; });
+        mkButton(s, '选择角色', 212, 84, () => this.setState('chars'), C_BTN_BLUE, 32).node.setPosition(114, btnTop - 104);
         mkButton(s, '永久强化', 440, 84, () => this.setState('shop'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 200);
-        mkButton(s, '成就', 212, 80, () => this.setState('achv'), C_BTN_BLUE, 30).node.setPosition(-114, btnTop - 296);
-        mkButton(s, '设置', 212, 80, () => this.setState('settings'), C_BTN_GREY, 30).node.setPosition(114, btnTop - 296);
+        mkButton(s, '成就', 140, 80, () => this.setState('achv'), C_BTN_BLUE, 30).node.setPosition(-150, btnTop - 296);
+        const cb = mkButton(s, '图鉴', 140, 80, () => this.setState('codex'), C_BTN_BLUE, 30);
+        cb.node.setPosition(0, btnTop - 296);
+        // 有新收录时在图鉴按钮上显示红点
+        const dot = mkRect(cb.node, 18, 18, new Color(240, 60, 60, 255), 'dot');
+        dot.node.setPosition(58, 28);
+        this.refreshers.push(() => { dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0); });
+        mkButton(s, '设置', 140, 80, () => this.setState('settings'), C_BTN_GREY, 30).node.setPosition(150, btnTop - 296);
 
         // 适龄提示面板（最后创建，位于最上层）
-        this.ageNode = mkPanel(s, 600, 300).node;
-        this.ageNode.setPosition(0, this.vh * 0.05);
-        mkLabel(this.ageNode, '适龄提示', 34, C_GOLD, 'center', 3).node.setPosition(0, 100);
-        mkLabel(this.ageNode, AGE_TIP, 22, C_WHITE, 'center', 2).node.setPosition(0, -10);
-        mkLabel(this.ageNode, '点击关闭', 18, C_GREY, 'center', 2).node.setPosition(0, -120);
-        this.ageNode.active = false;
-        this.ageNode.on(Node.EventType.TOUCH_END, () => { this.ageNode.active = false; });
-        age.node.on(Node.EventType.TOUCH_END, () => { Sound.play('click'); this.ageNode.active = true; });
 
         this.refreshers.push(() => {
             const c = this.selectedChar();
@@ -433,7 +692,7 @@ export class GameRoot extends Component {
             gold.string = String(Save.data.gold);
             daily.node.active = Save.data.bonusDay !== new Date().toDateString();
             const d = Save.data;
-            best.string = (d.runs ? `最佳：存活 ${this.fmtTime(d.bestTime)}  ·  击杀 ${d.bestKills}  ·  等级 ${d.bestLevel}` : '存活 15 分钟即可获胜') + (d.endlessBest ? `\n无尽模式最佳 ${this.fmtTime(d.endlessBest)}` : '') + `   成就 ${d.achievements.length}/${ACHIEVEMENTS.length}`;
+            best.string = (d.runs ? `最佳：存活 ${this.fmtTime(d.bestTime)}  ·  击败 ${d.bestKills}  ·  等级 ${d.bestLevel}` : '存活 15 分钟即可获胜') + (d.endlessBest ? `\n无尽模式最佳 ${this.fmtTime(d.endlessBest)}` : '') + `   成就 ${d.achievements.length}/${ACHIEVEMENTS.length}`;
         });
     }
 
@@ -482,30 +741,34 @@ export class GameRoot extends Component {
     private buildChars() {
         const s = this.screen('chars');
         this.header(s, '选择角色');
+        // 三列紧凑卡片：立绘 / 名字 / 初始武器 / 天赋
         const y0 = this.top - 170;
-        const rowsN = Math.ceil(CHARACTERS.length / 2);
-        const avail = y0 - (this.bottom + 230);
-        const ch = Math.min(250, avail / rowsN - 12);
-        const cw = 340;
+        const cols = 3;
+        const rowsN = Math.ceil(CHARACTERS.length / cols);
+        const avail = y0 - (this.bottom + 310);
+        const ch = Math.min(250, avail / rowsN - 10);
+        const cw = 226;
         CHARACTERS.forEach((c, i) => {
-            const col = i % 2, row = Math.floor(i / 2);
+            const col = i % cols, row = Math.floor(i / cols);
             const card = mkPanel(s, cw, ch);
-            card.node.setPosition((col - 0.5) * (cw + 14), y0 - ch / 2 - row * (ch + 14));
-            const spr = mkSprite(card.node, c.sprite + '_0', Math.min(2.2, (ch - 30) / 70));
-            spr.node.setPosition(-100, 14);
-            mkLabel(card.node, c.name, 30, C_WHITE, 'left', 3).node.setPosition(-30, ch / 2 - 34);
-            mkLabel(card.node, c.title, 20, C_GREY, 'left', 2).node.setPosition(-30, ch / 2 - 66);
+            card.node.setPosition((col - 1) * (cw + 10), y0 - ch / 2 - row * (ch + 10));
+            const sc = Math.min(1.5, (ch - 96) / 68);
+            const spr = mkSprite(card.node, c.sprite + '_0', sc);
+            spr.node.setPosition(0, ch / 2 - 8 - 34 * sc);
+            mkLabel(card.node, c.name, 26, C_WHITE, 'center', 3).node.setPosition(0, -ch / 2 + 70);
             const wd = WEAPONS.find(w => w.id === c.weapon)!;
-            mkSprite(card.node, wd.icon, 2).node.setPosition(-14, ch / 2 - 102);
-            mkLabel(card.node, wd.name, 20, C_GOLD, 'left', 2).node.setPosition(6, ch / 2 - 102);
-            mkLabel(card.node, c.desc, 18, C_GREEN, 'left', 2).node.setPosition(-cw / 2 + 16, -ch / 2 + 24);
+            mkSprite(card.node, wd.icon, 1.6).node.setPosition(-cw / 2 + 30, -ch / 2 + 42);
+            mkLabel(card.node, wd.name, 18, C_GOLD, 'left', 2).node.setPosition(-cw / 2 + 46, -ch / 2 + 42);
+            mkLabel(card.node, c.desc, 15, C_GREEN, 'center', 2).node.setPosition(0, -ch / 2 + 16);
             const lock = mkRect(card.node, cw - 6, ch - 6, new Color(0, 0, 0, 175), 'lock');
-            mkSprite(lock.node, 'icon_lock', 3).node.setPosition(0, 24);
-            mkLabel(lock.node, `${c.cost} 金币解锁`, 24, C_GOLD, 'center', 3).node.setPosition(0, -30);
+            mkSprite(lock.node, 'icon_lock', 3).node.setPosition(0, 20);
+            const evOf = EVENTS.find(e => e.char === c.id);
+            mkLabel(lock.node, c.cost < 0 ? (evOf ? evOf.lockText : '活动限定') : `${c.cost} 金币解锁`, 22, C_GOLD, 'center', 3).node.setPosition(0, -34);
             card.node.on(Node.EventType.TOUCH_END, () => {
                 Sound.play('click');
                 const d = Save.data;
                 if (!d.chars.includes(c.id)) {
+                    if (c.cost < 0) { this.showToast(evOf ? evOf.hint : '活动限定角色'); return; }
                     if (d.gold < c.cost) { this.showToast('金币不足'); return; }
                     d.gold -= c.cost;
                     d.chars.push(c.id);
@@ -528,17 +791,36 @@ export class GameRoot extends Component {
         mkButton(s, '出发!', 260, 88, () => this.startGame(), C_BTN_GREEN, 36).node.setPosition(150, by);
         // 模式切换：无尽模式在首次胜利后解锁
         const mode = mkButton(s, '', 560, 64, () => {
-            if (Save.data.wins <= 0) { this.showToast('首次胜利后解锁无尽模式'); return; }
-            Save.data.mode = Save.data.mode === 'endless' ? 'normal' : 'endless';
+            if (Save.data.wins <= 0) { this.showToast('首次胜利后解锁无尽模式与噩梦难度'); return; }
+            const order: ('normal' | 'endless' | 'nightmare')[] = ['normal', 'endless', 'nightmare'];
+            Save.data.mode = order[(order.indexOf(Save.data.mode) + 1) % order.length];
             Save.save();
             this.refreshAll();
         }, C_BTN_GREY, 26);
         mode.node.setPosition(0, by + 92);
+        // 地图选择：点击切换到下一张已解锁的地图
+        const stageBtn = mkButton(s, '', 560, 64, () => {
+            const d = Save.data;
+            const unlocked = STAGES.filter(st => this.stageOpen(st.id));
+            const i = unlocked.findIndex(st => st.id === d.stage);
+            d.stage = unlocked[(i + 1) % unlocked.length].id;
+            if (unlocked.length === 1) this.showToast('在月光草原胜利后解锁新地图');
+            Save.save();
+            this.refreshAll();
+        }, new Color(40, 70, 90, 255), 24);
+        stageBtn.node.setPosition(0, by + 166);
+        this.refreshers.push(() => {
+            const st = this.currentStage;
+            // 计数只算常驻地图（活动地图不计入分母）
+            const regular = STAGES.filter(x => !x.event);
+            const n = regular.filter(x => this.stageOpen(x.id)).length;
+            stageBtn.label.string = `地图：${st.name}${st.event ? '（活动限定）' : `（${n}/${regular.length}）`}  ${st.hpMul > 1 ? `生命+${Math.round((st.hpMul - 1) * 100)}% 金币+${Math.round((st.goldMul - 1) * 100)}%` : '标准难度'}`;
+        });
         this.refreshers.push(() => {
             const locked = Save.data.wins <= 0;
-            const e = this.endlessMode;
-            mode.label.string = locked ? '模式：普通（无尽模式 首胜解锁）' : e ? '模式：无尽（Boss 循环，越来越强）' : '模式：普通（存活 15 分钟胜利）';
-            mode.bg.color = e ? new Color(110, 40, 120, 255) : C_BTN_GREY;
+            const e = this.endlessMode, n = this.nightmareMode;
+            mode.label.string = locked ? '模式：普通（无尽 / 噩梦 首胜解锁）' : e ? '模式：无尽（Boss 循环，越来越强）' : n ? '模式：噩梦（生命 +60% 伤害 +30% 金币 +60%）' : '模式：普通（存活 15 分钟胜利）';
+            mode.bg.color = e ? new Color(110, 40, 120, 255) : n ? new Color(140, 30, 40, 255) : C_BTN_GREY;
         });
     }
 
@@ -609,7 +891,7 @@ export class GameRoot extends Component {
         this.refreshAll();
     }
 
-    private toggleRow(parent: Node, y: number, icon: string, text: string, key: 'music' | 'sfx' | 'vibrate') {
+    private toggleRow(parent: Node, y: number, icon: string, text: string, key: 'music' | 'sfx' | 'vibrate' | 'lite') {
         mkSprite(parent, icon, 3).node.setPosition(-210, y);
         mkLabel(parent, text, 32, C_WHITE, 'left', 3).node.setPosition(-165, y);
         const btn = mkButton(parent, '', 150, 72, () => {
@@ -629,16 +911,18 @@ export class GameRoot extends Component {
     private buildSettings() {
         const s = this.screen('settings');
         this.header(s, '设置', false);
-        const p = mkPanel(s, 580, 360);
+        const p = mkPanel(s, 580, 470);
         p.node.setPosition(0, this.vh * 0.14);
-        this.toggleRow(p.node, 110, 'icon_music', '背景音乐', 'music');
-        this.toggleRow(p.node, 0, 'icon_sound', '游戏音效', 'sfx');
-        this.toggleRow(p.node, -110, 'icon_vibrate', '震动反馈', 'vibrate');
+        this.toggleRow(p.node, 165, 'icon_music', '背景音乐', 'music');
+        this.toggleRow(p.node, 55, 'icon_sound', '游戏音效', 'sfx');
+        this.toggleRow(p.node, -55, 'icon_vibrate', '震动反馈', 'vibrate');
+        this.toggleRow(p.node, -165, 'icon_chain', '性能模式', 'lite');
+        mkLabel(s, '性能模式：减少同屏怪物与特效，适合较旧的手机', 20, C_GREY, 'center', 2).node.setPosition(0, this.vh * 0.14 - 265);
         const stats = mkLabel(s, '', 26, C_GREY, 'center', 3);
-        stats.node.setPosition(0, -this.vh * 0.12);
+        stats.node.setPosition(0, -this.vh * 0.2);
         this.refreshers.push(() => {
             const d = Save.data;
-            stats.string = `游戏次数  ${d.runs}\n胜利次数  ${d.wins}\n累计击杀  ${d.totalKills}\n最长存活  ${this.fmtTime(d.bestTime)}`;
+            stats.string = `游戏次数  ${d.runs}\n胜利次数  ${d.wins}\n累计击败  ${d.totalKills}\n最长存活  ${this.fmtTime(d.bestTime)}`;
         });
         mkButton(s, '返回', 300, 88, () => this.setState('menu'), C_BTN_BLUE).node.setPosition(0, this.bottom + 80);
     }
@@ -754,7 +1038,7 @@ export class GameRoot extends Component {
         this.resultList.setPosition(0, this.top - 520);
         const by = this.bottom + 80;
         mkButton(s, '主菜单', 260, 88, () => { Ads.afterRun(this.adWatchedThisResult); this.toMenu(); }, C_BTN_GREY).node.setPosition(-150, by);
-        mkButton(s, '再来一局', 260, 88, () => { Ads.afterRun(this.adWatchedThisResult); this.startGame(); }, C_BTN_GREEN).node.setPosition(150, by);
+        mkButton(s, '再来一局', 260, 88, () => { Ads.afterRun(this.adWatchedThisResult); this.replay(); }, C_BTN_GREEN).node.setPosition(150, by);
         this.goldAdBtn = mkButton(s, '', 380, 80, () => this.watchAd('gold', () => {
             this.adGoldUsed = true;
             Save.data.gold += this.lastRunGold;
@@ -764,8 +1048,15 @@ export class GameRoot extends Component {
             this.refreshAll();
         }), C_AD, 26);
         this.shareBtn = mkButton(s, '分享战绩', 200, 80, () => this.shareResult(), C_BTN_BLUE, 26);
+        // 抖音：分享本局录屏（按平台规则不发奖励）
+        this.recBtn = mkButton(s, '分享本局录屏', 300, 72, () => {
+            const b = this.battle;
+            Recorder.share(b.won ? '我的奶蛙活过了 15 分钟！' : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
+        }, new Color(200, 40, 90, 255), 26);
+        this.recBtn.node.setPosition(0, by + 186);
         this.refreshers.push(() => {
             if (this.state !== 'result') return;
+            this.recBtn.node.active = Recorder.ready;
             const showAd = !this.adGoldUsed && this.lastRunGold > 0 && Ads.canReward('gold');
             const showShare = !!mgApi();
             this.goldAdBtn.node.active = showAd;
@@ -780,7 +1071,7 @@ export class GameRoot extends Component {
     private buildRevive() {
         const s = this.screen('revive');
         mkLabel(s, '你倒下了…', 64, C_RED, 'center', 5).node.setPosition(0, this.vh * 0.2);
-        mkLabel(s, '看一段广告，满血原地复活?', 30, C_WHITE, 'center', 3).node.setPosition(0, this.vh * 0.1);
+        mkLabel(s, '看一段广告，满状态原地复活?', 30, C_WHITE, 'center', 3).node.setPosition(0, this.vh * 0.1);
         this.reviveCount = mkLabel(s, '', 72, C_GOLD, 'center', 5, true);
         this.reviveCount.node.setPosition(0, 0);
         mkButton(s, '▶ 看广告复活', 420, 100, () => this.watchAd('revive', () => {
@@ -816,9 +1107,7 @@ export class GameRoot extends Component {
         this.splashFill.setPosition(-220, barY);
         mkLabel(s, '健康游戏忠告', 26, C_WHITE, 'center', 2).node.setPosition(0, -this.vh * 0.2);
         mkLabel(s, HEALTH_TIP, 21, new Color(200, 190, 210, 255), 'center', 2).node.setPosition(0, -this.vh * 0.285);
-        const age = mkPanel(s, 76, 76, new Color(30, 120, 60, 255), new Color(255, 255, 255, 255));
-        age.node.setPosition(this.vw / 2 - 52, this.top - 40);
-        mkLabel(age.node, AGE_RATING, 28, C_WHITE, 'center', 2);
+        this.ageBadge(s, -this.vw / 2 + 56, this.top - 48);
         s.addComponent(UITransform).setContentSize(this.vw, this.vh);
         s.on(Node.EventType.TOUCH_END, () => { if (this.splashT > 1) this.afterSplash(); });
         this.refreshers.push(() => { this.splashHero.spriteFrame = Art.f(this.selectedChar().sprite + '_0'); });
@@ -882,19 +1171,26 @@ export class GameRoot extends Component {
     // ------------------------------------------------------------------ 状态
 
     private setState(s: State) {
+        // 每天第一次回到主菜单时自动弹出签到（新玩家第一局之前不弹）
+        if (s === 'menu' && this.signDue() && Save.data.signShown !== this.today && Save.data.runs > 0) {
+            Save.data.signShown = this.today;
+            s = 'signin';
+        }
         const prev = this.state;
         this.state = s;
         for (const k in this.screens) this.screens[k as State]!.active = k === s;
         const inRun = s === 'play' || s === 'levelup' || s === 'chest' || s === 'pause' || s === 'revive';
         this.hud.active = inRun;
-        this.overlay.node.active = s !== 'play';
+        this.overlay.node.active = s !== 'play' && s !== 'victory' && s !== 'dying';
         this.overlay.color = inRun || s === 'result' ? C_DIM : new Color(0, 0, 0, s === 'menu' ? 90 : 190);
         this.touchLayer.active = s === 'play';
         if (s !== 'play') this.onJoyEnd();
-        if (s === 'menu' || s === 'chars' || s === 'shop' || s === 'settings' || s === 'achv' || s === 'privacy') Sound.playBgm('bgm_menu');
+        if (s === 'menu' || s === 'chars' || s === 'shop' || s === 'settings' || s === 'achv' || s === 'codex' || s === 'signin' || s === 'privacy' || s === 'daily') Sound.playBgm('bgm_menu');
+        if (s === 'codex') { Save.data.codexSeen = Save.data.codex.length; Save.save(); }
         if (s === 'revive') { this.reviveT = 8; Sound.pauseBgm(); }
         if (prev === 'revive' && s === 'play') Sound.resumeBgm();
-        if (s === 'pause') Sound.pauseBgm();
+        if (s === 'pause') { Sound.pauseBgm(); Recorder.pause(); }
+        if (prev === 'pause' && s === 'play') Recorder.resume();
         if (prev === 'pause' && s === 'play') Sound.resumeBgm();
         this.refreshAll();
     }
@@ -903,34 +1199,80 @@ export class GameRoot extends Component {
         for (const f of this.refreshers) f();
     }
 
+    // 活动地图只在活动期间开放；普通地图按胜利依次解锁
+    private stageOpen(id: string) {
+        const st = STAGES.find(x => x.id === id);
+        if (!st) return false;
+        if (st.event) { const ev = activeEvent(); return !!ev && ev.id === st.event; }
+        return Save.data.stages.includes(id);
+    }
+
+    private get currentStage() { return STAGES.find(x => x.id === Save.data.stage && this.stageOpen(x.id)) || STAGES[0]; }
+
     private get endlessMode() { return Save.data.mode === 'endless' && Save.data.wins > 0; }
+    private get nightmareMode() { return Save.data.mode === 'nightmare' && Save.data.wins > 0; }
 
     private toMenu() {
+        this.dailyRun = false;
         this.battle.reset(this.selectedChar());
         this.battle.setPlayerVisible(false);
         this.setState('menu');
     }
 
-    private startGame() {
+    private get today() { return new Date().toDateString(); }
+
+    // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 10 分钟
+    private startDaily() {
+        const ds = dailySetup(this.today);
+        const ch = CHARACTERS.find(c => c.id === ds.char) || CHARACTERS[0];
+        this.dailyRun = true;
+        this.tutStep = -1;
         this.adRevived = this.adBlessUsed = false;
         this.adRerolls = AD_CONFIG.rerollPerRun;
-        this.battle.reset(this.selectedChar(), this.endlessMode);
+        this.battle.reset(ch, false, ds.stage, { mod: ds.mod, blessing: ds.blessing });
+        this.battle.nightmare = false;
+        this.battle.setPlayerVisible(true);
+        this.refreshIcons();
+        this.bannerT = 0;
+        Sound.play('start');
+        Sound.playBgm('bgm_battle');
+        Recorder.start();
+        this.setState('play');
+        this.banner(`每日挑战 · ${ds.mod.name}`, new Color(255, 170, 80, 255));
+    }
+
+    private replay() {
+        if (this.dailyRun) this.startDaily();
+        else this.startGame();
+    }
+
+    private startGame() {
+        this.dailyRun = false;
+        this.adRevived = this.adBlessUsed = false;
+        this.adRerolls = AD_CONFIG.rerollPerRun;
+        this.battle.reset(this.selectedChar(), this.endlessMode, this.currentStage.id);
+        this.battle.nightmare = this.nightmareMode;
         this.battle.setPlayerVisible(true);
         this.refreshIcons();
         this.bannerT = 0;
         this.bannerLabel.node.active = false;
         Sound.play('start');
         Sound.playBgm('bgm_battle');
+        Recorder.start();
         this.setState('play');
+        this.tutStart();
         const st = this.battle.streak;
-        this.banner(this.endlessMode ? '无尽之夜 · 能撑多久?' : st > 0 ? `不屈意志 · 伤害与生命 +${st * 5}%` : '生存下去!', new Color(255, 230, 120, 255));
+        this.banner(this.endlessMode ? '无尽之夜 · 能撑多久?' : this.nightmareMode ? `噩梦难度 · ${this.currentStage.name}` : st > 0 ? `不屈意志 · 伤害与生命 +${st * 5}%` : `${this.currentStage.name} · 生存下去!`, new Color(255, 230, 120, 255));
     }
 
     // 结算：发放金币、记录最佳成绩
     private endRun(win: boolean) {
+        Recorder.stop();
+        if (this.tutStep >= 0) this.tutFinish();
+        this.tutNode.active = false;
         const b = this.battle;
         const d = Save.data;
-        const bonus = Math.round((Math.floor(b.time / 60) * 20 + (win ? 500 : 0)) * b.stats.greed);
+        const bonus = Math.round((Math.floor(b.time / 60) * 25 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
         let total = b.gold + bonus;
         // 每日首局金币 ×2
         const today = new Date().toDateString();
@@ -940,7 +1282,34 @@ export class GameRoot extends Component {
         this.lastRunGold = total;
         this.adGoldUsed = false;
         this.adWatchedThisResult = false;
-        if (!b.endless) d.lossStreak = win ? 0 : Math.min(3, (d.lossStreak || 0) + 1);
+        // 每日挑战：首次成功发奖励，不计入连败与地图解锁
+        this.dailyReward = 0;
+        if (this.dailyRun) {
+            if (d.dailyBestDate !== this.today) { d.dailyBestDate = this.today; d.dailyBest = 0; }
+            d.dailyBest = Math.max(d.dailyBest, Math.floor(b.time));
+            if (win && d.dailyDone !== this.today) {
+                d.dailyDone = this.today;
+                this.dailyReward = DAILY_REWARD;
+                d.gold += DAILY_REWARD;
+            }
+        }
+        if (!b.endless && !this.dailyRun) d.lossStreak = win ? 0 : Math.min(3, (d.lossStreak || 0) + 1);
+        // 地图：记录最佳，胜利后解锁下一张
+        d.stageBest[b.stage.id] = Math.max(d.stageBest[b.stage.id] || 0, Math.floor(b.time));
+        this.newStage = '';
+        // 限时活动：击败限定 Boss 永久解锁限定角色
+        this.newChar = '';
+        for (const ev of EVENTS) {
+            if (b.bossKills.includes(ev.boss) && !d.chars.includes(ev.char)) {
+                d.chars.push(ev.char);
+                this.newChar = (CHARACTERS.find(c => c.id === ev.char) || { name: '' }).name;
+            }
+        }
+        if (win && !b.endless && !this.dailyRun) {
+            const i = STAGES.findIndex(x => x.id === b.stage.id);
+            const next = STAGES[i + 1];
+            if (next && !d.stages.includes(next.id)) { d.stages.push(next.id); this.newStage = next.name; }
+        }
         d.runs++;
         if (win) d.wins++;
         d.totalKills += b.kills;
@@ -948,6 +1317,10 @@ export class GameRoot extends Component {
         d.bestKills = Math.max(d.bestKills, b.kills);
         d.bestLevel = Math.max(d.bestLevel, b.level);
         if (b.endless) d.endlessBest = Math.max(d.endlessBest, Math.floor(b.time));
+        // 每日任务（跨局累计，完成即发金币）
+        const qr = this.updateQuests();
+        d.gold += qr.gold;
+        this.questMsg = qr.done.length ? `每日任务完成 ${qr.done.length} 个${qr.bonus ? '，今日任务全部完成！' : ''}  +${qr.gold} 金币` : '';
         // 成就结算
         const got = this.checkAchievements(win);
         let achGold = 0;
@@ -955,9 +1328,9 @@ export class GameRoot extends Component {
         d.gold += achGold;
         Save.save();
 
-        this.resultTitle.string = win ? '胜利!' : b.endless ? '无尽之夜结束' : '你倒下了';
+        this.resultTitle.string = this.dailyRun ? (win ? '挑战成功!' : '挑战失败') : win ? '胜利!' : b.endless ? '无尽之夜结束' : '你倒下了';
         this.resultTitle.color = win ? C_GOLD : C_RED;
-        this.resultStats.string = `存活时间  ${this.fmtTime(b.time)}\n等级  ${b.level}     击杀  ${b.kills}     最高连杀  ${b.maxCombo}\n拾取金币  ${b.gold}    时间奖励  ${bonus}\n本局获得  ${total + achGold} 金币` + (got.length ? `\n新成就：${got.map(a => a.name).join('、')}  (+${achGold})` : '');
+        this.resultStats.string = `存活时间  ${this.fmtTime(b.time)}\n等级  ${b.level}     击败  ${b.kills}     最高连击  ${b.maxCombo}\n拾取金币  ${b.gold}    时间奖励  ${bonus}\n本局获得  ${total + achGold} 金币` + (got.length ? `\n新成就：${got.map(a => a.name).join('、')}  (+${achGold})` : '');
         this.resultHint.string = this.nearMiss(win, daily);
         // 按行数依次排版：统计 → 提示 → 武器伤害列表
         const statLines = this.resultStats.string.split('\n').length, hintLines = this.resultHint.string ? this.resultHint.string.split('\n').length : 0;
@@ -981,17 +1354,69 @@ export class GameRoot extends Component {
         this.setState('result');
     }
 
+    private questMsg = '';
+
+    // 今日任务进度（日期变化时清零）
+    private questProgress() {
+        const d = Save.data;
+        if (d.questDate !== this.today) { d.questDate = this.today; d.questProg = {}; d.questDone = []; }
+        return d.questProg;
+    }
+
+    private updateQuests(): { done: QuestDef[]; bonus: boolean; gold: number } {
+        const b = this.battle, d = Save.data;
+        const p = this.questProgress();
+        const add = (k: string, v: number) => { p[k] = (p[k] || 0) + v; };
+        const best = (k: string, v: number) => { p[k] = Math.max(p[k] || 0, v); };
+        add('kills', b.kills);
+        add('boss', b.bossKills.length);
+        add('evolve', b.evolvedCount);
+        add('gold', b.gold);
+        add('chest', b.chestsOpened);
+        add('runs', 1);
+        best('time', Math.floor(b.time));
+        best('level', b.level);
+        best('combo', b.maxCombo);
+        const qs = dailyQuests(this.today);
+        const done: QuestDef[] = [];
+        let gold = 0;
+        for (const q of qs) {
+            if (d.questDone.includes(q.id) || (p[q.stat] || 0) < q.n) continue;
+            d.questDone.push(q.id);
+            done.push(q);
+            gold += q.gold;
+        }
+        let bonus = false;
+        if (qs.every(q => d.questDone.includes(q.id)) && !d.questDone.includes('bonus')) {
+            d.questDone.push('bonus');
+            bonus = true;
+            gold += QUEST_BONUS;
+        }
+        return { done, bonus, gold };
+    }
+
+    private codexCount() {
+        const c = Save.data.codex;
+        return codexEntries().filter(e => c.includes(e.key)).length;
+    }
+
     // 结算提示：差一点的遗憾感 + 下一个可达成的目标，驱动"再来一局"
     private nearMiss(win: boolean, daily: boolean) {
         const b = this.battle, d = Save.data;
         const lines: string[] = [];
+        if (this.dailyReward) lines.push(`每日挑战奖励：+${this.dailyReward} 金币！`);
+        if (this.questMsg) lines.push(this.questMsg);
+        if (this.newChar) lines.push(`解锁限定角色：${this.newChar}！`);
+        if (this.newStage) lines.push(`解锁新地图：${this.newStage}！`);
+        if (b.newCodex.length) lines.push(`图鉴新收录 ${b.newCodex.length} 项（${this.codexCount()}/${codexEntries().length}）`);
         if (daily) lines.push('每日首局奖励：金币 ×2!');
         if (!win && !b.endless) {
-            if (b.boss && b.boss.alive) lines.push(`${b.boss.def.name} 只剩 ${Math.max(1, Math.round((b.boss.hp / b.boss.maxHp) * 100))}% 血量了!`);
+            if (b.boss && b.boss.alive) lines.push(`${b.boss.def.name} 只剩 ${Math.max(1, Math.round((b.boss.hp / b.boss.maxHp) * 100))}% 生命了!`);
             else {
                 const nb = BOSS_SCHEDULE.find(x => x.t > b.time);
-                const left = Math.ceil((nb ? nb.t : WIN_TIME) - b.time);
-                lines.push(nb ? `再坚持 ${this.fmtTime(left)} 就能见到 ${ENEMIES[nb.id].name}` : `距离胜利只差 ${this.fmtTime(left)}!`);
+                const goal = this.dailyRun ? DAILY_GOAL : WIN_TIME;
+                const left = Math.ceil((nb && nb.t < goal ? nb.t : goal) - b.time);
+                lines.push(nb && nb.t < goal ? `再坚持 ${this.fmtTime(left)} 就能见到 ${ENEMIES[nb.id].name}` : `距离胜利只差 ${this.fmtTime(left)}!`);
             }
             if (d.lossStreak > 0) lines.push(`下一局获得「不屈意志」伤害与生命 +${d.lossStreak * 5}%`);
         }
@@ -1020,12 +1445,255 @@ export class GameRoot extends Component {
             evo3: b.evolvedCount >= 3,
             goldrat: b.goldRats > 0,
             endless20: b.endless && b.time >= 1200,
-            allchars: CHARACTERS.every(c => d.chars.includes(c.id)),
+            allchars: CHARACTERS.every(c => c.cost < 0 || d.chars.includes(c.id)),
+            daily1: this.dailyRun && win,
+            stage_snow: win && !b.endless && !this.dailyRun && b.stage.id === 'snow',
+            stage_lava: win && !b.endless && !this.dailyRun && b.stage.id === 'lava',
+            stage_swamp: win && !b.endless && !this.dailyRun && b.stage.id === 'swamp',
+            nightmare1: win && b.nightmare,
+            codex_half: this.codexCount() * 2 >= codexEntries().length,
+            codex_full: this.codexCount() >= codexEntries().length,
         };
         for (const id of b.bossKills) ok['boss_' + id] = true;
         const got = ACHIEVEMENTS.filter(a => ok[a.id] && !d.achievements.includes(a.id));
         for (const a of got) d.achievements.push(a.id);
         return got;
+    }
+
+    // ------------------------------------------------------------------ 七日签到
+
+    private signDue() { return Save.data.signDate !== this.today; }
+
+    private claimSignin(mul: number) {
+        const d = Save.data;
+        if (!this.signDue()) return;
+        const day = d.signCount % 7;
+        const g = SIGNIN_REWARDS[day] * mul;
+        d.gold += g;
+        d.signCount++;
+        d.signDate = this.today;
+        Save.save();
+        Sound.play(day === 6 ? 'achieve' : 'coin');
+        this.showToast(`签到成功 +${g} 金币` + (mul > 1 ? '（双倍）' : ''));
+        this.refreshAll();
+    }
+
+    private buildSignin() {
+        const s = this.screen('signin');
+        const p = mkPanel(s, 660, 760, new Color(30, 22, 52, 250), C_GOLD);
+        p.node.setPosition(0, this.vh * 0.03);
+        mkLabel(p.node, '七日签到', 46, C_GOLD, 'center', 4).node.setPosition(0, 330);
+        const sub = mkLabel(p.node, '', 22, C_GREY, 'center', 2);
+        sub.node.setPosition(0, 280);
+        // 7 个格子：上排 4 个，下排 3 个（第 7 天大格子）
+        const cells: { panel: { fill: Sprite; border: Sprite }; check: Node; amount: Label }[] = [];
+        for (let i = 0; i < 7; i++) {
+            const big = i === 6;
+            const w = big ? 290 : 140, h = 170;
+            const y = i < 4 ? 150 : -40;
+            const c = mkPanel(p.node, w, h);
+            c.node.setPosition(i < 4 ? (i - 1.5) * 152 : [-228, -76, 152][i - 4], y);
+            mkLabel(c.node, `第 ${i + 1} 天`, 22, C_WHITE, 'center', 2).node.setPosition(0, 60);
+            mkSprite(c.node, big ? 'chest' : 'coin', big ? 2.4 : 3).node.setPosition(0, 6);
+            const amount = mkLabel(c.node, `${SIGNIN_REWARDS[i]}`, 26, C_GOLD, 'center', 3);
+            amount.node.setPosition(0, -56);
+            const check = mkLabel(c.node, '已领', 30, C_GREEN, 'center', 4).node;
+            check.setPosition(0, 6);
+            cells.push({ panel: c, check, amount });
+        }
+        const claim = mkButton(p.node, '领取', 260, 88, () => { this.claimSignin(1); this.setState('menu'); }, C_BTN_GREEN, 34);
+        claim.node.setPosition(-140, -240);
+        const dbl = mkButton(p.node, '▶ 看视频 双倍', 260, 88, () => this.watchAd('signin', () => { this.claimSignin(2); this.setState('menu'); }), new Color(170, 90, 30, 255), 28);
+        dbl.node.setPosition(140, -240);
+        const close = mkButton(p.node, '关闭', 200, 64, () => this.setState('menu'), C_BTN_GREY, 26);
+        close.node.setPosition(0, -330);
+        this.refreshers.push(() => {
+            const d = Save.data;
+            const due = this.signDue();
+            // 本轮进度：今天已签则显示到今天为止
+            const done = due ? d.signCount % 7 : ((d.signCount - 1) % 7) + 1;
+            const today = due ? d.signCount % 7 : -1;
+            sub.string = due ? `累计签到 ${d.signCount} 天 · 断签不清零` : `今天已签到，明天再来呱～（累计 ${d.signCount} 天）`;
+            cells.forEach((c, i) => {
+                const got = i < done;
+                c.check.active = got;
+                c.panel.border.color = i === today ? C_GREEN : got ? new Color(90, 80, 110, 255) : i === 6 ? C_GOLD : C_BORDER;
+                c.panel.fill.color = got ? new Color(24, 20, 34, 250) : i === today ? new Color(36, 64, 60, 250) : new Color(36, 30, 64, 245);
+            });
+            claim.node.active = due;
+            dbl.node.active = due && Ads.canReward('signin');
+            if (!dbl.node.active) claim.node.setPosition(0, -240); else claim.node.setPosition(-140, -240);
+        });
+    }
+
+    // ------------------------------------------------------------------ 图鉴
+
+    private codexTab: CodexTab = 'weapon';
+    private codexSel: CodexEntry | null = null;
+
+    private buildCodex() {
+        const s = this.screen('codex');
+        this.header(s, '图鉴', false);
+        const all = codexEntries();
+        const prog = mkLabel(s, '', 26, C_GREY, 'center', 2);
+        prog.node.setPosition(0, this.top - 118);
+        // 分页按钮
+        const tabs: [CodexTab, string][] = [['weapon', '武器'], ['passive', '道具'], ['monster', '怪物']];
+        const tabBtns: Record<string, Button> = {};
+        tabs.forEach(([id, label], i) => {
+            const b = mkButton(s, label, 200, 70, () => { this.codexTab = id; this.codexSel = null; this.refreshAll(); }, C_BTN_BLUE, 30);
+            b.node.setPosition((i - 1) * 216, this.top - 180);
+            tabBtns[id] = b;
+        });
+        // 详情面板（底部）
+        const detH = 190;
+        const det = mkPanel(s, this.vw - 40, detH);
+        det.node.setPosition(0, this.bottom + 170 + detH / 2);
+        const dIcon = mkSprite(det.node, 'icon_whip', 3);
+        dIcon.node.setPosition(-this.vw / 2 + 90, 10);
+        const dName = mkLabel(det.node, '', 32, C_GOLD, 'left', 3);
+        dName.node.setPosition(-this.vw / 2 + 160, 52);
+        const dDesc = mkLabel(det.node, '', 22, C_WHITE, 'left', 2);
+        dDesc.node.setPosition(-this.vw / 2 + 160, -20);
+        // 图标网格：每页单独一组节点
+        const gridTop = this.top - 240, gridBottom = this.bottom + 190 + detH;
+        for (const [tab] of tabs) {
+            const list = all.filter(e => e.tab === tab);
+            const grid = mkNode('grid_' + tab, s);
+            const cols = tab === 'weapon' ? 4 : 5; // 武器页：每行两组「武器 → 进化」
+            const rows = Math.ceil(list.length / cols);
+            const cell = Math.min(124, (gridTop - gridBottom) / rows - 8, (this.vw - 60) / cols - 8);
+            list.forEach((e, i) => {
+                const c = i % cols, r = Math.floor(i / cols);
+                const card = mkPanel(grid, cell, cell);
+                card.node.setPosition((c - (cols - 1) / 2) * (cell + 10), gridTop - cell / 2 - r * (cell + 8));
+                const isBoss = tab === 'monster' && !!ENEMIES[e.key.slice(2)].boss;
+                // 图标按格子大小等比缩放（Boss 精灵较大）
+                const fr = Art.f(e.icon).rect;
+                const fit = Math.min(3, (cell - 22) / Math.max(fr.width, fr.height));
+                const sp = mkSprite(card.node, e.icon, fit);
+                card.node.on(Node.EventType.TOUCH_END, () => { Sound.play('click'); this.codexSel = e; this.refreshAll(); });
+                this.refreshers.push(() => {
+                    const got = Save.data.codex.includes(e.key);
+                    sp.color = got ? new Color(255, 255, 255, 255) : new Color(0, 0, 0, 160);
+                    const sel = this.codexSel === e;
+                    card.border.color = sel ? C_GOLD : isBoss ? new Color(170, 60, 90, 255) : e.key[0] === 'e' ? new Color(220, 110, 60, 255) : new Color(90, 80, 110, 255);
+                    card.fill.color = got ? new Color(44, 36, 72, 250) : new Color(22, 18, 32, 245);
+                });
+            });
+            this.refreshers.push(() => { grid.active = this.codexTab === tab; });
+        }
+        this.refreshers.push(() => {
+            const d = Save.data;
+            const n = all.filter(e => d.codex.includes(e.key)).length;
+            prog.string = `已收录 ${n} / ${all.length}`;
+            for (const [id] of tabs) tabBtns[id].node.setScale(this.codexTab === id ? 1.06 : 0.94, this.codexTab === id ? 1.06 : 0.94, 1);
+            const e = this.codexSel;
+            det.node.active = !!e;
+            if (!e) return;
+            const got = d.codex.includes(e.key);
+            dIcon.spriteFrame = Art.f(e.icon);
+            const r = Art.f(e.icon).rect, k = Math.min(5, 150 / Math.max(r.width, r.height));
+            dIcon.node.setScale(k, k, 1);
+            dIcon.color = got ? new Color(255, 255, 255, 255) : new Color(0, 0, 0, 180);
+            dName.string = got ? e.name : '？？？';
+            dDesc.string = got ? e.desc : '未收录：' + e.hint;
+        });
+        mkButton(s, '返回', 300, 88, () => this.setState('menu'), C_BTN_BLUE).node.setPosition(0, this.bottom + 80);
+    }
+
+    private buildDaily() {
+        const s = this.screen('daily');
+        this.header(s, '每日挑战', false);
+        const date = mkLabel(s, '', 26, C_GREY, 'center', 2);
+        date.node.setPosition(0, this.top - 118);
+        // 试玩角色
+        const heroY = this.top - 300;
+        const hero = mkSprite(s, 'hero_hunter_0', 2.6);
+        hero.node.setPosition(-160, heroY);
+        const heroName = mkLabel(s, '', 30, C_WHITE, 'left', 3);
+        heroName.node.setPosition(-40, heroY + 50);
+        const heroTag = mkLabel(s, '今日试玩角色（无需解锁）', 20, C_GREEN, 'left', 2);
+        heroTag.node.setPosition(-40, heroY + 8);
+        const stageName = mkLabel(s, '', 22, new Color(180, 220, 255, 255), 'left', 2);
+        stageName.node.setPosition(-40, heroY - 32);
+        // 规则卡 + 命运卡
+        const cards: { name: Label; desc: Label; icon: Sprite }[] = [];
+        for (let i = 0; i < 2; i++) {
+            const p = mkPanel(s, 620, 120, i === 0 ? new Color(70, 30, 20, 245) : new Color(48, 24, 70, 250), i === 0 ? new Color(240, 140, 60, 255) : new Color(190, 110, 255, 255));
+            p.node.setPosition(0, heroY - 170 - i * 136);
+            const icon = mkSprite(p.node, 'icon_might', 3.4);
+            icon.node.setPosition(-250, 0);
+            const name = mkLabel(p.node, '', 28, C_GOLD, 'left', 3);
+            name.node.setPosition(-200, 24);
+            const desc = mkLabel(p.node, '', 21, C_WHITE, 'left', 2);
+            desc.node.setPosition(-200, -22);
+            cards.push({ name, desc, icon });
+        }
+        const goal = mkLabel(s, '', 26, C_WHITE, 'center', 3);
+        goal.node.setPosition(0, heroY - 470);
+        const status = mkLabel(s, '', 24, C_GOLD, 'center', 3);
+        status.node.setPosition(0, heroY - 516);
+        // 每日任务（普通局与挑战局都计入）
+        const qTop = heroY - 570;
+        const qTitle = mkLabel(s, '', 28, C_GOLD, 'center', 3);
+        qTitle.node.setPosition(0, qTop);
+        const rowH = Math.min(78, (qTop - 40 - (this.bottom + 150)) / 3);
+        const qRows: { name: Label; prog: Label; fill: Node; panel: { fill: Sprite; border: Sprite } }[] = [];
+        for (let i = 0; i < 3; i++) {
+            const p = mkPanel(s, 620, rowH - 8);
+            p.node.setPosition(0, qTop - 46 - i * rowH);
+            const name = mkLabel(p.node, '', 22, C_WHITE, 'left', 2);
+            name.node.setPosition(-290, 10);
+            const prog = mkLabel(p.node, '', 20, C_GOLD, 'right', 2);
+            prog.node.setPosition(290, 10);
+            mkRect(p.node, 580, 8, new Color(20, 14, 30, 255), 'qbarBg').node.setPosition(0, -16);
+            const fill = mkRect(p.node, 580, 8, C_GREEN, 'qbar', 0, 0.5).node;
+            fill.setPosition(-290, -16);
+            qRows.push({ name, prog, fill, panel: p });
+        }
+        this.refreshers.push(() => {
+            if (this.state !== 'daily') return;
+            const p = this.questProgress();
+            const qs = dailyQuests(this.today);
+            const done = Save.data.questDone;
+            const n = qs.filter(q => done.includes(q.id)).length;
+            qTitle.string = `每日任务 ${n}/3` + (done.includes('bonus') ? '  · 全部完成!' : `  · 全部完成再得 ${QUEST_BONUS} 金币`);
+            qs.forEach((q, i) => {
+                const r = qRows[i];
+                const v = Math.min(q.n, p[q.stat] || 0);
+                const ok = done.includes(q.id);
+                r.name.string = q.name;
+                r.prog.string = ok ? `已完成 +${q.gold}` : `${q.stat === 'time' ? this.fmtTime(v) : v}/${q.stat === 'time' ? this.fmtTime(q.n) : q.n}  ·  ${q.gold} 金币`;
+                r.fill.setScale(Math.max(0.001, v / q.n), 1, 1);
+                r.panel.border.color = ok ? C_GREEN : C_BORDER;
+            });
+        });
+        const by = this.bottom + 80;
+        mkButton(s, '返回', 260, 88, () => this.setState('menu'), C_BTN_GREY).node.setPosition(-150, by);
+        mkButton(s, '开始挑战', 260, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(150, by);
+        this.refreshers.push(() => {
+            if (this.state !== 'daily') return;
+            const ds = dailySetup(this.today);
+            const ch = CHARACTERS.find(c => c.id === ds.char) || CHARACTERS[0];
+            const st = STAGES.find(x => x.id === ds.stage) || STAGES[0];
+            const bl = BLESSINGS.find(x => x.id === ds.blessing) || BLESSINGS[0];
+            const dt = new Date();
+            date.string = `${dt.getFullYear()} 年 ${dt.getMonth() + 1} 月 ${dt.getDate()} 日 · 全服同一挑战`;
+            hero.spriteFrame = Art.f(ch.sprite + '_0');
+            heroName.string = `${ch.name} · ${ch.title}`;
+            stageName.string = `地图：${st.name}`;
+            cards[0].icon.spriteFrame = Art.f('icon_critdmg');
+            cards[0].name.string = '今日规则：' + ds.mod.name;
+            cards[0].desc.string = ds.mod.desc;
+            cards[1].icon.spriteFrame = Art.f(bl.icon);
+            cards[1].name.string = '命运卡牌：' + bl.name;
+            cards[1].desc.string = bl.desc;
+            goal.string = `目标：存活 ${this.fmtTime(DAILY_GOAL)}    奖励：${DAILY_REWARD} 金币`;
+            const d = Save.data;
+            const best = d.dailyBestDate === this.today ? d.dailyBest : 0;
+            status.string = d.dailyDone === this.today ? '今日已完成！明天再来呱' : best ? `今日最佳 ${this.fmtTime(best)} · 还没完成` : '今日尚未挑战';
+        });
     }
 
     private buildAchievements() {
@@ -1218,15 +1886,11 @@ export class GameRoot extends Component {
         const loc = e.getUILocation();
         this.ui.getComponent(UITransform)!.convertToNodeSpaceAR(tmpV3.set(loc.x, loc.y, 0), tmpV3);
         let dx = tmpV3.x - this.joyOrigin.x, dy = tmpV3.y - this.joyOrigin.y;
+        // 底座固定在按下的位置；手指拖出范围时摇杆头停在边缘，方向仍然跟随手指
         const R = 60, d = Math.hypot(dx, dy);
         if (d > R) {
-            // 手指拖出范围时，摇杆底座跟随手指
-            const k = (d - R) / d;
-            this.joyOrigin.x += dx * k;
-            this.joyOrigin.y += dy * k;
             dx = (dx / d) * R;
             dy = (dy / d) * R;
-            this.joyBase.setPosition(this.joyOrigin);
         }
         this.joyX = d > 8 ? dx / R : 0;
         this.joyY = d > 8 ? dy / R : 0;
@@ -1249,6 +1913,10 @@ export class GameRoot extends Component {
             this.splashT += dt;
             this.updateSplashFx(dt);
             if (this.splashT > 2.5) this.afterSplash();
+        } else if (this.state === 'victory') {
+            this.updateVictory(dt);
+        } else if (this.state === 'dying') {
+            this.updateDying(dt);
         } else if (this.state === 'revive') {
             if (!Ads.showing) this.reviveT -= dt;
             this.reviveCount.string = String(Math.max(0, Math.ceil(this.reviveT - 0.01)));
@@ -1265,18 +1933,15 @@ export class GameRoot extends Component {
             b.setInput(mx, my);
             b.tick(dt);
             b.updateCamera(dt);
-            if (b.dead) {
-                // 每局一次：可看广告复活（无广告时直接结算）
-                if (!this.adRevived && !b.endless && Ads.canReward('revive')) this.setState('revive');
-                else this.endRun(false);
-            }
-            else if (b.won) this.endRun(true);
+            if (b.dead) this.startDying();
+            else if (b.won) this.startVictory();
             else this.checkRewards();
-        } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'privacy' || this.state === 'splash') {
+        } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'codex' || this.state === 'signin' || this.state === 'privacy' || this.state === 'splash' || this.state === 'daily') {
             b.idle(dt);
             if (this.state === 'menu') this.updateMenuFx(dt);
         }
         this.updateHud(dt);
+        this.updateTutorial(dt);
         if (this.toastT > 0) {
             this.toastT -= dt;
             if (this.toastT <= 0) this.toast.node.active = false;
@@ -1308,14 +1973,14 @@ export class GameRoot extends Component {
         const b = this.battle;
         const buffs: string[] = [];
         if (b.potionT > 0) buffs.push(`狂暴 ${Math.ceil(b.potionT)}s`);
-        if (b.shieldHits > 0) buffs.push(`圣盾 ×${b.shieldHits}`);
+        if (b.shieldHits > 0) buffs.push(`护盾 ×${b.shieldHits}`);
         if (b.endless) buffs.push('无尽');
         const bs = buffs.join('  ');
         if (this.buffLabel.string !== bs) this.buffLabel.string = bs;
         this.xpFill.setScale(Math.min(1, b.xp / b.xpNext), 1, 1);
         this.lvLabel.string = 'LV ' + b.level;
         this.timeLabel.string = this.fmtTime(Math.min(b.time, WIN_TIME));
-        this.killLabel.string = '击杀 ' + b.kills;
+        this.killLabel.string = '击败 ' + b.kills;
         this.goldLabel.string = String(b.gold);
         // 连杀计数：数字越大颜色越热，每次击杀弹跳
         const showCombo = b.combo >= 10;
@@ -1347,7 +2012,7 @@ export class GameRoot extends Component {
             const sc = warn ? 1.15 + 0.1 * Math.sin(this.t * 12) : 1;
             this.bossTimer.node.setScale(sc, sc, 1);
         } else {
-            this.bossTimer.string = b.boss ? '击败死神即可获胜!' : `坚持到 ${this.fmtTime(WIN_TIME)}!`;
+            this.bossTimer.string = b.boss ? '击败暗夜魔术师即可获胜!' : `坚持到 ${this.fmtTime(WIN_TIME)}!`;
             this.bossTimer.color = C_GOLD;
             this.bossTimer.node.setScale(1, 1, 1);
         }

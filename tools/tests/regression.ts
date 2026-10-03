@@ -1,0 +1,221 @@
+// 回归测试：用 cc 模拟层跑真实游戏逻辑（无渲染）。用法：tools/tests/run.sh
+// MODE=A 无广告 / MODE=B 模拟微信激励视频可用 / MODE=C 模拟抖音录屏
+import { sfxLog, Node, Canvas } from 'cc';
+const MODE = process.env.MODE || 'A';
+const G = globalThis as any;
+if (MODE === 'B') {
+    G.wx = {
+        createRewardedVideoAd: () => { let close: any; return { onLoad() {}, onError() {}, onClose(cb: any) { close = cb; }, load: () => Promise.resolve(), show: () => { setTimeout(() => close({ isEnded: true }), 0); return Promise.resolve(); } }; },
+        shareAppMessage: (o: any) => { G.__share = o; },
+    };
+}
+if (MODE === 'C') {
+    let stopCb: any = null, n = 0;
+    G.tt = {
+        getGameRecorderManager: () => ({ start() {}, pause() {}, resume() {}, stop() { stopCb({ videoPath: 'v' + (++n) + '.mp4' }); }, onStop(cb: any) { stopCb = cb; }, onError() {} }),
+        shareAppMessage: (o: any) => { G.__share = o; o.success && o.success(); },
+    };
+}
+const { AD_CONFIG } = await import('../../assets/scripts/AdConfig');
+if (MODE === 'B') AD_CONFIG.rewarded = 'adunit-test';
+const { Save } = await import('../../assets/scripts/Save');
+const D = await import('../../assets/scripts/Defs');
+const { GameRoot } = await import('../../assets/scripts/GameRoot');
+const { Recorder } = await import('../../assets/scripts/Recorder');
+
+let pass = 0, fail = 0;
+const ok = (c: boolean, m: string) => { if (c) pass++; else fail++; console.log((c ? '  ✔ ' : '  ✘ FAIL ') + m); };
+const section = (s: string) => console.log('\n## ' + s);
+const wait = () => new Promise(r => setTimeout(r, 5));
+
+const canvas = new Node('Canvas'); canvas.addComponent(Canvas);
+const g: any = canvas.addComponent(GameRoot as any);
+Save.data.privacyOk = true;
+g.onLoad();
+const today = new Date().toDateString();
+const base = () => {
+    const d = Save.data;
+    d.privacyOk = true; d.tutDone = true; d.runs = 5; d.wins = 1; d.mode = 'normal'; d.stage = 'grass'; d.selected = 'hunter';
+    d.signDate = d.signShown = today; d.lite = false;
+};
+const step = (n: number) => { for (let i = 0; i < n; i++) g.update(1 / 60); };
+const B = () => g.battle;
+const clearCards = () => { if (g.state === 'levelup' || g.state === 'chest') { B().pendingLevels = 0; B().pendingChests = 0; B().pendingBlessings = 0; g.setState('play'); } };
+const start = () => { g.startGame(); step(1); clearCards(); B().pendingBlessings = 0; };
+const play = (frames: number, god = true) => {
+    for (let i = 0; i < frames && (g.state === 'play' || g.state === 'levelup' || g.state === 'chest'); i++) {
+        if (god) B().hp = B().stats.maxHp;
+        g.joyX = Math.cos(i / 90) * 0.5; g.joyY = Math.sin(i / 90) * 0.5;
+        g.update(1 / 60);
+        if (g.state === 'levelup') g.choose(0);
+        if (g.state === 'chest') g.afterReward();
+    }
+};
+const until = (state: string, max = 600) => { for (let i = 0; i < max && g.state !== state; i++) g.update(1 / 60); return g.state === state; };
+const findButton = (text: string) => {
+    const scr = g.screens[g.state];
+    const walk = (n: any): any => {
+        for (const c of n.children) {
+            if (!c.active) continue;
+            if (c.name === 'btn' && c.children.some((k: any) => (k.comps || []).some((x: any) => x.string === text))) return c;
+            const r = walk(c); if (r) return r;
+        }
+        return null;
+    };
+    return walk(scr);
+};
+
+if (MODE === 'C') {
+    section('抖音录屏');
+    base();
+    ok(Recorder.supported, '检测到抖音录屏接口');
+    start();
+    play(60);
+    B().won = true;
+    ok(until('result'), '胜利后进入结算');
+    ok(Recorder.ready && g.recBtn.node.active, '结算页显示「分享本局录屏」');
+    g.recBtn.node.emit('te');
+    ok(G.__share && G.__share.channel === 'video', '以视频形式分享');
+} else {
+    section('新手引导');
+    base(); Save.data.runs = 0; Save.data.tutDone = false; Save.data.chars = ['hunter'];
+    g.startGame(); step(1);
+    ok(g.tutStep === 0 && B().pendingBlessings === 0 && g.state === 'play', '首局：引导开始，开局不弹命运卡牌');
+    let maxStep = 0;
+    for (let i = 0; i < 60 * 60 && maxStep < 4; i++) { B().hp = B().stats.maxHp; g.joyX = 0.7; g.joyY = 0.2; g.update(1 / 60); maxStep = Math.max(maxStep, g.tutStep); if (g.state === 'levelup') g.choose(0); }
+    ok(maxStep >= 4, '引导推进到第 4 步（移动 → 击败 → 宝石 → 升级）');
+    g.endRun(false);
+    ok(Save.data.tutDone, '首局结束后标记引导完成');
+
+    section('刷怪节奏');
+    base(); start();
+    B().time = 0; const p0 = B().spawnPace();
+    B().time = 300; let lo = 9, hi = 0; for (let t = 300; t < 360; t += 1) { B().time = t; const p = B().spawnPace(); lo = Math.min(lo, p); hi = Math.max(hi, p); }
+    ok(p0 < 0.4, `开局刷怪速度低（${p0.toFixed(2)} 倍）`);
+    ok(hi / lo > 2.5, `5 分钟后有波峰波谷（${lo.toFixed(2)} ~ ${hi.toFixed(2)}）`);
+    // 跳过史莱姆王（Boss 战期间不出特殊怪潮），在 2:40 ~ 3:40 之间观察波峰
+    B().bossIdx = 1; B().time = 160; play(60 * 60);
+    ok(B().lastSurgeCycle >= 0, '波峰出现特殊出怪（包围 / 冲锋 / 怪潮）');
+    g.endRun(false);
+
+    section('摇杆底座固定');
+    base(); start();
+    const { EventTouch } = await import('cc');
+    g.onJoyStart(new EventTouch(700, 400));
+    const ox = g.joyBase.position.x, oy = g.joyBase.position.y;
+    g.onJoyMove(new EventTouch(1100, 400));
+    ok(g.joyBase.position.x === ox && g.joyBase.position.y === oy, '手指拖远时底座不跟随');
+    ok(Math.abs(g.joyX - 1) < 0.01, '方向输出为满值');
+    g.onJoyEnd(); g.endRun(false);
+
+    section('胜利过渡 / 倒下动画');
+    base(); start(); play(60);
+    B().won = true; step(1);
+    ok(g.state === 'victory', '胜利先播放庆祝动画');
+    ok(until('result') && g.resultTitle.string === '胜利!', '约 3 秒后进入结算');
+    start(); play(30);
+    B().iframe = 0; B().shieldHits = 0; B().revivals = 0; B().hp = 1; B().hurtPlayer(999); step(1);
+    ok(g.state === 'dying', '倒下先播放倒下动画');
+    step(110);
+    ok(g.state === (MODE === 'B' ? 'revive' : 'result'), MODE === 'B' ? '动画后出现复活界面' : '动画后直接结算（无广告）');
+    if (MODE === 'B') {
+        findButton('▶ 看广告复活').emit('te'); await wait();
+        ok(g.state === 'play' && !B().dead && B().playerBody.active, '看广告复活，奶蛙外观恢复');
+        B().gold = 50; B().iframe = 0; B().hp = 1; B().hurtPlayer(999); step(120);
+        ok(g.state === 'result', '每局只能复活一次');
+        const gold0 = Save.data.gold;
+        ok(g.goldAdBtn.node.active, '结算页显示「看广告 金币×2」');
+        g.goldAdBtn.node.emit('te'); await wait();
+        ok(Save.data.gold > gold0, '看广告金币翻倍');
+    }
+
+    section('棱镜激光音效');
+    base(); start();
+    B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find(w => w.id === 'laser'), level: 1 });
+    B().time = 120; const before = sfxLog['beam'] || 0;
+    play(60 * 6);
+    ok((sfxLog['beam'] || 0) > before && !(sfxLog['laser'] > 0), '激光使用短音效 beam，不再使用 Boss 长激光音');
+    g.endRun(false);
+
+    section('每日挑战');
+    base(); Save.data.dailyDone = '';
+    g.startDaily(); step(1); clearCards();
+    ok(!!B().daily && !B().nightmare, '每日挑战开局（不受噩梦影响）');
+    B().time = 599.9; B().hp = B().stats.maxHp;
+    play(30); until('result', 400);
+    ok(Save.data.dailyDone === today && g.resultHint.string.includes('+400'), '存活 10 分钟领取 400 金币');
+
+    section('限时活动');
+    const at = (s: string) => D.activeEvent(new Date(s + 'T12:00:00'));
+    ok(at('2026-12-25')!.id === 'xmas' && at('2027-02-06')!.id === 'cny' && !at('2027-01-15'), '圣诞 / 新春按日期开启');
+    let bad = 0; for (let k = 0; k < 300; k++) { const d = D.dailySetup('d' + k); if (d.char === 'fu' || d.char === 'santa' || d.stage === 'fest' || d.stage === 'xmas') bad++; }
+    ok(bad === 0, '每日挑战不使用活动内容');
+    for (const [force, stage, boss, char] of [['xmas', 'xmas', 'yeti', 'santa'], [true, 'fest', 'nian', 'fu']] as [any, string, string, string][]) {
+        base(); D.EVENT.force = force; Save.data.stage = stage; Save.data.chars = Save.data.chars.filter(c => c !== char);
+        start(); B().time = 262;
+        let killed = false;
+        for (let i = 0; i < 60 * 40 && !killed; i++) { B().hp = B().stats.maxHp; g.update(1 / 60); if (g.state === 'levelup') g.choose(0); if (g.state === 'chest') g.afterReward(); if (B().boss && i % 120 === 0) B().boss.hp = 1; killed = B().bossKills.includes(boss); }
+        clearCards(); g.endRun(false);
+        ok(killed && Save.data.chars.includes(char), `${stage}：限定 Boss 出现并被击败，解锁限定角色`);
+        D.EVENT.force = false;
+    }
+
+    section('图鉴 / 每日任务 / 签到');
+    const all = D.codexEntries();
+    ok(all.length === 67 && new Set(all.map(e => e.key)).size === 67, '图鉴 67 项且不重复');
+    base(); Save.data.codex = []; start(); play(60 * 30);
+    ok(Save.data.codex.includes('w:whip') && Save.data.codex.includes('m:rat'), '获得武器 / 击败怪物会收录图鉴');
+    const qs = D.dailyQuests(today);
+    ok(qs.length === 3 && new Set(qs.map(q => q.stat)).size === 3, '每日任务：3 个不同类型');
+    Save.data.questDate = 'old';
+    B().kills = 9999; B().time = 700; B().level = 60; B().maxCombo = 999; B().evolvedCount = 2; B().gold = 999; B().chestsOpened = 5; B().bossKills = ['slimeking', 'bonelord', 'vampire'];
+    clearCards(); g.endRun(false);
+    ok(qs.every(q => Save.data.questDone.includes(q.id)) && Save.data.questDone.includes('bonus'), '任务完成并领取全勤奖励');
+    base(); Save.data.signDate = ''; Save.data.signShown = ''; Save.data.signCount = 0;
+    g.setState('menu');
+    ok(g.state === 'signin', '每天首次回到主菜单弹出签到');
+    const gold1 = Save.data.gold; g.claimSignin(1);
+    ok(Save.data.gold === gold1 + D.SIGNIN_REWARDS[0] && Save.data.signCount === 1, '签到领取金币');
+    g.claimSignin(1); ok(Save.data.signCount === 1, '同一天不能重复签到');
+
+    section('毒雾沼泽 / 毒沼巨蟾 / 爆炸蘑菇');
+    base(); Save.data.stages = ['grass', 'snow', 'lava', 'swamp']; Save.data.stage = 'swamp';
+    start(); B().time = 300; B().hazardT = 0.1;
+    let clouds = 0; for (let i = 0; i < 60 * 25; i++) { B().hp = B().stats.maxHp; g.update(1 / 60); if (g.state === 'levelup') g.choose(0); if (g.state === 'chest') g.afterReward(); clouds = Math.max(clouds, B().pzones.filter((z: any) => z.alive && z.kind === 'poison').length); }
+    ok(clouds > 0, '毒泡喷发留下毒云');
+    ok(B().nextBoss()?.name === '毒沼巨蟾' || B().bossKills.length > 0, '沼泽 7:00 的 Boss 换成毒沼巨蟾');
+    clearCards(); g.endRun(false);
+    base(); start(); B().time = 430;
+    for (const e of B().enemies) e.alive = false;
+    B().summon('shroom', B().px + 30, B().py);
+    const sh = B().enemies.find((e: any) => e.alive && e.def.burst);
+    B().hurtEnemy(sh, 9999, 0, B().px, B().py, null); step(1);
+    ok(B().hazards.some((h: any) => h.alive && h.kind === 'circle'), '爆炸蘑菇被击败后出现红圈');
+    clearCards(); g.endRun(false);
+
+    section('噩梦难度 / 命运卡牌 / 新武器');
+    base(); Save.data.mode = 'nightmare';
+    start(); ok(B().nightmare, '首胜后可进入噩梦难度');
+    B().won = true; until('result');
+    ok(Save.data.achievements.includes('nightmare1'), '噩梦胜利获得「噩梦征服者」');
+    Save.data.mode = 'normal';
+    ok(D.BLESSINGS.length === 16, '命运卡牌 16 张');
+    ok(Object.values(D.EVOLUTIONS).length === 16 && new Set(Object.values(D.EVOLUTIONS).map((e: any) => e.passive)).size === 16, '16 个道具都是进化钥匙');
+
+    section('内容合规（显示文字不含敏感词）');
+    const texts: string[] = [];
+    for (const k in D.ENEMIES) texts.push(D.ENEMIES[k].name || '');
+    for (const k in D.MONSTER_INFO) texts.push(D.MONSTER_INFO[k].name, D.MONSTER_INFO[k].desc);
+    for (const w of D.WEAPONS) texts.push(w.name, w.desc);
+    for (const p of D.PASSIVES) texts.push(p.name, p.desc);
+    for (const k in D.EVOLUTIONS) texts.push(D.EVOLUTIONS[k].name, D.EVOLUTIONS[k].desc);
+    for (const b of D.BLESSINGS) texts.push(b.name, b.desc);
+    for (const a of D.ACHIEVEMENTS) texts.push(a.name, a.desc);
+    for (const c of D.CHARACTERS) texts.push(c.name, c.title, c.desc);
+    const banned = /血|死|杀|骷髅|鬼|尸|魂|墓|骨|屠|斩|弑|恶魔|地狱|圣经|十字架/;
+    const hits = texts.filter(t => t && banned.test(t));
+    ok(hits.length === 0, '名称与描述无敏感词' + (hits.length ? '：' + hits.slice(0, 5).join(' / ') : ''));
+}
+
+console.log(`\n${MODE}: ${pass} 通过, ${fail} 失败`);
+process.exit(fail ? 1 : 0);

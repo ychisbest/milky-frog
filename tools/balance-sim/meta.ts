@@ -1,7 +1,9 @@
 // 数值验证：模拟玩家从新存档开始的多局游戏（含商店成长）
 import { GameRoot } from '../../assets/scripts/GameRoot';
 import { Save } from '../../assets/scripts/Save';
-import { POWERUPS, powerUpCost, CHARACTERS, EVOLUTIONS } from '../../assets/scripts/Defs';
+import { POWERUPS, powerUpCost, CHARACTERS, EVOLUTIONS, WEAPONS } from '../../assets/scripts/Defs';
+// 对照实验：EXCLUDE=laser,spikes 时从武器池移除指定武器
+for (const id of (process.env.EXCLUDE || '').split(',').filter(Boolean)) { const i = WEAPONS.findIndex(w => w.id === id); if (i >= 0) WEAPONS.splice(i, 1); }
 import { Node, Canvas } from 'cc';
 const SKILL = process.env.SKILL || 'average';
 const PICK = process.env.PICK || (SKILL === 'novice' ? 'random' : 'smart');
@@ -15,6 +17,9 @@ const fresh = JSON.stringify(Save.data);
 Save.data = JSON.parse(fresh);
 Save.data.gold = 0; Save.data.power = {}; Save.data.achievements = []; Save.data.runs = 0; Save.data.wins = 0; Save.data.mode = 'normal';
 if (CHARID) { Save.data.chars.push(CHARID); Save.data.selected = CHARID; }
+if (process.env.STAGE) { Save.data.stages = ['grass', 'snow', 'lava', 'swamp']; Save.data.stage = process.env.STAGE; }
+if (process.env.LITE) Save.data.lite = true; // 性能模式对照
+if (process.env.NIGHTMARE) { Save.data.mode = 'nightmare'; } // 噩梦难度对照（首胜前强制开启）
 
 function scoreOption(B: any, o: any): number {
   if (PICK === 'random') return Math.random();

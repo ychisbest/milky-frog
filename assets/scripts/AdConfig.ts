@@ -10,6 +10,7 @@ export const AD_CONFIG = {
         reroll: '',   // 升级重抽
         chest: '',    // 宝箱再开一次
         blessing: '', // 开局额外命运卡
+        signin: '',   // 签到双倍
     } as Record<string, string>,
     // 插屏广告位 ID：只在结算后弹出，每 N 局一次，新用户首日不弹
     interstitial: '',

@@ -1,0 +1,26 @@
+{
+  "platform": "wechatgame",
+  "buildPath": "project://build",
+  "outputName": "wechatgame",
+  "debug": false,
+  "md5Cache": true,
+  "sourceMaps": false,
+  "mangleProperties": false,
+  "inlineEnum": true,
+  "experimentalEraseModules": false,
+  "startScene": "76c16bf7-baf2-4846-91f2-ba9387ca153b",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/Main.scene",
+      "uuid": "76c16bf7-baf2-4846-91f2-ba9387ca153b"
+    }
+  ],
+  "packages": {
+    "wechatgame": {
+      "appid": "wx27e2a1c9452d0817",
+      "orientation": "portrait",
+      "separateEngine": false,
+      "buildOpenDataContextTemplate": false
+    }
+  }
+}

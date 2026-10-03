@@ -312,7 +312,7 @@ class Reaper extends BossAI {
             }
             case 2:
                 this.summonRing('ghost', 10, 320);
-                b.banner('亡魂召唤!');
+                b.banner('幻影召唤!');
                 this.hold(0.6);
                 break;
             case 3:
@@ -329,6 +329,178 @@ class Reaper extends BossAI {
     }
 }
 
+// 年兽（新春限定）：爆竹乱射、连续冲撞、烟花齐放、怒吼召唤
+class Nian extends BossAI {
+    protected cooldown() { return 2.3; }
+
+    protected cast(step: number) {
+        const b = this.b, e = this.e;
+        switch (step % 4) {
+            case 0: {
+                const n = this.enraged ? 4 : 3;
+                for (let k = 0; k < n; k++) {
+                    this.after(k * 0.35, () => { this.ring('fireball', 12, 170 + k * 20, 7, k * 0.26); Sound.play('boom'); });
+                }
+                b.banner('爆竹乱射!');
+                this.hold(0.35 * n + 0.4);
+                break;
+            }
+            case 1: {
+                const n = this.enraged ? 3 : 2;
+                this.hold(n * 1.0 + 0.3);
+                for (let k = 0; k < n; k++) {
+                    this.after(k * 1.0, () => {
+                        const a = this.aim();
+                        b.warnLine(e.x, e.y, a, 480, 80, 0.55);
+                        this.after(0.55, () => { this.dash(a, 880, 0.5); Sound.play('dash'); });
+                    });
+                }
+                break;
+            }
+            case 2: {
+                const n = this.enraged ? 8 : 6;
+                for (let i = 0; i < n; i++) {
+                    const r = i === 0 ? 0 : 70 + Math.random() * 180, a = Math.random() * TAU;
+                    const x = b.px + Math.cos(a) * r, y = b.py + Math.sin(a) * r;
+                    b.warnCircle(x, y, 65, 1.1, 0xff3030, () => b.explode(x, y, 65, 10, 0xffc040));
+                }
+                b.banner('烟花齐放!');
+                this.hold(0.6);
+                break;
+            }
+            case 3:
+                this.summonRing('imp', this.enraged ? 4 : 3, 300);
+                this.ring('fireball', 16, 200, 7);
+                Sound.play('roar');
+                this.hold(0.8);
+                break;
+        }
+    }
+
+    protected onUpdate() {
+        if (this.dashT > 0) this.b.burst(this.e.x, this.e.y - 30, 0xffc040, 2, 120);
+    }
+}
+
+// 毒沼巨蟾：毒液喷吐（落地成毒云）、长舌突刺、跳跃砸地、召唤史莱姆
+class Toad extends BossAI {
+    private jumpT = 0;
+    private jumpDur = 1;
+
+    protected cooldown() { return 2.3; }
+
+    protected cast(step: number) {
+        const b = this.b, e = this.e;
+        switch (step % 4) {
+            case 0: {
+                // 毒液喷吐：向玩家附近吐出数团毒液，落点先红圈预警，落地留下毒云
+                const n = this.enraged ? 5 : 3;
+                for (let i = 0; i < n; i++) {
+                    const r = i === 0 ? 0 : 80 + Math.random() * 120, a = Math.random() * TAU;
+                    const x = b.px + Math.cos(a) * r, y = b.py + Math.sin(a) * r;
+                    b.warnCircle(x, y, 60, 1.0, 0xff3030, () => {
+                        b.explode(x, y, 50, 8, 0x80e040);
+                        b.zone(x, y, 60, 3.5, 3, 0x60c030);
+                    });
+                }
+                b.banner('毒液喷吐!');
+                Sound.play('splash');
+                this.hold(0.7);
+                break;
+            }
+            case 1: {
+                // 长舌突刺：红线预警后沿直线射出一串高速"舌头"
+                const a = this.aim();
+                b.warnLine(e.x, e.y, a, 520, 56, 0.6);
+                this.hold(1.1);
+                this.after(0.6, () => {
+                    for (let k = 0; k < 7; k++) this.after(k * 0.03, () => b.fireBullet('shot_slimeball', e.x, e.y, a, 820, 12));
+                    if (this.enraged) for (const s of [-0.35, 0.35]) b.fireBullet('shot_slimeball', e.x, e.y, a + s, 600, 8);
+                    Sound.play('dash');
+                });
+                break;
+            }
+            case 2: {
+                // 跳跃砸地：落点红圈，落地毒液环
+                const tx = b.px, ty = b.py, dur = this.enraged ? 0.95 : 1.2;
+                b.warnCircle(tx, ty, 125, dur, 0xff3030);
+                this.dash(Math.atan2(ty - e.y, tx - e.x), Math.hypot(tx - e.x, ty - e.y) / dur, dur);
+                this.jumpT = this.jumpDur = dur;
+                this.hold(dur + 0.5);
+                this.after(dur, () => {
+                    b.explode(e.x, e.y, 125, 12, 0x80e040);
+                    this.ring('shot_slimeball', this.enraged ? 14 : 10, 170, 6, Math.random());
+                    Sound.play('slam');
+                });
+                break;
+            }
+            case 3:
+                this.summonRing('slime', this.enraged ? 8 : 6, 260);
+                this.fan('shot_slimeball', 5, 0.9, 260, 6);
+                Sound.play('croak');
+                this.hold(0.6);
+                break;
+        }
+    }
+
+    protected onUpdate(dt: number) {
+        if (this.jumpT > 0) {
+            this.jumpT -= dt;
+            this.lift = Math.sin((1 - Math.max(0, this.jumpT) / this.jumpDur) * Math.PI) * 170;
+        } else this.lift = 0;
+    }
+}
+
+// 雪怪王（圣诞限定）：雪球连射、冰锥阵、冲锋撞击、召唤冰霜幽灵
+class Yeti extends BossAI {
+    protected cooldown() { return 2.3; }
+
+    protected cast(step: number) {
+        const b = this.b, e = this.e;
+        switch (step % 4) {
+            case 0: {
+                const n = this.enraged ? 5 : 3;
+                for (let k = 0; k < n; k++) this.after(k * 0.28, () => { this.fan('shot_ice', 5, 0.8, 240 + k * 15, 7); Sound.play('freeze'); });
+                b.banner('雪球连射!');
+                this.hold(0.28 * n + 0.4);
+                break;
+            }
+            case 1: {
+                const n = this.enraged ? 7 : 5;
+                for (let i = 0; i < n; i++) {
+                    const r = i === 0 ? 0 : 70 + Math.random() * 170, a = Math.random() * TAU;
+                    const x = b.px + Math.cos(a) * r, y = b.py + Math.sin(a) * r;
+                    b.warnCircle(x, y, 60, 1.1, 0xff3030, () => b.explode(x, y, 60, 10, 0x9ad4f8));
+                }
+                this.hold(0.6);
+                break;
+            }
+            case 2: {
+                const n = this.enraged ? 3 : 2;
+                this.hold(n * 1.0 + 0.3);
+                for (let k = 0; k < n; k++) {
+                    this.after(k * 1.0, () => {
+                        const a = this.aim();
+                        b.warnLine(e.x, e.y, a, 460, 84, 0.6);
+                        this.after(0.6, () => { this.dash(a, 820, 0.5); Sound.play('dash'); });
+                    });
+                }
+                break;
+            }
+            case 3:
+                this.summonRing('ghost', this.enraged ? 6 : 4, 280);
+                this.ring('shot_ice', 14, 180, 6);
+                Sound.play('roar');
+                this.hold(0.8);
+                break;
+        }
+    }
+
+    protected onUpdate() {
+        if (this.dashT > 0) this.b.burst(this.e.x, this.e.y - 20, 0xe8f0ff, 2, 120);
+    }
+}
+
 export function createBossAI(id: string, b: Battle, e: Enemy): BossAI | null {
     switch (id) {
         case 'slimeking': return new SlimeKing(b, e);
@@ -337,6 +509,9 @@ export function createBossAI(id: string, b: Battle, e: Enemy): BossAI | null {
         case 'lich': return new Lich(b, e);
         case 'eye': return new Eye(b, e);
         case 'reaper': return new Reaper(b, e);
+        case 'nian': return new Nian(b, e);
+        case 'toad': return new Toad(b, e);
+        case 'yeti': return new Yeti(b, e);
     }
     return null;
 }
