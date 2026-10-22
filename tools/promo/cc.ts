@@ -47,7 +47,7 @@ export const resources = { loadDir(_p:string, _t:any, cb:any){ const names=requi
 export const Input = { EventType: { KEY_DOWN: 'kd', KEY_UP: 'ku' } };
 export const inputHandlers: any = {};
 export const input = { on(ev:string, cb:any, t:any){ inputHandlers[ev] = cb.bind(t); }, off(){} };
-export const KeyCode: any = { DIGIT_1: 49, DIGIT_4: 52, NUM_1: 97, NUM_4: 100, KEY_A: 65, KEY_D: 68, KEY_W: 87, KEY_S: 83, ARROW_LEFT: 37, ARROW_RIGHT: 39, ARROW_UP: 38, ARROW_DOWN: 40, KEY_R: 82, ENTER: 13, SPACE: 32, ESCAPE: 27, KEY_P: 80 };
+export const KeyCode: any = { DIGIT_1: 49, DIGIT_4: 52, NUM_1: 97, NUM_4: 100, KEY_A: 65, KEY_D: 68, KEY_W: 87, KEY_S: 83, ARROW_LEFT: 37, ARROW_RIGHT: 39, ARROW_UP: 38, ARROW_DOWN: 40, KEY_R: 82, KEY_Q: 81, KEY_E: 69, ENTER: 13, SPACE: 32, ESCAPE: 27, KEY_P: 80 };
 export class EventKeyboard { constructor(public keyCode:number){} }
 export class EventTouch { propagationStopped=false; constructor(public x=0, public y=0){} getUILocation(){ return {x:this.x,y:this.y}; } }
 export const Director = { EVENT_AFTER_SCENE_LAUNCH: 'x' };

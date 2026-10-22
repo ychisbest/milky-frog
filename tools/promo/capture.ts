@@ -545,3 +545,87 @@ if (SCENE === 'compare_a' || SCENE === 'compare_b') {
     }
 }
 console.log('captured →', OUT);
+
+// 新玩法展示：大招 / 神兵 / 新道具 / 试炼
+if (SCENE === 'features') {
+    const { EPICS, BOSS_SCHEDULE } = await import('../../assets/scripts/Defs');
+    // 跳过已经错过的 Boss，避免截图里一堆 Boss 轮流登场
+    const skipBosses = () => { B().bossIdx = Math.max(0, BOSS_SCHEDULE.findIndex((x: any) => x.t > B().time)); };
+    Save.data.chars = ['hunter', 'mage', 'rogue', 'knight', 'nun', 'pyro', 'bomber', 'sage', 'druid', 'prism', 'fu', 'santa'];
+    const epicShot = (char: string, build: string[], epic: string, name: string, t = 420, frames = 50) => {
+        startRun(char, build, t); skipBosses();
+        autoplay(60 * 4, { god: true });
+        (B() as any).startEpic(EPICS.find((e: any) => e.id === epic));
+        autoplay(frames, { god: true });
+        g.bannerT = 0; g.bannerLabel.node.active = false;
+        dump(name);
+        g.endRun(false);
+    };
+    epicShot('hunter', ['whip', 'garlic', 'wand'], 'thor', '01_epic_thor');
+    epicShot('mage', ['wand', 'bible', 'fire'], 'gatling', '02_epic_gatling');
+    epicShot('knight', ['axe', 'frost', 'chain'], 'excalibur', '03_epic_excalibur', 420, 58);
+    epicShot('sage', ['lightning', 'holy', 'cross'], 'blackhole', '04_epic_blackhole', 420, 120);
+    epicShot('pyro', ['fire', 'knife', 'spikes'], 'dragon', '05_epic_dragon');
+    epicShot('prism', ['laser', 'familiar', 'bomb'], 'unicorn', '06_epic_unicorn', 420, 90);
+    // 大招
+    const ultShot = (char: string, build: string[], frames: number, name: string) => {
+        startRun(char, build, 400); skipBosses();
+        autoplay(60 * 5, { god: true });
+        B().ult = 1;
+        g.castUlt();
+        autoplay(frames, { god: true });
+        dump(name);
+        g.endRun(false);
+    };
+    ultShot('hunter', ['whip', 'garlic'], 30, '10_ult_hunter');
+    ultShot('mage', ['wand', 'bible'], 40, '11_ult_mage');
+    ultShot('nun', ['bible', 'holy'], 40, '12_ult_nun');
+    ultShot('pyro', ['fire', 'knife'], 52, '13_ult_pyro');
+    ultShot('prism', ['laser', 'familiar'], 4, '14_ult_prism');
+    ultShot('druid', ['spikes', 'garlic'], 30, '15_ult_druid');
+    // 大招就绪 + 巨人蘑菇 + 试炼进行中
+    startRun('bomber', ['bomb', 'whip', 'axe'], 380); skipBosses();
+    autoplay(60 * 4, { god: true });
+    B().ult = 1; B().collect({ kind: 'giant', value: 0 });
+    B().shrineT = 0.01; step(2);
+    const sh = B().pickups.find((p: any) => p.alive && p.kind === 'shrine');
+    B().px = sh.x; B().py = sh.y; step(2);
+    autoplay(60 * 3, { god: true });
+    g.bannerT = 0; g.bannerLabel.node.active = false;
+    dump('20_giant_trial_ready');
+    g.endRun(false);
+    // 神兵祭坛
+    startRun('rogue', ['knife', 'cross'], 300); skipBosses();
+    autoplay(60 * 3, { god: true });
+    B().altarT = 0.01; step(2);
+    const al = B().enemies.find((e: any) => e.alive && e.def === ENEMIES.altar);
+    B().px = al.x - 120; B().py = al.y - 60; step(1);
+    dump('21_altar');
+    g.endRun(false);
+    // 角色界面（天赋 + 大招 + 充能方式）
+    Save.data.selected = 'druid';
+    g.setState('chars'); step(2);
+    dump('30_chars');
+}
+
+// 流沙荒漠：龙卷风 / 狂风 / 沙漠巨蠕 / 新怪物
+if (SCENE === 'desert') {
+    const { BOSS_SCHEDULE } = await import('../../assets/scripts/Defs');
+    Save.data.stages = ['grass', 'snow', 'lava', 'swamp', 'desert'];
+    Save.data.stage = 'desert';
+    startRun('rogue', ['knife', 'cross', 'garlic'], 610);
+    B().bossIdx = BOSS_SCHEDULE.findIndex((x: any) => x.t > 610);
+    autoplay(60 * 4, { god: true });
+    B().hazardT = 0.01; B().windT = 0.01;
+    autoplay(60 * 3, { god: true });
+    dump('01_desert_tornado');
+    for (let i = 0; i < 4; i++) B().summon('boar', B().px + 160 + i * 30, B().py + (i - 2) * 50);
+    autoplay(70, { god: true });
+    dump('02_desert_boars');
+    B().time = 718;
+    autoplay(60 * 6, { god: true });
+    dump('03_worm');
+    autoplay(60 * 3, { god: true });
+    dump('04_worm2');
+    g.endRun(false);
+}

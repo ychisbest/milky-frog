@@ -21,10 +21,15 @@ export interface EnemyDef {
     flee?: boolean;  // 逃跑型（金鼠）
     ranged?: boolean; // 远程型：保持距离并发射火球
     burst?: boolean;  // 自爆型：死亡后红圈预警再爆炸，同时伤害玩家与周围怪物
+    charger?: boolean; // 冲锋型：靠近后停顿蓄力（红线预警），再沿直线高速冲撞
+    blink?: boolean;   // 瞬移型：定期闪现到玩家身边（落点紫圈预警）
+    split?: string;    // 分裂型：被击败后分裂成两只该类型的怪物
+    mimic?: boolean;   // 宝箱怪：伪装成宝箱原地不动，靠近后苏醒追击
 }
 
 export const ENEMIES: Record<string, EnemyDef> = {
     brazier:  { frames: ['brazier_0', 'brazier_1'], hp: 1, speed: 0, dmg: 0, xp: 0, radius: 14, anim: 0.15, color: 0xf0a030, prop: true },
+    altar:    { frames: ['altar_0', 'altar_1'], hp: 40, speed: 0, dmg: 0, xp: 0, radius: 18, anim: 0.2, color: 0xffd860, prop: true },
     goldrat:  { frames: ['rat_0', 'rat_1'], hp: 60, speed: 150, dmg: 0, xp: 10, radius: 12, anim: 0.08, scale: 1.4, knockRes: 0.8, color: 0xf5c542, flee: true },
     shroom:   { frames: ['shroom_0', 'shroom_1'], hp: 28, speed: 50, dmg: 4, xp: 4, radius: 12, anim: 0.25, color: 0xd83a30, burst: true },
     imp:      { frames: ['imp_0', 'imp_1'], hp: 22, speed: 72, dmg: 5, xp: 3, radius: 12, anim: 0.15, color: 0xc8302c, ranged: true },
@@ -35,6 +40,11 @@ export const ENEMIES: Record<string, EnemyDef> = {
     zombie:   { frames: ['zombie_0', 'zombie_1'], hp: 24, speed: 42, dmg: 5, xp: 3, radius: 13, anim: 0.35, knockRes: 0.3, color: 0x8ab872 },
     skeleton: { frames: ['skeleton_0', 'skeleton_1'], hp: 30, speed: 60, dmg: 6, xp: 3, radius: 13, anim: 0.25, color: 0xeee8d4 },
     ghost:    { frames: ['ghost_0', 'ghost_1'], hp: 26, speed: 92, dmg: 6, xp: 4, radius: 13, anim: 0.25, knockRes: 0.5, color: 0xdfe8ff },
+    jelly:    { frames: ['jelly_0', 'jelly_1'], hp: 16, speed: 46, dmg: 3, xp: 2, radius: 13, anim: 0.3, color: 0xe070c0, split: 'jellet' },
+    jellet:   { frames: ['jelly_0', 'jelly_1'], hp: 6, speed: 60, dmg: 1, xp: 1, radius: 9, anim: 0.2, scale: 0.6, color: 0xe070c0 },
+    boar:     { frames: ['boar_0', 'boar_1'], hp: 40, speed: 45, dmg: 5, xp: 4, radius: 14, anim: 0.2, knockRes: 0.6, color: 0x8a5a3a, charger: true },
+    mimic:    { frames: ['mimic_0', 'mimic_1'], hp: 70, speed: 115, dmg: 7, xp: 30, radius: 16, anim: 0.12, scale: 1.2, knockRes: 0.8, color: 0xa85a28, mimic: true },
+    fox:      { frames: ['fox_0', 'fox_1'], hp: 30, speed: 70, dmg: 6, xp: 4, radius: 12, anim: 0.18, color: 0x7a50d0, blink: true },
     // ---- Boss
     slimeking: { frames: ['slimeking_0', 'slimeking_1'], hp: 340, speed: 46, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 0x4fc24f, name: '史莱姆王' },
     bonelord:  { frames: ['bonelord_0', 'bonelord_1'], hp: 650, speed: 58, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0xeee8d4, name: '铁甲将军' },
@@ -43,6 +53,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     eye:       { frames: ['eye_0', 'eye_1'], hp: 1700, speed: 55, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0x8a3a7a, name: '水晶魔眼' },
     toad:      { frames: ['toad_0', 'toad_1'], hp: 1300, speed: 52, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 0x5a7a3a, name: '毒沼巨蟾' },
     yeti:      { frames: ['yeti_0', 'yeti_1'], hp: 950, speed: 70, dmg: 9, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 0xe8f0ff, name: '雪怪王' },
+    worm:      { frames: ['worm_0', 'worm_1'], hp: 1800, speed: 60, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 0xc8905a, name: '沙漠巨蠕' },
     nian:      { frames: ['nian_0', 'nian_1'], hp: 950, speed: 76, dmg: 9, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 0xd8402a, name: '年兽' },
     reaper:    { frames: ['reaper_0', 'reaper_1'], hp: 3000, speed: 82, dmg: 17, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 0x8a60c0, name: '暗夜魔术师', final: true },
 };
@@ -54,12 +65,12 @@ export const WAVES: Wave[] = [
     { t: 40,  types: ['rat', 'rat', 'bat', 'slime'], interval: 0.5, batch: 4 },
     { t: 90,  types: ['rat', 'bat', 'slime', 'zombie'], interval: 0.55, batch: 4 },
     { t: 150, types: ['bat', 'slime', 'zombie', 'rat'], interval: 0.6, batch: 5 },
-    { t: 210, types: ['skeleton', 'zombie', 'bat', 'rat'], interval: 0.6, batch: 5 },
-    { t: 300, types: ['skeleton', 'zombie', 'bat', 'rat'], interval: 0.55, batch: 5 },
-    { t: 420, types: ['ghost', 'skeleton', 'bat', 'zombie', 'shroom'], interval: 0.5, batch: 6 },
-    { t: 540, types: ['ghost', 'skeleton', 'skeleton', 'zombie', 'imp'], interval: 0.45, batch: 6 },
-    { t: 660, types: ['ghost', 'skeleton', 'mummy', 'bat', 'imp'], interval: 0.4, batch: 7 },
-    { t: 780, types: ['ghost', 'skeleton', 'mummy', 'ghost', 'imp'], interval: 0.35, batch: 8 },
+    { t: 210, types: ['skeleton', 'zombie', 'bat', 'rat', 'jelly'], interval: 0.6, batch: 5 },
+    { t: 300, types: ['skeleton', 'zombie', 'bat', 'rat', 'jelly'], interval: 0.55, batch: 5 },
+    { t: 420, types: ['ghost', 'skeleton', 'bat', 'zombie', 'shroom', 'boar'], interval: 0.5, batch: 6 },
+    { t: 540, types: ['ghost', 'skeleton', 'skeleton', 'zombie', 'imp', 'fox'], interval: 0.45, batch: 6 },
+    { t: 660, types: ['ghost', 'skeleton', 'mummy', 'bat', 'imp', 'boar'], interval: 0.4, batch: 7 },
+    { t: 780, types: ['ghost', 'skeleton', 'mummy', 'ghost', 'imp', 'fox'], interval: 0.35, batch: 8 },
 ];
 // Boss 出场时间表（秒）；Boss 实际血量 = hp × (1 + 0.06 × 玩家等级)
 // 图鉴：普通怪物名称与介绍（Boss 名称见 ENEMIES.name）
@@ -73,6 +84,11 @@ export const MONSTER_INFO: Record<string, { name: string; desc: string }> = {
     shroom: { name: '爆炸蘑菇', desc: '7 分钟后出现。被击败后会在红圈里爆炸——别站在旁边，但可以用它炸掉怪群！' },
     imp: { name: '小火灵', desc: '会远程发射小火球，优先清理！' },
     mummy: { name: '稻草人', desc: '后期出现的大块头，生命值极高。' },
+    jelly: { name: '果冻怪', desc: '3:30 后出现。被击败时会分裂成两只跑得更快的小果冻。' },
+    jellet: { name: '小果冻', desc: '果冻怪分裂出来的小家伙，又快又脆。' },
+    boar: { name: '冲锋野猪', desc: '7:00 后出现。靠近时会停下蓄力，沿红线高速冲撞——看到红线就侧身躲开！' },
+    fox: { name: '闪现狐', desc: '9:00 后出现。会突然闪现到你身边，紫圈就是它的落点。' },
+    mimic: { name: '宝箱怪', desc: '5:00 后偶尔出现，伪装成宝箱。靠近就会张开大嘴扑过来——击败它必掉神兵！' },
     goldrat: { name: '金鼠', desc: '稀有！跑得飞快，击败可获得大量金币。' },
     slimeking: { name: '史莱姆王', desc: '跳跃砸地、召唤史莱姆、体力减半时分裂。2:00 登场。' },
     bonelord: { name: '铁甲将军', desc: '钢刺环、预警冲锋、召唤木偶兵。4:30 登场。' },
@@ -80,6 +96,7 @@ export const MONSTER_INFO: Record<string, { name: string; desc: string }> = {
     lich: { name: '冰霜巫师', desc: '冰霜螺旋弹幕、冰锥阵、减速冰域。9:30 登场。' },
     eye: { name: '水晶魔眼', desc: '魔法光束扫射、追踪光球、双层弹环。12:00 登场。' },
     reaper: { name: '暗夜魔术师', desc: '最终 Boss：回旋飞牌、连续冲刺、幻影召唤。击败即胜利。' },
+    worm: { name: '沙漠巨蠕', desc: '流沙荒漠 12:00 登场：钻入沙中追踪、破土而出掀起沙弹环、喷吐沙流、召唤冲锋野猪。' },
     toad: { name: '毒沼巨蟾', desc: '毒雾沼泽 7:00 登场：毒液喷吐、长舌突刺、跳跃砸地、召唤史莱姆。' },
     yeti: { name: '雪怪王', desc: '圣诞限定：雪球连射、冰锥阵、冲锋撞击、召唤云朵精。' },
     nian: { name: '年兽', desc: '新春限定：爆竹乱射、连续冲撞、烟花齐放、怒吼召唤。' },
@@ -106,7 +123,8 @@ export interface StageDef {
     decor: string[];      // 装饰物（按权重重复）
     hpMul: number;        // 小怪与 Boss 血量倍率
     goldMul: number;      // 金币倍率
-    hazard?: { frame: string; color: number; interval: number; count: number; name: string; cloud?: boolean }; // cloud：毒雾，落地后留下持续伤害的毒云
+    hazard?: { frame: string; color: number; interval: number; count: number; name: string; cloud?: boolean; tornado?: boolean }; // cloud：毒雾，落地后留下持续伤害的毒云；tornado：横穿地图的龙卷风
+    wind?: boolean;                   // 周期性狂风：把玩家和怪物一起吹向同一个方向
     event?: string;                   // 限时活动地图：所属活动 id（不在解锁链中，活动期间开放）
     bossSwap?: Record<string, string>; // 替换 Boss 时间表中的 Boss
 }
@@ -124,6 +142,10 @@ export const STAGES: StageDef[] = [
       decor: ['deadtree', 'deadtree', 'reeds', 'reeds', 'reeds', 'mushroom', 'mushroom', 'bogpool', 'reeds'], hpMul: 1.7, goldMul: 1.9,
       hazard: { frame: 'bubble', color: 0x80e040, interval: 10, count: 3, name: '毒泡', cloud: true },
       bossSwap: { vampire: 'toad' } },
+    { id: 'desert', name: '流沙荒漠', desc: '狂风与龙卷风 · 沙漠巨蠕出没 · 怪物生命 +100% · 金币 +130%', ground: 'ground_sand',
+      decor: ['cactus', 'cactus', 'sandrock', 'sandrock', 'horns', 'cactus', 'sandrock'], hpMul: 2.0, goldMul: 2.3,
+      hazard: { frame: 'tornado_0', color: 0xd8b46a, interval: 16, count: 1, name: '龙卷风', tornado: true }, wind: true,
+      bossSwap: { eye: 'worm' } },
     { id: 'xmas', name: '雪夜小镇', desc: '圣诞限定 · 雪怪王出没 · 礼物从天而降 · 金币 +50%', ground: 'ground_xmas',
       decor: ['xmastree', 'xmastree', 'gift', 'gift', 'candycane', 'snowman', 'pine'], hpMul: 1.15, goldMul: 1.5,
       hazard: { frame: 'gift', color: 0xff5050, interval: 9, count: 3, name: '礼物炸弹' }, event: 'xmas',
@@ -379,6 +401,32 @@ export const WEAPONS: WeaponDef[] = [
         ],
     },
     {
+        id: 'saw', name: '弹弹锯', icon: 'icon_saw', desc: '射出在屏幕边缘来回反弹的锯片，持续切割沿途敌人。',
+        base: { damage: 8, cooldown: 3.2, amount: 1, area: 1, speed: 1, pierce: 999, duration: 3.5 },
+        levels: [
+            { desc: '锯片 +1', mod: { amount: 1 } },
+            { desc: '伤害 +5', mod: { damage: 5 } },
+            { desc: '持续 +1 秒', mod: { duration: 1 } },
+            { desc: '锯片 +1', mod: { amount: 1 } },
+            { desc: '锯片变大 20%', mod: { area: 0.2 } },
+            { desc: '伤害 +6', mod: { damage: 6 } },
+            { desc: '锯片 +1', mod: { amount: 1 } },
+        ],
+    },
+    {
+        id: 'sonic', name: '音波喇叭', icon: 'icon_sonic', desc: '向面朝方向轰出扇形音波，伤害并大幅击退敌人。',
+        base: { damage: 8, cooldown: 1.8, amount: 1, area: 1, speed: 1, pierce: 999, duration: 0 },
+        levels: [
+            { desc: '音波范围 +20%', mod: { area: 0.2 } },
+            { desc: '伤害 +5', mod: { damage: 5 } },
+            { desc: '向身后再轰一次', mod: { amount: 1 } },
+            { desc: '冷却 -0.3 秒', mod: { cooldown: -0.3 } },
+            { desc: '伤害 +6', mod: { damage: 6 } },
+            { desc: '音波范围 +20%', mod: { area: 0.2 } },
+            { desc: '伤害 +8', mod: { damage: 8 } },
+        ],
+    },
+    {
         id: 'spikes', name: '荆棘地刺', icon: 'icon_spikes', desc: '在附近敌人脚下依次刺出尖刺。',
         base: { damage: 9, cooldown: 2.2, amount: 3, area: 1, speed: 1, pierce: 999, duration: 0 },
         levels: [
@@ -413,13 +461,15 @@ export interface PlayerStats {
     critDmg: number;   // 暴击倍率
     lifesteal: number; // 每次击杀回复生命
     thorns: number;    // 受击时反伤
+    ultCharge: number; // 大招充能速度加成
+    buffTime: number;  // 增益道具与神兵持续时间倍率
 }
 
 export const BASE_STATS: PlayerStats = {
     maxHp: 90, might: 1, armor: 0, recovery: 0, cooldown: 1, area: 1,
     speed: 1, moveSpeed: 1, magnet: 70, amount: 0, duration: 1, growth: 1,
     greed: 1, revival: 0, reroll: 0,
-    crit: 0.1, critDmg: 2, lifesteal: 0, thorns: 0,
+    crit: 0.1, critDmg: 2, lifesteal: 0, thorns: 0, ultCharge: 0, buffTime: 1,
 };
 
 export interface PassiveDef {
@@ -450,6 +500,8 @@ export const PASSIVES: PassiveDef[] = [
     { id: 'critdmg', name: '爆裂之心', icon: 'icon_critdmg', desc: '暴击伤害 +25%', max: 5, stat: 'critDmg', per: 0.25 },
     { id: 'fang', name: '活力獠牙', icon: 'icon_fang', desc: '每次击败敌人回复 0.2 生命', max: 5, stat: 'lifesteal', per: 0.2 },
     { id: 'thorns', name: '荆棘甲', icon: 'icon_thorns', desc: '受击时对周围敌人造成 30 伤害', max: 5, stat: 'thorns', per: 30 },
+    { id: 'core', name: '能量核心', icon: 'icon_core', desc: '大招充能速度 +12%', max: 5, stat: 'ultCharge', per: 0.12 },
+    { id: 'sand', name: '时之沙', icon: 'icon_sand', desc: '增益道具与神兵持续时间 +10%', max: 5, stat: 'buffTime', per: 0.1 },
 ];
 
 export const MAX_WEAPONS = 6;
@@ -495,6 +547,8 @@ export const EVOLUTIONS: Record<string, EvoDef> = {
     bomb:      { passive: 'thorns', name: '连环爆破', icon: 'icon_bomb_evo', desc: '爆炸后分裂出 4 颗子炸弹。', mod: { damage: 20, area: 0.3 } },
     laser:     { passive: 'critdmg', name: '虹光棱镜', icon: 'icon_laser_evo', desc: '同时射出三道彩虹光束，宽度与伤害大增。', mod: { amount: 2, damage: 15, area: 0.5 } },
     spikes:    { passive: 'fang', name: '生命荆棘', icon: 'icon_spikes_evo', desc: '地刺数量大增，命中时有几率回复生命。', mod: { amount: 4, damage: 10, area: 0.2 } },
+    saw:       { passive: 'core', name: '风暴锯轮', icon: 'icon_saw_evo', desc: '更多更大的锯片，命中时迸出火花引发小爆炸。', mod: { amount: 2, damage: 12, area: 0.4, duration: 2 } },
+    sonic:     { passive: 'sand', name: '音爆', icon: 'icon_sonic_evo', desc: '音波同时轰向四面八方，并震晕敌人 0.6 秒。', mod: { amount: 2, damage: 12, area: 0.3, cooldown: -0.2 } },
     lightning: { passive: 'dup', name: '雷霆之环', icon: 'icon_lightning_evo', desc: '每次落下更多更强的闪电。', mod: { amount: 4, damage: 25, area: 1 } },
 };
 
@@ -510,21 +564,40 @@ export interface CharDef {
     cost: number;     // 0 = 初始解锁
     traitName: string; // 专属天赋（效果在 Battle.ts 中按角色 id 实现）
     trait: string;
+    ultName: string;   // 大招（效果在 Battle.ts 的 castUlt 中按角色 id 实现）
+    ult: string;
+    charge: UltCharge; // 大招充能方式：每个角色都不一样，鼓励不同的玩法
 }
 
+// 大招充能方式（所有角色另有 100 秒充满的基础充能；充能速度上限为 60 秒一次）
+export type UltCharge = 'combo' | 'level' | 'move' | 'hurt' | 'heal' | 'kill' | 'boom' | 'time' | 'still' | 'crit' | 'gold';
+export const CHARGE_DESC: Record<UltCharge, string> = {
+    combo: '击败敌人充能，连击越高充得越快',
+    level: '每次升级充能 35%',
+    move: '移动充能，跑得越远充得越快',
+    hurt: '受到攻击时充能',
+    heal: '回复生命时充能',
+    kill: '击败敌人充能',
+    boom: '每次爆炸充能',
+    time: '随时间快速充能',
+    still: '站着不动时快速充能',
+    crit: '暴击时充能',
+    gold: '拾取金币时充能',
+};
+
 export const CHARACTERS: CharDef[] = [
-    { id: 'hunter', name: '奶蛙', title: '鞭手', sprite: 'hero_hunter', weapon: 'whip', desc: '最大生命 +20', bonus: { maxHp: 20 }, cost: 0, traitName: '越战越勇', trait: '每击败 100 个敌人伤害 +1%（最多 +25%）' },
-    { id: 'mage', name: '法师蛙', title: '法师', sprite: 'hero_mage', weapon: 'wand', desc: '经验获取 +10%', bonus: { growth: 0.1 }, cost: 0, traitName: '奥术涌流', trait: '每次升级后 4 秒内冷却 -30%' },
-    { id: 'rogue', name: '游侠蛙', title: '游侠', sprite: 'hero_rogue', weapon: 'knife', desc: '移动速度 +15%', bonus: { moveSpeed: 0.15 }, cost: 500, traitName: '灵巧闪避', trait: '受到攻击时 12% 几率完全闪避' },
-    { id: 'knight', name: '骑士蛙', title: '骑士', sprite: 'hero_knight', weapon: 'axe', desc: '护甲 +1，伤害 +10%', bonus: { armor: 1, might: 0.1 }, cost: 1000, traitName: '不屈铁壁', trait: '生命低于 50% 时护甲额外 +2' },
-    { id: 'nun', name: '盾卫蛙', title: '盾卫士', sprite: 'hero_nun', weapon: 'bible', desc: '每秒恢复 +0.4 生命', bonus: { recovery: 0.4 }, cost: 1500, traitName: '圣光庇护', trait: '每 40 秒获得 1 层护盾，抵挡一次伤害' },
-    { id: 'pyro', name: '炎术蛙', title: '炎术士', sprite: 'hero_pyro', weapon: 'fire', desc: '伤害 +15%', bonus: { might: 0.15 }, cost: 3000, traitName: '余烬', trait: '击败敌人时 12% 几率原地引燃小爆炸' },
-    { id: 'bomber', name: '爆破蛙', title: '爆破工', sprite: 'hero_bomber', weapon: 'bomb', desc: '最大生命 +30，范围 +15%', bonus: { maxHp: 30, area: 0.15 }, cost: 4000, traitName: '以爆制爆', trait: '受伤时 35% 几率引发爆炸；爆炸伤害减半' },
-    { id: 'sage', name: '长老蛙', title: '老贤者', sprite: 'hero_sage', weapon: 'lightning', desc: '冷却 -10%，范围 +10%', bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: '天雷', trait: '每 7 秒召唤 3 道落雷劈向屏幕内敌人' },
-    { id: 'druid', name: '德鲁伊蛙', title: '森林守护者', sprite: 'hero_druid', weapon: 'spikes', desc: '每秒恢复 +0.4，范围 +10%', bonus: { recovery: 0.4, area: 0.1 }, cost: 3000, traitName: '藤蔓缠绕', trait: '每 9 秒用藤蔓定住身边的敌人 1.5 秒' },
-    { id: 'prism', name: '棱镜蛙', title: '光学怪才', sprite: 'hero_prism', weapon: 'laser', desc: '暴击率 +8%，伤害 +10%', bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: '折射', trait: '暴击时 35% 几率折射到附近敌人（50% 伤害）' },
-    { id: 'fu', name: '福蛙', title: '新春限定', sprite: 'hero_fu', weapon: 'bomb', desc: '金币 +30%，最大生命 +20', bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: '招财进宝', trait: '拾取金币时 20% 几率翻倍' },
-    { id: 'santa', name: '圣诞蛙', title: '圣诞限定', sprite: 'hero_santa', weapon: 'frost', desc: '金币 +20%，冷却 -8%', bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: '圣诞礼物', trait: '每 70 秒身边掉落一个随机增益道具' },
+    { id: 'hunter', name: '奶蛙', title: '鞭手', sprite: 'hero_hunter', weapon: 'whip', desc: '最大生命 +20', bonus: { maxHp: 20 }, cost: 0, traitName: '越战越勇', trait: '每击败 100 个敌人伤害 +1%（最多 +25%）', ultName: '鞭影风暴', ult: '2.5 秒内疯狂挥鞭，持续横扫身边的敌人', charge: 'combo' },
+    { id: 'mage', name: '法师蛙', title: '法师', sprite: 'hero_mage', weapon: 'wand', desc: '经验获取 +10%', bonus: { growth: 0.1 }, cost: 0, traitName: '奥术涌流', trait: '每次升级后 4 秒内冷却 -30%', ultName: '奥术星雨', ult: '射出 30 枚追踪魔法飞弹', charge: 'level' },
+    { id: 'rogue', name: '游侠蛙', title: '游侠', sprite: 'hero_rogue', weapon: 'knife', desc: '移动速度 +15%', bonus: { moveSpeed: 0.15 }, cost: 500, traitName: '灵巧闪避', trait: '受到攻击时 12% 几率完全闪避', ultName: '影袭', ult: '无敌冲刺穿过敌群，终点爆发一圈飞刀', charge: 'move' },
+    { id: 'knight', name: '骑士蛙', title: '骑士', sprite: 'hero_knight', weapon: 'axe', desc: '护甲 +1，伤害 +10%', bonus: { armor: 1, might: 0.1 }, cost: 1000, traitName: '不屈铁壁', trait: '生命低于 50% 时护甲额外 +2', ultName: '不动铁壁', ult: '3 秒无敌，每 0.5 秒震出冲击波', charge: 'hurt' },
+    { id: 'nun', name: '盾卫蛙', title: '盾卫士', sprite: 'hero_nun', weapon: 'bible', desc: '每秒恢复 +0.4 生命', bonus: { recovery: 0.4 }, cost: 1500, traitName: '圣光庇护', trait: '每 40 秒获得 1 层护盾，抵挡一次伤害', ultName: '圣域', ult: '展开 6 秒圣域：域内回复生命、灼伤敌人、净化弹幕', charge: 'heal' },
+    { id: 'pyro', name: '炎术蛙', title: '炎术士', sprite: 'hero_pyro', weapon: 'fire', desc: '伤害 +15%', bonus: { might: 0.15 }, cost: 3000, traitName: '余烬', trait: '击败敌人时 12% 几率原地引燃小爆炸', ultName: '天火陨星', ult: '召唤巨型陨石砸向敌群，留下大片火海', charge: 'kill' },
+    { id: 'bomber', name: '爆破蛙', title: '爆破工', sprite: 'hero_bomber', weapon: 'bomb', desc: '最大生命 +30，范围 +15%', bonus: { maxHp: 30, area: 0.15 }, cost: 4000, traitName: '以爆制爆', trait: '受伤时 35% 几率引发爆炸；爆炸伤害减半', ultName: '地毯轰炸', ult: '沿面朝方向投下一长串炸弹', charge: 'boom' },
+    { id: 'sage', name: '长老蛙', title: '老贤者', sprite: 'hero_sage', weapon: 'lightning', desc: '冷却 -10%，范围 +10%', bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: '天雷', trait: '每 7 秒召唤 3 道落雷劈向屏幕内敌人', ultName: '雷暴天罚', ult: '4 秒雷暴，落雷不断劈向屏幕内的敌人', charge: 'time' },
+    { id: 'druid', name: '德鲁伊蛙', title: '森林守护者', sprite: 'hero_druid', weapon: 'spikes', desc: '每秒恢复 +0.4，范围 +10%', bonus: { recovery: 0.4, area: 0.1 }, cost: 3000, traitName: '藤蔓缠绕', trait: '每 9 秒用藤蔓定住身边的敌人 1.5 秒', ultName: '万木回春', ult: '藤蔓把周围敌人拉到身边缠住 2.5 秒，回复 15% 生命', charge: 'still' },
+    { id: 'prism', name: '棱镜蛙', title: '光学怪才', sprite: 'hero_prism', weapon: 'laser', desc: '暴击率 +8%，伤害 +10%', bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: '折射', trait: '暴击时 35% 几率折射到附近敌人（50% 伤害）', ultName: '光谱爆发', ult: '向四面八方连射三轮彩虹光束', charge: 'crit' },
+    { id: 'fu', name: '福蛙', title: '新春限定', sprite: 'hero_fu', weapon: 'bomb', desc: '金币 +30%，最大生命 +20', bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: '招财进宝', trait: '拾取金币时 20% 几率翻倍', ultName: '财神到', ult: '身边的小怪全部变成金币，精英怪受重创', charge: 'gold' },
+    { id: 'santa', name: '圣诞蛙', title: '圣诞限定', sprite: 'hero_santa', weapon: 'frost', desc: '金币 +20%，冷却 -8%', bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: '圣诞礼物', trait: '每 70 秒身边掉落一个随机增益道具', ultName: '圣诞雪橇', ult: '雪橇飞过投下一串礼物炸弹，并送出一个增益道具', charge: 'time' },
 ];
 
 // ---------------------------------------------------------------- 商店永久强化
@@ -583,6 +656,10 @@ export const BLESSINGS: BlessingDef[] = [
     { id: 'thornaura', name: '荆棘光环', icon: 'icon_thorns', desc: '受到伤害时，对周围敌人造成大量伤害' },
     { id: 'overload', name: '超载', icon: 'icon_chain', desc: '每 30 秒进入 8 秒超载：冷却 -50%' },
     { id: 'nova', name: '星爆', icon: 'icon_critdmg', desc: '每次升级释放全屏星爆，重创所有敌人' },
+    { id: 'ultfan', name: '能量涌动', icon: 'battery', desc: '大招充能速度 +50%，释放大招后 5 秒伤害 +30%' },
+    { id: 'epicfan', name: '神兵眷顾', icon: 'epic_excalibur', desc: '神兵持续时间 +50%，神兵祭坛出现更频繁' },
+    { id: 'echo', name: '回响', icon: 'icon_amount', desc: '武器每次攻击有 15% 几率立刻再攻击一次' },
+    { id: 'phoenix', name: '浴火重生', icon: 'icon_fire', desc: '受到致命伤害时浴火重生：回复 50% 生命并灼烧周围（每局一次）' },
 ];
 
 // ---------------------------------------------------------------- 成就（奖励金币）
@@ -611,10 +688,15 @@ export const ACHIEVEMENTS: AchDef[] = [
     { id: 'stage_snow', name: '踏雪而归', desc: '在冰雪荒原取得胜利', gold: 800 },
     { id: 'stage_lava', name: '浴火重生', desc: '在熔岩火山取得胜利', gold: 1500 },
     { id: 'stage_swamp', name: '沼泽之王', desc: '在毒雾沼泽取得胜利', gold: 2000 },
+    { id: 'stage_desert', name: '荒漠旅人', desc: '在流沙荒漠取得胜利', gold: 2500 },
+    { id: 'boss_worm', name: '驯服巨蠕', desc: '击败流沙荒漠的沙漠巨蠕', gold: 500 },
     { id: 'daily1', name: '每日一割', desc: '完成一次每日挑战', gold: 300 },
     { id: 'boss_toad', name: '除蟾者', desc: '击败毒雾沼泽的毒沼巨蟾', gold: 400 },
     { id: 'boss_yeti', name: '雪夜英雄', desc: '击败圣诞限定 Boss 雪怪王', gold: 600 },
     { id: 'boss_nian', name: '驱逐年兽', desc: '击败新春限定 Boss 年兽', gold: 600 },
+    { id: 'epic3', name: '神兵收藏家', desc: '单局使用 3 把神兵', gold: 300 },
+    { id: 'trial2', name: '试炼勇者', desc: '单局完成 2 次试炼', gold: 400 },
+    { id: 'ult10', name: '大招狂魔', desc: '单局释放 10 次大招', gold: 300 },
 ];
 
 // 无尽模式：15 分钟后 Boss 循环出现，每轮更强
@@ -669,14 +751,36 @@ export const PICKUP_INFO: Record<string, { name: string; desc: string }> = {
     clover: { name: '四叶草', desc: '15 秒内暴击率 +30%，击败敌人掉落更多金币。' },
     firering: { name: '烈焰之环', desc: '10 秒内身边环绕火焰，持续灼烧靠近的敌人。' },
     scroll: { name: '智慧卷轴', desc: '立刻提升 1 级。' },
+    giant: { name: '巨人蘑菇', desc: '10 秒内变成巨型奶蛙：碾压撞到的敌人，受到伤害减半。' },
+    dice: { name: '命运骰子', desc: '掷出随机结果：神兵、升级、清屏、回满生命……也可能招来精英怪！' },
+    decoy: { name: '幻影蛙', desc: '放出一只诱饵奶蛙吸引怪物 8 秒，最后轰然爆炸。' },
+    boots: { name: '疾风靴', desc: '10 秒内移速 +60%，脚下留下燃烧的足迹。' },
+    bank: { name: '聚宝盆', desc: '6 秒内身边不断涌出金币。' },
+    battery: { name: '能量电池', desc: '大招立刻充满。' },
 };
-// 火盆掉落权重（加血的烤鸡腿刻意稀有）
+// 火盆掉落权重（加血的烤鸡腿刻意稀有；epic = 随机一把神兵）
 export const BRAZIER_DROPS: [string, number][] = [
-    ['chicken', 10], ['coinbag', 14], ['magnet', 9], ['watch', 9], ['nuke', 9], ['potion', 9],
-    ['shield', 9], ['haste', 10], ['clover', 9], ['firering', 9], ['scroll', 3],
+    ['chicken', 10], ['coinbag', 12], ['magnet', 8], ['watch', 7], ['nuke', 8], ['potion', 7],
+    ['shield', 8], ['haste', 8], ['clover', 7], ['firering', 7], ['scroll', 3],
+    ['giant', 6], ['dice', 6], ['decoy', 5], ['boots', 6], ['bank', 4], ['battery', 5], ['epic', 2],
 ];
 // 精英怪 / 圣诞礼物掉落的增益道具
-export const BUFF_DROPS = ['potion', 'shield', 'haste', 'clover', 'firering'];
+export const BUFF_DROPS = ['potion', 'shield', 'haste', 'clover', 'firering', 'giant', 'boots', 'decoy'];
+
+// ---------------------------------------------------------------- 神兵（30 秒限时史诗武器）
+// 来源：神兵祭坛（1:40 起约每 150 秒在附近出现，打碎掉落）、试炼石碑奖励、Boss（40%）、精英怪（4%）、火盆（极小概率）
+// 同一时间只能持有一把，拾取新的会替换旧的
+export interface EpicDef { id: string; name: string; desc: string; color: number; }
+export const EPIC_TIME = 30;
+export const EPICS: EpicDef[] = [
+    { id: 'thor', name: '雷神之锤', desc: '雷锤环绕身边砸飞敌人，落雷连续劈向屏幕内的敌人。', color: 0x80c8ff },
+    { id: 'gatling', name: '星光加特林', desc: '每秒向最近的敌人倾泻 16 发穿透星弹。', color: 0xffe060 },
+    { id: 'excalibur', name: '圣剑·断罪', desc: '每秒挥出一道巨大的圣光剑环，横扫身边一切。', color: 0xfff0a0 },
+    { id: 'blackhole', name: '黑洞法球', desc: '在敌群中召唤黑洞，吸住一大片敌人后内爆。', color: 0xb070ff },
+    { id: 'dragon', name: '龙息', desc: '向面朝方向持续喷吐烈焰，烧出一条火海。', color: 0xff7030 },
+    { id: 'meteor', name: '流星权杖', desc: '流星接连砸向屏幕内的敌人。', color: 0xff9a50 },
+    { id: 'unicorn', name: '彩虹独角兽', desc: '骑上独角兽：移速 +60%，撞飞沿途敌人，身后留下彩虹。', color: 0xff90e0 },
+];
 
 // ---------------------------------------------------------------- 图鉴
 export type CodexTab = 'weapon' | 'passive' | 'monster';
@@ -694,6 +798,7 @@ export function codexEntries(): CodexEntry[] {
     }
     for (const p of PASSIVES) list.push({ key: 'p:' + p.id, tab: 'passive', icon: p.icon, name: p.name, desc: p.desc, hint: '在升级时获得这件道具' });
     for (const id in PICKUP_INFO) list.push({ key: 'i:' + id, tab: 'passive', icon: id, name: PICKUP_INFO[id].name, desc: PICKUP_INFO[id].desc, hint: '在战斗中拾取一次即可收录' });
+    for (const e of EPICS) list.push({ key: 'x:' + e.id, tab: 'passive', icon: 'epic_' + e.id, name: '神兵·' + e.name, desc: `限时 ${EPIC_TIME} 秒的史诗武器\n${e.desc}`, hint: '打碎神兵祭坛、完成试炼或击败 Boss 获得' });
     for (const id in MONSTER_INFO) {
         const m = MONSTER_INFO[id];
         const def = ENEMIES[id];

@@ -8,7 +8,7 @@ import { Ads, mgApi, RewardResult } from './Ads';
 import { Art } from './Art';
 import { Backdrop } from './Backdrop';
 import { Battle, blessingOptions, describe, Option } from './Battle';
-import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
+import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, CHARGE_DESC, EPIC_TIME, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
 import { Recorder } from './Recorder';
 import { Save } from './Save';
 import { Sound, vibrate } from './Sound';
@@ -117,6 +117,17 @@ export class GameRoot extends Component {
     private cardMode: 'level' | 'blessing' = 'level';
     private blessOpts: BlessingDef[] = [];
     private buffLabel!: Label;
+    // 大招按钮 / 神兵与试炼提示
+    private ultBtn!: Node;
+    private ultFill!: Sprite;
+    private ultHero!: Sprite;
+    private ultName!: Label;
+    private ultChar = '';
+    private ultHinted = false; // 前 3 局第一次充满时提示怎么放大招
+    private epicLabel!: Label;
+    private epicBar!: Node;
+    private epicFill!: Sprite;
+    private trialLabel!: Label;
     private options: Option[] = [];
     private levelTitle!: Label;
     private rerollBtn!: Button;
@@ -392,6 +403,35 @@ export class GameRoot extends Component {
         this.bannerLabel = mkLabel(hud, '', 44, C_RED, 'center', 5);
         this.bannerLabel.node.setPosition(0, this.vh * 0.16);
         this.bannerLabel.node.active = false;
+
+        // 大招按钮（右下角）：从下往上充能，满了发光，点击释放（键盘 空格 / Q）
+        const ub = mkPanel(hud, 132, 132, new Color(30, 24, 52, 230));
+        this.ultBtn = ub.node;
+        this.ultBtn.setPosition(R - 86, this.bottom + 104);
+        this.ultFill = mkRect(this.ultBtn, 126, 126, new Color(255, 200, 80, 110), 'ultFill', 0.5, 0);
+        this.ultFill.node.setPosition(0, -63);
+        this.ultHero = mkSprite(this.ultBtn, 'hero_hunter_0', 1);
+        this.ultHero.node.setPosition(0, 10);
+        this.ultName = mkLabel(this.ultBtn, '', 20, C_WHITE, 'center', 3);
+        this.ultName.node.setPosition(0, -48);
+        this.ultBtn.on(Node.EventType.TOUCH_END, () => this.castUlt());
+
+        // 神兵剩余时间（底部中间）
+        this.epicLabel = mkLabel(hud, '', 28, C_GOLD, 'center', 4);
+        this.epicLabel.node.setPosition(-40, this.bottom + 76);
+        this.epicBar = mkRect(hud, 300, 12, new Color(20, 10, 20, 220), 'epicBg').node;
+        this.epicBar.setPosition(-40, this.bottom + 50);
+        this.epicFill = mkRect(this.epicBar, 296, 8, new Color(255, 200, 70, 255), 'epicFill', 0, 0.5);
+        this.epicFill.node.setPosition(-148, 0);
+        // 试炼进度
+        this.trialLabel = mkLabel(hud, '', 28, new Color(255, 120, 100, 255), 'center', 4);
+        this.trialLabel.node.setPosition(-40, this.bottom + 120);
+    }
+
+    private castUlt() {
+        if (this.state !== 'play') return;
+        if (this.battle.useUlt()) vibrate();
+        else if (this.battle.ult < 1) this.showToast(`大招充能中：${CHARGE_DESC[this.battle.char.charge]}`);
     }
 
     // ------------------------------------------------------------------ 胜利过渡动画
@@ -745,7 +785,7 @@ export class GameRoot extends Component {
         const y0 = this.top - 170;
         const cols = 3;
         const rowsN = Math.ceil(CHARACTERS.length / cols);
-        const avail = y0 - (this.bottom + 370);
+        const avail = y0 - (this.bottom + 405);
         const ch = Math.min(250, avail / rowsN - 10);
         const cw = 226;
         CHARACTERS.forEach((c, i) => {
@@ -799,11 +839,12 @@ export class GameRoot extends Component {
         }, C_BTN_GREY, 26);
         mode.node.setPosition(0, by + 92);
         // 选中角色的专属天赋
-        const traitLbl = mkLabel(s, '', 22, C_GOLD, 'center', 2);
-        traitLbl.node.setPosition(0, by + 240);
+        const traitLbl = mkLabel(s, '', 19, C_GOLD, 'center', 2);
+        traitLbl.lineHeight = 25;
+        traitLbl.node.setPosition(0, by + 262);
         this.refreshers.push(() => {
             const c = this.selectedChar();
-            traitLbl.string = `★ 专属天赋「${c.traitName}」\n${c.trait}`;
+            traitLbl.string = `★ 天赋「${c.traitName}」${c.trait}\n◆ 大招「${c.ultName}」${c.ult}\n充能：${CHARGE_DESC[c.charge]}`;
         });
         // 地图选择：点击切换到下一张已解锁的地图
         const stageBtn = mkButton(s, '', 560, 64, () => {
@@ -1255,6 +1296,7 @@ export class GameRoot extends Component {
 
     private startGame() {
         this.dailyRun = false;
+        this.ultHinted = false;
         this.adRevived = this.adBlessUsed = false;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(this.selectedChar(), this.endlessMode, this.currentStage.id);
@@ -1337,7 +1379,7 @@ export class GameRoot extends Component {
 
         this.resultTitle.string = this.dailyRun ? (win ? '挑战成功!' : '挑战失败') : win ? '胜利!' : b.endless ? '无尽之夜结束' : '你倒下了';
         this.resultTitle.color = win ? C_GOLD : C_RED;
-        this.resultStats.string = `存活时间  ${this.fmtTime(b.time)}\n等级  ${b.level}     击败  ${b.kills}     最高连击  ${b.maxCombo}\n拾取金币  ${b.gold}    时间奖励  ${bonus}\n本局获得  ${total + achGold} 金币` + (got.length ? `\n新成就：${got.map(a => a.name).join('、')}  (+${achGold})` : '');
+        this.resultStats.string = `存活时间  ${this.fmtTime(b.time)}\n等级  ${b.level}     击败  ${b.kills}     最高连击  ${b.maxCombo}\n拾取金币  ${b.gold}    时间奖励  ${bonus}\n大招 ${b.ultCasts} 次    神兵 ${b.epicsUsed} 把    试炼 ${b.trialsWon} 次\n本局获得  ${total + achGold} 金币` + (got.length ? `\n新成就：${got.map(a => a.name).join('、')}  (+${achGold})` : '');
         this.resultHint.string = this.nearMiss(win, daily);
         // 按行数依次排版：统计 → 提示 → 武器伤害列表
         const statLines = this.resultStats.string.split('\n').length, hintLines = this.resultHint.string ? this.resultHint.string.split('\n').length : 0;
@@ -1457,9 +1499,13 @@ export class GameRoot extends Component {
             stage_snow: win && !b.endless && !this.dailyRun && b.stage.id === 'snow',
             stage_lava: win && !b.endless && !this.dailyRun && b.stage.id === 'lava',
             stage_swamp: win && !b.endless && !this.dailyRun && b.stage.id === 'swamp',
+            stage_desert: win && !b.endless && !this.dailyRun && b.stage.id === 'desert',
             nightmare1: win && b.nightmare,
             codex_half: this.codexCount() * 2 >= codexEntries().length,
             codex_full: this.codexCount() >= codexEntries().length,
+            epic3: b.epicsUsed >= 3,
+            trial2: b.trialsWon >= 2,
+            ult10: b.ultCasts >= 10,
         };
         for (const id of b.bossKills) ok['boss_' + id] = true;
         const got = ACHIEVEMENTS.filter(a => ok[a.id] && !d.achievements.includes(a.id));
@@ -1868,6 +1914,7 @@ export class GameRoot extends Component {
         }
         if (this.state === 'chest' && confirm) { this.afterReward(); return; }
         if ((this.state === 'menu' || this.state === 'result') && confirm) { this.startGame(); return; }
+        if (this.state === 'play' && (k === KeyCode.SPACE || k === KeyCode.KEY_Q)) { this.castUlt(); return; }
         if (k === KeyCode.ESCAPE || k === KeyCode.KEY_P) {
             if (this.state === 'play') this.setState('pause');
             else if (this.state === 'pause') this.setState('play');
@@ -1985,10 +2032,44 @@ export class GameRoot extends Component {
         if (b.cloverT > 0) buffs.push(`幸运 ${Math.ceil(b.cloverT)}s`);
         if (b.fireT > 0) buffs.push(`烈焰 ${Math.ceil(b.fireT)}s`);
         if (b.arcaneT > 0) buffs.push('奥术涌流');
+        if (b.giantT > 0) buffs.push(`巨人 ${Math.ceil(b.giantT)}s`);
+        if (b.bootsT > 0) buffs.push(`疾风 ${Math.ceil(b.bootsT)}s`);
+        if (b.decoyT > 0) buffs.push(`幻影 ${Math.ceil(b.decoyT)}s`);
         if (b.endless) buffs.push('无尽');
         const bs = buffs.join('  ');
         if (this.buffLabel.string !== bs) this.buffLabel.string = bs;
         this.xpFill.setScale(Math.min(1, b.xp / b.xpNext), 1, 1);
+        // 大招按钮
+        if (this.ultChar !== b.char.id) {
+            this.ultChar = b.char.id;
+            this.ultHero.spriteFrame = Art.f(b.char.sprite + '_0');
+            this.ultName.string = b.char.ultName;
+        }
+        const ready = b.ult >= 1;
+        if (ready && !this.ultHinted && Save.data.runs < 3 && this.state === 'play') {
+            this.ultHinted = true;
+            this.showToast('大招就绪! 点击右下角按钮释放');
+        }
+        this.ultFill.node.setScale(1, Math.max(0.02, b.ult), 1);
+        this.ultFill.color = ready ? new Color(255, 210, 90, 150 + Math.round(80 * Math.sin(this.t * 8))) : new Color(120, 160, 255, 110);
+        const us = ready ? 1 + 0.06 * Math.sin(this.t * 8) : 1;
+        this.ultBtn.setScale(us, us, 1);
+        this.ultName.color = ready ? C_GOLD : C_GREY;
+        // 神兵
+        const ep = b.epic;
+        this.epicLabel.node.active = this.epicBar.active = !!ep;
+        if (ep) {
+            const txt = `★ ${ep.name}  ${Math.ceil(b.epicT)}s`;
+            if (this.epicLabel.string !== txt) this.epicLabel.string = txt;
+            this.epicFill.node.setScale(Math.max(0, Math.min(1, b.epicT / (b.epicMax || EPIC_TIME))), 1, 1);
+            this.epicLabel.color = b.epicT < 5 && Math.floor(this.t * 6) % 2 ? C_WHITE : C_GOLD;
+        }
+        const tr = b.trial;
+        this.trialLabel.node.active = !!tr;
+        if (tr) {
+            const txt = `试炼 ${Math.min(tr.got, tr.need)}/${tr.need}  ${Math.ceil(tr.t)}s`;
+            if (this.trialLabel.string !== txt) this.trialLabel.string = txt;
+        }
         this.lvLabel.string = 'LV ' + b.level;
         this.timeLabel.string = this.fmtTime(Math.min(b.time, WIN_TIME));
         this.killLabel.string = '击败 ' + b.kills;

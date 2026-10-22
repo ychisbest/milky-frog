@@ -119,6 +119,8 @@ for (let run = 1; run <= RUNS; run++) {
   while (g.state !== 'result' && frames < 60 * 60 * 16) {
     const [mx, my] = steer(B, frames);
     g.joyX = mx; g.joyY = my;
+    // 大招：充满后在 Boss 战或身边怪多时释放（ULT=0 关闭，用于对比）
+    if (process.env.ULT !== '0' && B.ult >= 1 && B.useUlt && (B.boss || B.enemies.filter((e: any) => e.alive && Math.abs(e.x - B.px) < 200 && Math.abs(e.y - B.py) < 200).length > 12)) B.useUlt();
     g.update(1 / 60); frames++;
     if (B.level !== lastLv) { lastLv = B.level; lvTimes.push(B.time); }
     if (!firstEvo && B.evolvedCount > 0) firstEvo = B.time;
@@ -135,7 +137,7 @@ for (let run = 1; run <= RUNS; run++) {
   // 平均升级间隔（按阶段）
   const gap = (t0: number, t1: number) => { const ts = lvTimes.filter(t => t >= t0 && t < t1); return ts.length > 1 ? +((ts[ts.length - 1] - ts[0]) / (ts.length - 1)).toFixed(1) : null; };
   const rec = { run, win: g.resultTitle.string === '胜利!', t: Math.round(B.time), lv: B.level, kills: B.kills, gold: goldBefore, firstEvo: Math.round(firstEvo), bosses: B.bossKills.length,
-    gap0_2: gap(0, 120), gap2_6: gap(120, 360), gap6_15: gap(360, 900), char: B.char.id, power: Save.totalBought(), runGold: B.gold, ach: Save.data.achievements.length, dmgBy, flow: +B.flow.toFixed(2), bossFight, minHpEarly: +minHpEarly.toFixed(2), last: (globalThis as any).__last.reduce((m: any, x: any) => { m[x[1]] = (m[x[1]] || 0) + x[2]; return m; }, {}) };
+    gap0_2: gap(0, 120), gap2_6: gap(120, 360), gap6_15: gap(360, 900), char: B.char.id, ults: B.ultCasts, epics: B.epicsUsed, trials: B.trialsWon, power: Save.totalBought(), runGold: B.gold, ach: Save.data.achievements.length, dmgBy, flow: +B.flow.toFixed(2), bossFight, minHpEarly: +minHpEarly.toFixed(2), last: (globalThis as any).__last.reduce((m: any, x: any) => { m[x[1]] = (m[x[1]] || 0) + x[2]; return m; }, {}) };
   out.push(rec);
   g.toMenu();
   shop();

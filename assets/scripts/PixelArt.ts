@@ -595,6 +595,15 @@ function drawEnemyShot(kind: string) {
             c.outline(OUT);
             return c;
         }
+        case 'sand': {
+            // 沙漠巨蠕的沙弹
+            const c = new PixelCanvas(12, 12);
+            c.circle(6, 6, 5, 0x8a6030);
+            c.circle(6, 6, 4, 0xd8a860);
+            c.px(4, 4, 0xfff0c0); c.px(7, 8, 0x8a6030);
+            c.outline(OUT);
+            return c;
+        }
         case 'scythe': {
             // 暗夜魔术师的回旋飞牌
             const c = new PixelCanvas(28, 28);
@@ -1601,6 +1610,30 @@ const ICONS: Record<string, () => PixelCanvas> = {
         c.rect(6, 5, 4, 4, 0xa0b070);
     }),
     icon_heal: () => drawChicken(),
+    icon_saw: () => icon(c => {
+        c.circle(8, 8, 7, 0xb8c0cc);
+        for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; c.poly([[8 + Math.cos(a) * 6, 8 + Math.sin(a) * 6], [8 + Math.cos(a + 0.3) * 8.5, 8 + Math.sin(a + 0.3) * 8.5], [8 + Math.cos(a + 0.5) * 6, 8 + Math.sin(a + 0.5) * 6]], 0xe0e6f0); }
+        c.circle(8, 8, 2.5, 0xd03030);
+        c.px(6, 5, 0xffffff);
+    }),
+    icon_sonic: () => icon(c => {
+        c.poly([[1, 6], [5, 6], [11, 1], [11, 15], [5, 10], [1, 10]], 0xf5c542);
+        c.rect(1, 6, 4, 4, 0xc89830);
+        c.ring(9, 8, 6, 1, 0x80d0ff); c.ring(9, 8, 8.5, 1, 0x80d0ff);
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 12; x++) if (c.alpha(x, y) && c.data[(y * 16 + x) * 4] === 0x80) c.clear(x, y);
+    }),
+    icon_core: () => icon(c => {
+        c.poly([[8, 0], [15, 4], [15, 12], [8, 16], [1, 12], [1, 4]], 0x3a4a80);
+        c.poly([[8, 3], [12, 5.5], [12, 10.5], [8, 13], [4, 10.5], [4, 5.5]], 0x60e0ff);
+        c.circle(8, 8, 2.2, 0xffffff);
+    }),
+    icon_sand: () => icon(c => {
+        c.rect(2, 0, 12, 2, 0x8a5a30); c.rect(2, 14, 12, 2, 0x8a5a30);
+        c.poly([[3, 2], [13, 2], [9, 8], [13, 14], [3, 14], [7, 8]], 0xfff4d8);
+        c.poly([[5, 3], [11, 3], [8, 7]], 0xe8b860);
+        c.poly([[8, 10], [11, 13], [5, 13]], 0xe8b860);
+        c.px(8, 8, 0xe8b860); c.px(8, 9, 0xe8b860);
+    }),
 };
 
 
@@ -1867,6 +1900,386 @@ function drawScroll() {
     return c;
 }
 
+// ---------------------------------------------------------------- 流沙荒漠 / 新怪物
+
+function drawGroundSand() {
+    const c = tileNoise(171, [0xd8b46a, 0xdcba70, 0xd2ae64], [[0xe6c886, 6], [0xc49e58, 5]]);
+    // 风吹出的沙纹
+    for (const y0 of [10, 30, 50]) for (let x = 0; x < 64; x++) {
+        const y = y0 + Math.round(Math.sin((x / 64) * Math.PI * 4) * 2);
+        c.px(x, y, 0xc49a54);
+        if (x % 4 === 0) c.px(x, y - 1, 0xeed08e);
+    }
+    return c;
+}
+
+function drawCactus() {
+    const c = new PixelCanvas(20, 30);
+    c.rect(8, 4, 5, 25, 0x4a9a40);
+    c.rect(9, 4, 2, 25, 0x6ac058);
+    c.rect(2, 10, 4, 9, 0x4a9a40); c.rect(2, 17, 7, 3, 0x4a9a40);
+    c.rect(15, 7, 4, 8, 0x4a9a40); c.rect(12, 13, 7, 3, 0x4a9a40);
+    c.circle(10.5, 4, 2.5, 0xf06aa0);
+    for (const [x, y] of [[7, 8], [13, 15], [7, 22], [13, 24], [3, 12], [18, 9]]) c.px(x, y, 0xf4ecd8);
+    c.outline(OUT);
+    return c;
+}
+
+function drawSandRock() {
+    const c = new PixelCanvas(26, 16);
+    c.poly([[1, 15], [4, 6], [11, 2], [19, 4], [25, 15]], 0xb08050);
+    c.poly([[11, 2], [19, 4], [25, 15], [15, 15]], 0x8a6038);
+    c.line(5, 8, 11, 4, 0xd0a070);
+    c.outline(OUT);
+    return c;
+}
+
+function drawSkullRock() {
+    // 风化的兽角（荒漠装饰）
+    const c = new PixelCanvas(22, 14);
+    c.poly([[1, 13], [4, 5], [9, 1], [8, 6], [6, 13]], 0xf0e6cc);
+    c.poly([[21, 13], [18, 5], [13, 1], [14, 6], [16, 13]], 0xf0e6cc);
+    c.rect(5, 10, 12, 3, 0xc8b898);
+    c.outline(OUT);
+    return c;
+}
+
+function drawTornado(f: number) {
+    const c = new PixelCanvas(40, 56);
+    for (let y = 0; y < 52; y++) {
+        const w = 4 + (52 - y) * 0.32, cx = 20 + Math.sin(y / 6 + f * 1.6) * 3;
+        for (let x = Math.floor(cx - w); x <= cx + w; x++) {
+            const band = Math.floor((x - cx + y * 0.6 + f * 3) / 3) % 2;
+            c.px(x, y, band ? 0xd8c090 : 0xb89a68, 210);
+        }
+    }
+    for (let k = 0; k < 6; k++) c.px(6 + k * 5, 4 + ((k * 7 + f * 5) % 40), 0x8a6a40);
+    return c;
+}
+
+// 宝箱怪：f=0 伪装成宝箱，f=1 张开大嘴
+function drawMimic(f: number) {
+    const c = new PixelCanvas(28, 28);
+    const lid = f ? 6 : 10;
+    c.rect(3, 13, 22, 13, 0x8a4a20);
+    c.rect(3, 13, 22, 1, 0xf5c542);
+    c.rect(3, 13, 1, 13, 0xf5c542); c.rect(24, 13, 1, 13, 0xf5c542);
+    if (f) {
+        c.rect(4, 7, 20, 6, 0x5a0a18);
+        for (let x = 5; x < 23; x += 3) { c.poly([[x, 13], [x + 1.5, 10], [x + 3, 13]], 0xf4ecd8); c.poly([[x, lid + 1], [x + 1.5, lid + 4], [x + 3, lid + 1]], 0xf4ecd8); }
+        c.rect(10, 10, 8, 3, 0xe03050);
+        c.rect(6, 15, 3, 3, 0xffe040); c.rect(19, 15, 3, 3, 0xffe040);
+        c.px(7, 16, OUT); c.px(20, 16, OUT);
+    }
+    c.rect(3, lid - 4, 22, 5, 0xa85a28);
+    c.rect(3, lid - 4, 22, 1, 0xc87a40);
+    c.rect(12, lid, 4, 3, 0xf5c542);
+    c.outline(OUT);
+    return c;
+}
+
+// 水平镜像（新怪物按面朝左绘制，引擎约定面朝右）
+function flipX(src: PixelCanvas) {
+    const c = new PixelCanvas(src.w, src.h);
+    for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
+        const i = (y * src.w + x) * 4, j = (y * src.w + (src.w - 1 - x)) * 4;
+        for (let k = 0; k < 4; k++) c.data[j + k] = src.data[i + k];
+    }
+    return c;
+}
+
+// 野猪：冲锋型
+function drawBoar(f: number) {
+    const c = new PixelCanvas(32, 32);
+    const B = 0x8a5a3a, BD = 0x5a3820, BL = 0xb07a50;
+    c.ellipse(17, 19, 11, 7.5, B);
+    c.ellipse(17, 16, 9, 3, BL);
+    for (let x = 9; x < 25; x += 3) c.px(x, 11 - (x % 2), BD);
+    c.ellipse(7, 20, 5.5, 4.5, B);
+    c.ellipse(4, 21, 2.5, 2, 0xd89a80);
+    c.px(3, 21, OUT); c.px(5, 21, OUT);
+    c.poly([[5, 23], [3, 26], [6, 24]], 0xf4ecd8);
+    c.rect(7, 18, 2, 2, OUT); c.px(7, 18, 0xff5040);
+    c.poly([[9, 14], [11, 11], [12, 15]], BD);
+    const l = f ? 1 : 0;
+    for (const [x, o] of [[10, l], [14, -l], [20, l], [24, -l]]) c.rect(x, 25 + o, 3, 4 - o, BD);
+    c.outline(OUT);
+    return c;
+}
+
+// 闪现狐：瞬移型
+function drawFox(f: number) {
+    const c = new PixelCanvas(32, 32);
+    const O = 0x7a50d0, OD = 0x4a2a90, W = 0xf0e8ff;
+    c.ellipse(16, 21, 8, 6, O);
+    c.poly([[23, 20], [31, 12 + f * 2], [29, 22]], O);
+    c.px(30, 13 + f * 2, W); c.px(29, 14 + f * 2, W);
+    c.ellipse(11, 14, 6, 5, O);
+    c.poly([[6, 11], [6, 4], [10, 9]], OD);
+    c.poly([[12, 9], [15, 3], [16, 10]], OD);
+    c.ellipse(9, 16, 3.5, 2.5, W);
+    c.rect(8, 12, 2, 2, 0xffe040); c.rect(13, 12, 2, 2, 0xffe040);
+    c.px(6, 16, OUT);
+    c.rect(11 + f, 26, 2, 4, OD); c.rect(19 - f, 26, 2, 4, OD);
+    c.outline(OUT);
+    return c;
+}
+
+// 果冻怪：被击败后分裂成两只小果冻
+function drawJelly(f: number) {
+    const c = new PixelCanvas(32, 32);
+    const J = 0xe070c0, JD = 0xa04090, JL = 0xffc0e8;
+    const w = f ? 11.5 : 10, h = f ? 7 : 8.5;
+    c.ellipse(16, 26 - h, w, h, JD, 230);
+    c.ellipse(16, 25 - h, w - 1, h - 1, J, 220);
+    c.ellipse(12, 21 - h, 3, 2, JL);
+    c.rect(12, 23 - Math.round(h / 2), 2, 3, OUT);
+    c.rect(18, 23 - Math.round(h / 2), 2, 3, OUT);
+    c.outline(OUT);
+    return c;
+}
+
+// 沙漠巨蠕（Boss）：从沙中探出的巨大蠕虫
+function drawWorm(f: number) {
+    const c = new PixelCanvas(48, 52);
+    const S = 0xc8905a, SD = 0x8a5a30, SL = 0xe8b880;
+    // 身体节段
+    for (let i = 0; i < 4; i++) {
+        const y = 44 - i * 9, x = 24 + Math.sin(i * 0.9 + f * 0.8) * 3;
+        c.ellipse(x, y, 13 - i, 6, SD);
+        c.ellipse(x, y - 1, 12 - i, 5, S);
+        c.line(x - 9 + i, y - 3, x + 9 - i, y - 3, SL);
+    }
+    // 头与口器
+    const hx = 24 + Math.sin(4 * 0.9 + f * 0.8) * 3;
+    c.ellipse(hx, 11, 12, 10, S);
+    c.ellipse(hx, 13, 8, 6, 0x5a1a20);
+    c.ellipse(hx, 14, 5, 3.5, 0x2a0a10);
+    for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        c.poly([[hx + Math.cos(a) * 8, 13 + Math.sin(a) * 6], [hx + Math.cos(a + 0.2) * 4, 13 + Math.sin(a + 0.2) * 3], [hx + Math.cos(a - 0.2) * 4, 13 + Math.sin(a - 0.2) * 3]], 0xf4ecd8);
+    }
+    c.rect(hx - 10, 4, 3, 3, 0xff6030); c.rect(hx + 7, 4, 3, 3, 0xff6030);
+    // 沙堆
+    c.ellipse(24, 49, 22, 3.5, 0xd8b46a);
+    c.outline(OUT);
+    return c;
+}
+
+// ---------------------------------------------------------------- 神兵 / 新场景道具
+
+// 神兵图标：18×18，金色描边 + 深色外描边，一眼看出是史诗道具
+function epicIcon(fn: (c: PixelCanvas) => void) {
+    const c = new PixelCanvas(20, 20);
+    fn(c);
+    c.outline(0xffc030);
+    c.outline(OUT);
+    c.px(1, 2, 0xffffff); c.px(17, 1, 0xfff0a0); c.px(18, 17, 0xffffff);
+    return c;
+}
+
+const EPIC_ART: Record<string, () => PixelCanvas> = {
+    // 雷神之锤
+    thor: () => epicIcon(c => {
+        c.line(4, 17, 10, 9, 0x8a5a30, 255, 2);
+        c.poly([[7, 3], [15, 1], [18, 8], [10, 10]], 0xa8b4c8);
+        c.poly([[11, 2], [15, 1], [18, 8], [14, 9]], 0x7884a0);
+        c.line(13, 3, 15, 7, 0xffffff);
+        c.poly([[3, 3], [6, 3], [4, 7], [6, 7], [2, 12], [3, 8], [1, 8]], 0xfff080);
+    }),
+    // 星光加特林
+    gatling: () => epicIcon(c => {
+        c.rect(2, 8, 10, 6, 0x5a5a70);
+        c.rect(10, 6, 7, 2, 0xc0c8d8); c.rect(10, 9, 8, 2, 0xc0c8d8); c.rect(10, 12, 7, 2, 0xc0c8d8);
+        c.rect(3, 13, 3, 4, 0x8a5a30);
+        c.circle(17, 4, 2, 0xffe060); c.px(17, 4, 0xffffff);
+        c.rect(3, 9, 6, 1, 0x9090b0);
+    }),
+    // 圣剑
+    excalibur: () => epicIcon(c => {
+        c.poly([[16, 1], [18, 2], [9, 12], [7, 10]], 0xe8f0ff);
+        c.line(16, 2, 9, 10, 0xffffff);
+        c.rect(4, 10, 7, 2, 0xf5c542);
+        c.line(6, 8, 9, 13, 0xf5c542, 255, 2);
+        c.line(3, 16, 7, 12, 0x6a4ab0, 255, 2);
+        c.circle(2.5, 16.5, 1.5, 0xf5c542);
+    }),
+    // 黑洞法球
+    blackhole: () => epicIcon(c => {
+        c.circle(9, 9, 8, 0x8a50e0);
+        c.ring(9, 9, 8, 2, 0xd0a0ff);
+        c.circle(9, 9, 5, 0x2a1050);
+        c.circle(9, 9, 2.5, 0x000000);
+        c.px(4, 6, 0xffffff); c.px(13, 13, 0xffffff); c.px(14, 5, 0xd0a0ff);
+    }),
+    // 龙息（龙头）
+    dragon: () => epicIcon(c => {
+        c.poly([[1, 6], [9, 3], [13, 6], [13, 12], [5, 13], [1, 10]], 0xd03828);
+        c.poly([[3, 3], [6, 0], [7, 4]], 0xf5c542);
+        c.poly([[9, 3], [12, 0], [12, 5]], 0xf5c542);
+        c.rect(5, 6, 2, 2, 0xfff080);
+        c.rect(1, 10, 9, 1, 0xff9060);
+        c.poly([[13, 7], [19, 5], [17, 9], [19, 12], [13, 11]], 0xffb030);
+        c.poly([[13, 8], [17, 8], [13, 10]], 0xfff080);
+    }),
+    // 流星权杖
+    meteor: () => epicIcon(c => {
+        c.line(2, 17, 10, 9, 0x6a4ab0, 255, 2);
+        c.circle(12.5, 6.5, 4.5, 0xff7a30);
+        c.circle(12.5, 6.5, 2.5, 0xffd060);
+        c.px(11, 5, 0xffffff);
+        c.line(5, 3, 8, 4, 0xffb060); c.line(15, 13, 16, 16, 0xffb060); c.px(17, 2, 0xfff0a0);
+    }),
+    // 彩虹独角兽（马头 + 角）
+    unicorn: () => epicIcon(c => {
+        c.poly([[4, 6], [11, 4], [15, 8], [16, 13], [12, 14], [10, 11], [6, 17], [3, 15]], 0xf8f4ff);
+        c.poly([[11, 4], [14, 0], [13, 5]], 0xffd040);
+        c.px(12, 8, OUT);
+        c.line(3, 7, 6, 13, 0xff6080, 255, 2);
+        c.line(5, 6, 8, 11, 0x60c0ff, 255, 1);
+        c.line(7, 5, 9, 9, 0x80e070);
+    }),
+};
+
+// 神兵祭坛：金色石台上悬浮的发光宝珠
+function drawAltar(f: number) {
+    const c = new PixelCanvas(24, 30);
+    c.rect(3, 24, 18, 5, 0x6a6080);
+    c.rect(5, 16, 14, 8, 0x8a80a0);
+    c.rect(5, 16, 14, 1, 0xb0a8c8);
+    c.rect(3, 24, 18, 1, 0x9a90b0);
+    c.rect(8, 18, 8, 4, 0xf5c542);
+    c.rect(11, 18, 2, 4, 0xfff0a0);
+    const y = f ? 7 : 8;
+    c.circle(12, y, 6.5, 0xffc030, 90);
+    c.circle(12, y, 4.5, 0xffe060);
+    c.circle(12, y, 2.5, 0xffffff);
+    c.px(4, 6 - f, 0xfff0a0); c.px(20, 9 + f, 0xfff0a0);
+    c.outline(OUT);
+    return c;
+}
+
+// 试炼石碑：刻着符文的灰色石碑，符文发红光
+function drawShrine() {
+    const c = new PixelCanvas(20, 30);
+    c.poly([[3, 29], [3, 6], [10, 1], [17, 6], [17, 29]], 0x7a7488);
+    c.poly([[10, 1], [17, 6], [17, 29], [10, 29]], 0x625c70);
+    c.rect(1, 26, 18, 4, 0x4a4458);
+    c.poly([[10, 8], [15, 15], [10, 22], [5, 15]], 0xff4040);
+    c.poly([[10, 11], [12.5, 15], [10, 19], [7.5, 15]], 0x625c70);
+    c.circle(10, 15, 1.5, 0xffa080);
+    c.px(6, 24, 0xff4040); c.px(10, 25, 0xff4040); c.px(14, 24, 0xff4040);
+    c.outline(OUT);
+    return c;
+}
+
+const PICKUP_ART: Record<string, () => PixelCanvas> = {
+    giant: () => icon(c => {
+        c.ellipse(8, 6, 7.5, 5, 0xe03030);
+        c.circle(4, 5, 1.6, 0xffffff); c.circle(10, 3, 1.3, 0xffffff); c.circle(12, 7, 1.2, 0xffffff);
+        c.rect(5, 10, 6, 5, 0xf4ecd8);
+        c.px(6, 12, OUT); c.px(9, 12, OUT);
+    }),
+    dice: () => icon(c => {
+        c.rect(2, 2, 12, 12, 0xf8f4ff);
+        c.rect(2, 12, 12, 2, 0xc8c0d8);
+        c.rect(12, 2, 2, 12, 0xc8c0d8);
+        for (const [x, y] of [[4, 4], [10, 4], [7, 7], [4, 10], [10, 10]]) c.rect(x, y, 2, 2, 0xd03030);
+    }),
+    decoy: () => icon(c => {
+        c.ellipse(8, 10, 6.5, 5, 0x80c8a0, 200);
+        c.circle(5, 5, 2.5, 0x80c8a0, 200); c.circle(11, 5, 2.5, 0x80c8a0, 200);
+        c.px(5, 5, OUT); c.px(11, 5, OUT);
+        c.line(5, 11, 11, 11, 0x40806a);
+        c.px(1, 2, 0xd0f0ff); c.px(14, 1, 0xd0f0ff); c.px(15, 9, 0xd0f0ff);
+    }),
+    boots: () => icon(c => {
+        c.poly([[4, 1], [9, 1], [9, 10], [14, 11], [14, 14], [3, 14]], 0x60a0e0);
+        c.rect(3, 13, 12, 2, 0x3a5a90);
+        c.poly([[0, 3], [4, 4], [4, 8], [1, 6]], 0xf4ecd8);
+        c.line(5, 4, 8, 4, 0xa0d0ff);
+        c.px(15, 12, 0xff8030); c.px(0, 12, 0xff8030);
+    }),
+    bank: () => icon(c => {
+        c.poly([[1, 7], [15, 7], [13, 15], [3, 15]], 0xc83828);
+        c.rect(1, 7, 14, 2, 0xf5c542);
+        c.circle(5, 5, 2.4, 0xf5c542); c.circle(9, 4, 2.4, 0xffe060); c.circle(12, 6, 2, 0xf5c542);
+        c.rect(6, 10, 4, 3, 0xf5c542);
+    }),
+    battery: () => icon(c => {
+        c.rect(3, 3, 10, 12, 0x30c060);
+        c.rect(6, 1, 4, 2, 0xc0c8d8);
+        c.rect(3, 3, 10, 3, 0x80f0a0);
+        c.poly([[9, 6], [5, 10], [8, 10], [7, 14], [11, 9], [8, 9]], 0xfff080);
+    }),
+};
+
+// 神兵弹道：雷锤 / 星弹 / 圣剑 / 黑洞
+function drawHammer() {
+    const c = new PixelCanvas(16, 16);
+    c.line(3, 14, 8, 8, 0x8a5a30, 255, 2);
+    c.poly([[5, 3], [12, 0], [15, 6], [8, 9]], 0xb8c4d8);
+    c.poly([[9, 1], [12, 0], [15, 6], [12, 8]], 0x8090b0);
+    c.line(10, 2, 13, 6, 0xffffff);
+    c.outline(0x3060a0);
+    return c;
+}
+
+function drawStarShot() {
+    const c = new PixelCanvas(9, 9);
+    c.poly([[4.5, 0], [5.7, 3.3], [9, 3.5], [6.4, 5.6], [7.3, 9], [4.5, 7], [1.7, 9], [2.6, 5.6], [0, 3.5], [3.3, 3.3]], 0xffe060);
+    c.circle(4.5, 4.8, 1.5, 0xffffff);
+    return c;
+}
+
+function drawHolySword() {
+    const c = new PixelCanvas(48, 12);
+    c.poly([[10, 3], [42, 4], [47, 6], [42, 8], [10, 9]], 0xe8f0ff);
+    c.rect(10, 5, 32, 2, 0xffffff);
+    c.rect(6, 0, 4, 12, 0xf5c542);
+    c.rect(0, 4, 6, 4, 0x6a4ab0);
+    c.outline(0xffd060, 160);
+    return c;
+}
+
+function drawSawBlade() {
+    const c = new PixelCanvas(20, 20);
+    c.circle(10, 10, 7.5, 0xa8b0c0);
+    for (let k = 0; k < 10; k++) {
+        const a = (k / 10) * Math.PI * 2;
+        c.poly([[10 + Math.cos(a) * 7, 10 + Math.sin(a) * 7], [10 + Math.cos(a + 0.25) * 10, 10 + Math.sin(a + 0.25) * 10], [10 + Math.cos(a + 0.5) * 7, 10 + Math.sin(a + 0.5) * 7]], 0xe0e6f0);
+    }
+    c.ring(10, 10, 5, 1, 0x7a8294);
+    c.circle(10, 10, 2.5, 0xd03030);
+    c.outline(OUT);
+    return c;
+}
+
+// 音波：向右张开的月牙形波纹
+function drawWave() {
+    const c = new PixelCanvas(24, 48);
+    for (let y = 0; y < 48; y++) for (let x = 0; x < 24; x++) {
+        const d1 = Math.hypot(x - 0, (y - 24) * 0.6), d2 = Math.hypot(x + 6, (y - 24) * 0.6);
+        if (d1 < 22 && d2 > 22) c.px(x, y, 0xc8f0ff, Math.round(120 + 120 * (x / 24)));
+        else if (d1 < 19 && d2 > 19) c.px(x, y, 0x80d0ff, 140);
+    }
+    return c;
+}
+
+function drawVortex() {
+    const c = new PixelCanvas(64, 64);
+    c.circle(32, 32, 31.5, 0x6030a0, 70);
+    for (let k = 0; k < 3; k++) {
+        for (let i = 0; i < 60; i++) {
+            const t = i / 60, a = t * Math.PI * 3 + (k / 3) * Math.PI * 2, r = 30 * (1 - t) + 4;
+            c.rect(32 + Math.cos(a) * r - 1, 32 + Math.sin(a) * r - 1, 3, 3, k === 1 ? 0xd0a0ff : 0x9a60e0, 220);
+        }
+    }
+    c.circle(32, 32, 9, 0x100018);
+    c.ring(32, 32, 10, 2, 0xe0c0ff);
+    return c;
+}
+
 // ---------------------------------------------------------------- 开屏 / 标题背景
 
 function drawMoon() {
@@ -1994,7 +2407,21 @@ export function allSprites(): Record<string, PixelCanvas> {
         s['toad_' + f] = drawToad(f);
         s['yeti_' + f] = drawYeti(f);
     }
-    for (const k of ['bone', 'blood', 'ice', 'darkorb', 'slimeball', 'scythe']) s['shot_' + k] = drawEnemyShot(k);
+    for (const k of ['bone', 'blood', 'ice', 'darkorb', 'slimeball', 'scythe', 'sand']) s['shot_' + k] = drawEnemyShot(k);
+    for (let f = 0; f < 2; f++) {
+        s['boar_' + f] = flipX(drawBoar(f));
+        s['fox_' + f] = flipX(drawFox(f));
+        s['jelly_' + f] = drawJelly(f);
+        s['worm_' + f] = drawWorm(f);
+        s['mimic_' + f] = drawMimic(f);
+        s['mimic_' + f + '_w'] = silhouette(s['mimic_' + f]);
+        s['tornado_' + f] = drawTornado(f);
+        for (const k of ['boar', 'fox', 'jelly', 'worm']) s[k + '_' + f + '_w'] = silhouette(s[k + '_' + f]);
+    }
+    s.ground_sand = drawGroundSand();
+    s.cactus = drawCactus();
+    s.sandrock = drawSandRock();
+    s.horns = drawSkullRock();
     s.warn = drawWarn();
     for (const k of ['bat', 'slime', 'zombie', 'skeleton', 'ghost', 'reaper', 'rat', 'imp', 'mummy', 'shroom', 'slimeking', 'bonelord', 'vampire', 'lich', 'eye', 'toad', 'yeti']) {
         for (let f = 0; f < 2; f++) s[k + '_' + f + '_w'] = silhouette(s[k + '_' + f]);
@@ -2055,7 +2482,9 @@ export function allSprites(): Record<string, PixelCanvas> {
     for (const k in ICONS) s[k] = ICONS[k]();
     for (const k in UI_ICONS) s[k] = UI_ICONS[k]();
     for (const w of ['whip', 'wand', 'knife', 'axe', 'bible', 'garlic', 'lightning']) s['icon_' + w + '_evo'] = evoIcon(s['icon_' + w]);
-    for (const w of ['fire', 'holy', 'cross', 'frost', 'familiar', 'chain', 'bomb', 'laser', 'spikes']) s['icon_' + w + '_evo'] = evoIcon(s['icon_' + w]);
+    for (const w of ['fire', 'holy', 'cross', 'frost', 'familiar', 'chain', 'bomb', 'laser', 'spikes', 'saw', 'sonic']) s['icon_' + w + '_evo'] = evoIcon(s['icon_' + w]);
+    s.sawblade = drawSawBlade();
+    s.wave = drawWave();
     s.fireball = drawFireball();
     s.flame_0 = drawFlame(0);
     s.flame_1 = drawFlame(1);
@@ -2088,6 +2517,15 @@ export function allSprites(): Record<string, PixelCanvas> {
     s.hills = drawHills();
     s.coin = drawCoin();
     s.coinbag = drawCoinBag();
+    for (const k in EPIC_ART) s['epic_' + k] = EPIC_ART[k]();
+    for (const k in PICKUP_ART) s[k] = PICKUP_ART[k]();
+    s.epic = s.epic_thor; // 火盆掉落的「随机神兵」在生成时就会确定具体是哪一把，这里只是兜底
+    for (let f = 0; f < 2; f++) { s['altar_' + f] = drawAltar(f); s['altar_' + f + '_w'] = silhouette(s['altar_' + f]); }
+    s.shrine = drawShrine();
+    s.hammer = drawHammer();
+    s.starshot = drawStarShot();
+    s.holysword = drawHolySword();
+    s.vortex = drawVortex();
     return s;
 }
 

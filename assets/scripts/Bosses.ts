@@ -501,6 +501,76 @@ class Yeti extends BossAI {
     }
 }
 
+// 沙漠巨蠕（流沙荒漠）：钻入沙中追踪玩家、破土而出、沙流喷吐、召唤冲锋野猪
+class Worm extends BossAI {
+    private under = 0;     // 钻地剩余时间
+    private trail = 0;
+
+    protected cooldown() { return 2.2; }
+
+    protected cast(step: number) {
+        const b = this.b, e = this.e;
+        switch (step % 4) {
+            case 0: {
+                // 钻地：潜入沙中高速追踪，最后在玩家脚下破土（红圈预警）
+                const dur = this.enraged ? 2.2 : 2.8;
+                this.under = dur;
+                this.hold(dur + 0.6);
+                b.banner('巨蠕钻入了沙中!');
+                Sound.play('slam');
+                this.after(dur - 0.8, () => {
+                    const tx = b.px, ty = b.py;
+                    b.warnCircle(tx, ty, 110, 0.8, 0xff3030, () => {
+                        e.x = tx; e.y = ty;
+                        b.explode(tx, ty, 110, 14, 0xd8b46a);
+                        this.ring('shot_sand', this.enraged ? 18 : 12, 200, 7, Math.random());
+                        if (this.enraged) this.ring('shot_sand', 12, 140, 6, Math.random());
+                        Sound.play('boom');
+                    });
+                });
+                break;
+            }
+            case 1: {
+                // 沙流喷吐：扇形连射
+                for (let k = 0; k < (this.enraged ? 4 : 3); k++) this.after(k * 0.25, () => this.fan('shot_sand', 7, 1.1, 260, 7));
+                this.hold(1);
+                Sound.play('eshot');
+                break;
+            }
+            case 2: {
+                // 甩尾冲撞：红线预警后直线冲撞，沿途留下沙弹
+                const a = this.aim();
+                b.warnLine(e.x, e.y, a, 560, 70, 0.7);
+                this.hold(1.6);
+                this.after(0.7, () => { this.dash(a, 700, 0.8); this.trail = 0.8; Sound.play('dash'); });
+                break;
+            }
+            case 3:
+                this.summonRing('boar', this.enraged ? 6 : 4, 280);
+                this.ring('shot_sand', 10, 160, 6);
+                b.banner('沙漠巨蠕召唤了野猪群!');
+                Sound.play('roar');
+                this.hold(0.6);
+                break;
+        }
+    }
+
+    protected onUpdate(dt: number) {
+        if (this.under > 0) {
+            // 地下：不可被攻击，身后留下翻起的沙尘，追踪玩家
+            this.under -= dt;
+            this.alpha = 0.15;
+            const a = this.aim();
+            this.dash(a, 260, 0.05);
+            if (Math.random() < 0.6) this.b.burst(this.e.x, this.e.y, 0xd8b46a, 2, 140);
+        } else this.alpha = 1;
+        if (this.trail > 0) {
+            this.trail -= dt;
+            if (Math.random() < 0.25) this.b.fireBullet('shot_sand', this.e.x, this.e.y, Math.random() * TAU, 90, 6, { life: 2.5 });
+        }
+    }
+}
+
 export function createBossAI(id: string, b: Battle, e: Enemy): BossAI | null {
     switch (id) {
         case 'slimeking': return new SlimeKing(b, e);
@@ -512,6 +582,7 @@ export function createBossAI(id: string, b: Battle, e: Enemy): BossAI | null {
         case 'nian': return new Nian(b, e);
         case 'toad': return new Toad(b, e);
         case 'yeti': return new Yeti(b, e);
+        case 'worm': return new Worm(b, e);
     }
     return null;
 }
