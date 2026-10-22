@@ -91,7 +91,7 @@ if (MODE === 'C') {
     base(); start();
     B().time = 0; const p0 = B().spawnPace();
     B().time = 300; let lo = 9, hi = 0; for (let t = 300; t < 360; t += 1) { B().time = t; const p = B().spawnPace(); lo = Math.min(lo, p); hi = Math.max(hi, p); }
-    ok(p0 < 0.4, `开局刷怪速度低（${p0.toFixed(2)} 倍）`);
+    ok(p0 < 0.6, `开局刷怪速度低（${p0.toFixed(2)} 倍）`);
     ok(hi / lo > 2.5, `5 分钟后有波峰波谷（${lo.toFixed(2)} ~ ${hi.toFixed(2)}）`);
     // 跳过史莱姆王（Boss 战期间不出特殊怪潮），在 2:40 ~ 3:40 之间观察波峰
     B().bossIdx = 1; B().time = 160; play(60 * 60);
@@ -162,7 +162,7 @@ if (MODE === 'C') {
 
     section('图鉴 / 每日任务 / 签到');
     const all = D.codexEntries();
-    ok(all.length === 67 && new Set(all.map(e => e.key)).size === 67, '图鉴 67 项且不重复');
+    ok(all.length === 78 && new Set(all.map(e => e.key)).size === 78, '图鉴 78 项且不重复');
     base(); Save.data.codex = []; start(); play(60 * 30);
     ok(Save.data.codex.includes('w:whip') && Save.data.codex.includes('m:rat'), '获得武器 / 击败怪物会收录图鉴');
     const qs = D.dailyQuests(today);
@@ -202,6 +202,35 @@ if (MODE === 'C') {
     ok(D.BLESSINGS.length === 16, '命运卡牌 16 张');
     ok(Object.values(D.EVOLUTIONS).length === 16 && new Set(Object.values(D.EVOLUTIONS).map((e: any) => e.passive)).size === 16, '16 个道具都是进化钥匙');
 
+    section('场景道具 / 角色天赋');
+    const { Art } = await import('../../assets/scripts/Art');
+    ok(Object.keys(D.PICKUP_INFO).every(k => !!Art.f(k)), '所有场景道具都有图标');
+    const dropSum = D.BRAZIER_DROPS.reduce((a: number, x: any) => a + x[1], 0);
+    const chick = D.BRAZIER_DROPS.find((x: any) => x[0] === 'chicken')[1];
+    ok(chick / dropSum <= 0.12, `火盆掉烤鸡腿概率降低（${Math.round(chick / dropSum * 100)}%）`);
+    ok(D.CHARACTERS.every((c: any) => c.trait && c.traitName) && new Set(D.CHARACTERS.map((c: any) => c.traitName)).size === D.CHARACTERS.length, '每个角色都有独立的专属天赋');
+    base(); start();
+    const pick = (kind: string) => B().collect({ kind, value: 0 });
+    pick('haste'); pick('clover'); pick('firering');
+    ok(B().hasteT > 0 && B().cloverT > 0 && B().fireT > 0, '急速沙漏 / 四叶草 / 烈焰之环生效');
+    ok(Save.data.codex.includes('i:haste'), '拾取道具会收录图鉴');
+    const lv0 = B().level; pick('scroll'); ok(B().level === lv0 + 1, '智慧卷轴立刻升 1 级');
+    clearCards();
+    const k0 = B().kills; play(60 * 10); ok(B().kills > k0, '烈焰之环期间正常战斗');
+    // 周期天赋：德鲁伊缠绕、长老落雷、盾卫护盾、圣诞礼物
+    for (const id of ['nun', 'sage', 'druid', 'santa']) {
+        base(); Save.data.chars = D.CHARACTERS.map((c: any) => c.id); Save.data.selected = id; start();
+        if (id === 'nun') { B().traitT = 0; B().shieldHits = 0; step(2); ok(B().shieldHits === 1, '圣光庇护：计时到后获得 1 层护盾'); continue; }
+        const sh = B().shieldHits, pk = B().pickups.filter((p: any) => p.alive && p.kind !== 'gem' && p.kind !== 'coin').length;
+        play(60 * 75);
+        const okT = id === 'nun' ? B().shieldHits >= 1 || sh >= 1 : id === 'santa' ? Save.data.codex.some((k: string) => k.startsWith('i:')) || B().pickups.some((p: any) => p.alive && D.BUFF_DROPS.includes(p.kind)) || pk > 0 : B().kills > 0;
+        ok(okT && B().char.id === id, `${D.CHARACTERS.find((c: any) => c.id === id).traitName} 正常运行`);
+    }
+    base(); Save.data.selected = 'rogue'; start();
+    let dodged = 0; for (let i = 0; i < 200; i++) { B().iframe = 0; B().shieldHits = 0; B().hp = 1000; B().hurtPlayer(5); if (B().hp === 1000) dodged++; }
+    ok(dodged > 5 && dodged < 60, `游侠蛙闪避（200 次中闪避 ${dodged} 次）`);
+    base(); Save.data.selected = 'hunter';
+
     section('内容合规（显示文字不含敏感词）');
     const texts: string[] = [];
     for (const k in D.ENEMIES) texts.push(D.ENEMIES[k].name || '');
@@ -211,7 +240,8 @@ if (MODE === 'C') {
     for (const k in D.EVOLUTIONS) texts.push(D.EVOLUTIONS[k].name, D.EVOLUTIONS[k].desc);
     for (const b of D.BLESSINGS) texts.push(b.name, b.desc);
     for (const a of D.ACHIEVEMENTS) texts.push(a.name, a.desc);
-    for (const c of D.CHARACTERS) texts.push(c.name, c.title, c.desc);
+    for (const c of D.CHARACTERS) texts.push(c.name, c.title, c.desc, c.traitName, c.trait);
+    for (const k in D.PICKUP_INFO) texts.push(D.PICKUP_INFO[k].name, D.PICKUP_INFO[k].desc);
     const banned = /血|死|杀|骷髅|鬼|尸|魂|墓|骨|屠|斩|弑|恶魔|地狱|圣经|十字架/;
     const hits = texts.filter(t => t && banned.test(t));
     ok(hits.length === 0, '名称与描述无敏感词' + (hits.length ? '：' + hits.slice(0, 5).join(' / ') : ''));

@@ -1825,6 +1825,48 @@ function drawShieldPickup() {
     return c;
 }
 
+function drawHaste() {
+    // 急速沙漏
+    const c = new PixelCanvas(12, 16);
+    c.rect(0, 0, 12, 2, 0x8a5a30);
+    c.rect(0, 14, 12, 2, 0x8a5a30);
+    c.poly([[1, 2], [11, 2], [7, 8], [11, 14], [1, 14], [5, 8]], 0xd8f4ff);
+    c.poly([[3, 3], [9, 3], [6, 7]], 0x60d0ff);
+    c.poly([[6, 9], [9, 13], [3, 13]], 0x60d0ff);
+    c.outline(OUT);
+    return c;
+}
+
+function drawClover() {
+    const c = new PixelCanvas(16, 16);
+    for (const [x, y] of [[5, 5], [11, 5], [5, 10], [11, 10]]) c.circle(x, y, 3.6, 0x4cc04c);
+    c.circle(8, 7.5, 2.2, 0x6ad86a);
+    c.circle(4, 4, 1.2, 0xa0f0a0);
+    c.line(8, 9, 10, 15, 0x2e8a2e, 255, 2);
+    c.outline(OUT);
+    return c;
+}
+
+function drawFireRing() {
+    const c = new PixelCanvas(16, 16);
+    c.ring(8, 8, 7, 3, 0xff6020);
+    c.ring(8, 8, 6, 1.5, 0xffc040);
+    for (const [x, y] of [[8, 1], [15, 8], [8, 15], [1, 8]]) c.circle(x, y, 1.5, 0xfff080);
+    c.outline(OUT);
+    return c;
+}
+
+function drawScroll() {
+    const c = new PixelCanvas(16, 14);
+    c.rect(2, 2, 12, 10, 0xf4e4b8);
+    c.rect(0, 1, 3, 12, 0xc89858);
+    c.rect(13, 1, 3, 12, 0xc89858);
+    for (const y of [4, 7, 10]) c.line(5, y, 11, y, 0x8a6a40);
+    c.circle(10, 9, 1.6, 0xe03030);
+    c.outline(OUT);
+    return c;
+}
+
 // ---------------------------------------------------------------- 开屏 / 标题背景
 
 function drawMoon() {
@@ -2035,6 +2077,10 @@ export function allSprites(): Record<string, PixelCanvas> {
     s.nuke = drawNuke();
     s.potion = drawPotion();
     s.shield = drawShieldPickup();
+    s.haste = drawHaste();
+    s.clover = drawClover();
+    s.firering = drawFireRing();
+    s.scroll = drawScroll();
     s.moon = drawMoon();
     s.star = drawStar();
     s.ember = drawEmber();

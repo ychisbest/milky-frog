@@ -2,7 +2,7 @@ import { Color, Label, Node, Sprite, UITransform } from 'cc';
 import { Art } from './Art';
 import {
     BASE_STATS, HERO_SCALE, STAGES, StageDef, DAILY_GOAL, DailyMod, BLESSINGS, BlessingDef, BLOOD_MOON, BOSS_SCHEDULE, CharDef, ENDLESS_BOSS_INTERVAL, ENEMIES, ENEMY_IDS, EnemyDef, EVOLUTIONS, EvoDef, MAX_ENEMIES, MAX_PASSIVES, MAX_WEAPONS,
-    PASSIVES, PassiveDef, PlayerStats, POWERUPS, PX, SWARM_TIMES, WAVES, WEAPON_MAX_LEVEL, WEAPONS, WeaponDef,
+    BRAZIER_DROPS, BUFF_DROPS, PASSIVES, PassiveDef, PlayerStats, POWERUPS, PX, SWARM_TIMES, WAVES, WEAPON_MAX_LEVEL, WEAPONS, WeaponDef,
     WeaponStats, WIN_TIME, xpForLevel,
 } from './Defs';
 import { BossAI, createBossAI } from './Bosses';
@@ -269,6 +269,7 @@ const C_BLOODMOON = new Color(255, 150, 150, 255);
 const C_FROZEN = new Color(140, 210, 255, 255);
 const C_POTION = new Color(255, 150, 160, 255);
 const C_SHIELD = new Color(120, 180, 255, 140);
+const C_FIRERING = new Color(255, 120, 50, 150);
 const colorCache = new Map<number, Color>();
 function colorOf(c: number) {
     let v = colorCache.get(c);
@@ -384,6 +385,14 @@ export class Battle {
     nightmare = false;   // 噩梦难度：怪物血量 ×1.6（Boss ×1.5）、伤害 ×1.3、金币 ×1.6
     potionT = 0;
     shieldHits = 0;
+    hasteT = 0;      // 急速沙漏：冷却 -40%
+    cloverT = 0;     // 四叶草：暴击率 +30%、金币掉率提高
+    fireT = 0;       // 烈焰之环：身边持续灼烧
+    arcaneT = 0;     // 法师天赋：升级后冷却 -30%
+    private fireTick = 0;
+    private fireFx: Sprite | null = null;
+    private traitT = 0; // 角色天赋的周期计时
+    private refractBuf: Enemy[] = []; // 折射在 hurtEnemy 内调用，不能复用 qbuf
     private ghostT = 0;
     private riftT = 0;
     private overloadT = 0;  // 超载：倒计时 / 剩余时间
@@ -504,6 +513,8 @@ export class Battle {
         this.blessings = [];
         this.pendingBlessings = 1; // 开局选择一张命运卡牌
         this.potionT = this.shieldHits = this.ghostT = 0;
+        this.hasteT = this.cloverT = this.fireT = this.arcaneT = this.fireTick = 0;
+        if (this.fireFx) { this.fireFx.node.destroy(); this.fireFx = null; }
         this.riftT = 25;
         this.overloadT = 30;
         this.overloadOn = 0;
@@ -540,6 +551,7 @@ export class Battle {
         if (this.garlicAura) { this.garlicAura.node.destroy(); this.garlicAura = null; }
 
         this.char = char;
+        this.traitT = char.id === 'nun' ? 10 : char.id === 'santa' ? 40 : 4;
         this.px = this.py = 0;
         this.time = 0;
         this.kills = 0;
@@ -779,6 +791,12 @@ export class Battle {
 
     hurtPlayer(dmg: number) {
         if (this.iframe > 0) return;
+        // 游侠蛙：灵巧闪避
+        if (this.isChar('rogue') && Math.random() < 0.12) {
+            this.iframe = 0.4;
+            this.burst(this.px, this.py, 0xc0ffc0, 8, 220);
+            return;
+        }
         // 圣盾：抵挡一次伤害
         if (this.shieldHits > 0) {
             this.shieldHits--;
@@ -796,7 +814,10 @@ export class Battle {
         if (this.hasB('ghost')) { this.ghostT = 1.5; this.iframe = Math.max(this.iframe, 1.5); }
         // 荆棘光环：受伤时对周围敌人造成大量伤害
         if (this.hasB('thornaura')) this.explodeFriendly(this.px, this.py, 130, 40 + this.level * 3, null, 260, 0xa0d060);
-        const d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) - this.stats.armor);
+        // 爆破蛙：受伤时引爆周围
+        if (this.isChar('bomber') && Math.random() < 0.35) this.explodeFriendly(this.px, this.py, 110, 20 + this.level * 2, null, 260, 0xff8030);
+        const armor = this.stats.armor + (this.isChar('knight') && this.hp < this.stats.maxHp * 0.5 ? 2 : 0);
+        const d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) - armor);
         this.hp -= d;
         this.iframe = Math.max(this.iframe, 0.6);
         this.sinceHurt = 0;
@@ -1006,7 +1027,7 @@ export class Battle {
     spawnPace() {
         const t = this.time;
         if (this.daily && this.mod('horde')) return 1.2;
-        const early = Math.min(1, 0.3 + t / 220); // 0:00 约 0.3 倍，约 2.5 分钟到 1 倍
+        const early = Math.min(1, 0.5 + t / 240); // 0:00 约 0.5 倍，2 分钟到 1 倍
         if (t < 45 || this.boss || this.bloodMoon || this.endless) return early;
         const ph = ((t - 45) % 60) / 60;               // 0 ~ 1
         const s = Math.sin(ph * Math.PI * 2 - Math.PI / 2); // -1 波谷 … 1 波峰
@@ -1290,9 +1311,9 @@ export class Battle {
     private updateFlow(dt: number) {
         this.sinceHurt += dt;
         const hpR = this.hp / this.stats.maxHp;
-        if (this.time < 60) return;
+        if (this.time < 30) return;
         if (hpR < 0.35) this.flow -= 0.03 * dt;
-        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.012 * dt;
+        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.018 * dt;
         else if (hpR > 0.5) this.flow += 0.003 * dt;
         this.flow = Math.max(0.8, Math.min(1.7, this.flow));
     }
@@ -1318,11 +1339,61 @@ export class Battle {
         return false;
     }
 
+    // 角色专属天赋中按周期触发的部分
+    private updateTrait(dt: number) {
+        const id = this.char.id;
+        if (id !== 'nun' && id !== 'sage' && id !== 'druid' && id !== 'santa') return;
+        this.traitT -= dt;
+        if (this.traitT > 0) return;
+        if (id === 'nun') {
+            // 圣光庇护：每 40 秒 1 层护盾（不叠加）
+            this.traitT = 40;
+            if (this.shieldHits < 1) {
+                this.shieldHits = 1;
+                this.burst(this.px, this.py, 0x80c0ff, 14, 200);
+                Sound.play('power');
+            }
+        } else if (id === 'sage') {
+            // 天雷：3 道落雷
+            this.traitT = 7;
+            let hit = false;
+            for (let i = 0; i < 3; i++) {
+                const t = this.randomOnScreen();
+                if (!t) break;
+                hit = true;
+                const f = this.spawnFx('lightning', t.x, t.y, 0.25, PX, 0);
+                f.node.getComponent(UITransform)!.setAnchorPoint(0.5, 0);
+                f.sp.color = colorOf(0xd0b0ff);
+                const x = t.x, y = t.y;
+                this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 40, 12 + this.level * 2, null, 60, 0xc0a0ff, false));
+            }
+            if (hit) Sound.play('lightning');
+        } else if (id === 'druid') {
+            // 藤蔓缠绕：定住半径 130 内的敌人
+            this.traitT = 9;
+            for (const e of this.grid.query(this.px, this.py, 160, this.qbuf).slice()) {
+                if (Math.hypot(e.x - this.px, e.y - this.py) < 130 + e.def.radius) this.freezeEnemy(e, 1.5);
+            }
+            const f = this.spawnFx('aura', this.px, this.py, 0.45, 260 / 64 * 0.5, 1.3);
+            f.sp.color = colorOf(0x60c050);
+            this.burst(this.px, this.py, 0x60c050, 16, 300);
+        } else if (id === 'santa') {
+            // 圣诞礼物：身边掉落随机增益道具
+            this.traitT = 70;
+            const a = Math.random() * Math.PI * 2;
+            const kind = Math.random() < 0.2 ? 'magnet' : BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)];
+            this.spawnPickup(kind, this.px + Math.cos(a) * 70, this.py + Math.sin(a) * 70, 0, true);
+            this.onBanner('圣诞礼物!', new Color(255, 120, 120, 255));
+            Sound.play('chest');
+        }
+    }
+
     // 全局伤害倍率：狂战士、狂暴药水
     private dmgMul() {
         let m = 1;
         if (this.hasB('berserk')) m *= 1 + 0.8 * (1 - Math.max(0, this.hp) / this.stats.maxHp);
         if (this.potionT > 0) m *= 1.5;
+        if (this.isChar('hunter')) m *= 1 + Math.min(0.25, Math.floor(this.kills / 100) * 0.01);
         return m;
     }
 
@@ -1338,10 +1409,11 @@ export class Battle {
     private hurtEnemy(e: Enemy, dmg: number, knock: number, fromX: number, fromY: number, w: WeaponInst | null) {
         if (!e.alive) return;
         // 暴击
-        const crit = !!w && (Math.random() < this.stats.crit || (w.evolved && w.def.id === 'cross'));
+        const crit = !!w && (Math.random() < this.stats.crit + (this.cloverT > 0 ? 0.3 : 0) || (w.evolved && w.def.id === 'cross'));
         if (crit) {
             dmg = Math.round(dmg * this.stats.critDmg);
             if (this.hasB('vampkiss')) this.heal(1);
+            if (this.isChar('prism') && Math.random() < 0.35) this.refract(e, dmg);
         }
         // 永冻领域：被冻结的敌人受到额外伤害
         if (e.frozen > 0 && this.weapons.some(x => x.evolved && x.def.id === 'frost')) dmg = Math.round(dmg * 1.5);
@@ -1374,8 +1446,8 @@ export class Battle {
             // 火盆被打破：掉落随机道具
             this.burst(e.x, e.y, 0xf0a030, 14, 220);
             Sound.play('kill');
-            const r = Math.random();
-            const kind = r < 0.3 ? (this.mod('gold3') ? 'coinbag' : 'chicken') : r < 0.48 ? 'coinbag' : r < 0.58 ? 'magnet' : r < 0.69 ? 'watch' : r < 0.79 ? 'nuke' : r < 0.9 ? 'potion' : 'shield';
+            let kind = pickWeighted(BRAZIER_DROPS);
+            if (kind === 'chicken' && this.mod('gold3')) kind = 'coinbag';
             this.spawnPickup(kind, e.x, e.y, kind === 'coinbag' ? 15 : 0, true);
             return;
         }
@@ -1390,7 +1462,7 @@ export class Battle {
         }
         if (e.elite) {
             this.spawnPickup('coinbag', e.x, e.y, 10, true);
-            if (Math.random() < 0.25) this.spawnPickup(Math.random() < 0.5 ? 'potion' : 'shield', e.x, e.y, 0, true);
+            if (Math.random() < 0.3) this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], e.x, e.y, 0, true);
             for (let i = 0; i < 4; i++) this.spawnPickup('gem', e.x, e.y, e.def.xp * 3, true);
             this.burst(e.x, e.y, 0xf5c542, 24, 300);
             this.addShake(0.15, 5);
@@ -1399,6 +1471,10 @@ export class Battle {
         if (this.hasB('chainboom') && !e.def.boss && Math.random() < 0.15) {
             const x = e.x, y = e.y;
             this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 55, 10 + this.level, null, 120, 0xff8030));
+        }
+        if (this.isChar('pyro') && !e.def.boss && Math.random() < 0.12) {
+            const x = e.x, y = e.y;
+            this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 50, 8 + this.level, null, 100, 0xff6020, false));
         }
         this.kills++;
         this.attackKills++;
@@ -1423,7 +1499,8 @@ export class Battle {
         if (e.def.boss) {
             this.spawnPickup('chest', e.x, e.y, 0);
             this.spawnPickup('coinbag', e.x + 30, e.y, 30, true);
-            this.spawnPickup('chicken', e.x - 30, e.y, 0, true);
+            if (Math.random() < 0.4) this.spawnPickup('chicken', e.x - 30, e.y, 0, true);
+            else this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], e.x - 30, e.y, 0, true);
             e.ai = null;
             const bid = Object.keys(ENEMIES).find(k => ENEMIES[k] === e.def) || '';
             if (!this.bossKills.includes(bid)) this.bossKills.push(bid);
@@ -1441,13 +1518,13 @@ export class Battle {
         // 开局 3 分钟怪物较少，经验加成 50% 弥补，保证前期升级节奏
         this.spawnPickup('gem', e.x, e.y, e.def.xp * (this.time < 180 ? 1.5 : 1), true);
         const r = Math.random();
-        if (r < 0.006) { if (!this.mod('gold3')) this.spawnPickup('chicken', e.x + 10, e.y, 0); }
-        else if (r < 0.009) this.spawnPickup('magnet', e.x + 10, e.y, 0);
+        if (r < 0.0025) { if (!this.mod('gold3')) this.spawnPickup('chicken', e.x + 10, e.y, 0); }
+        else if (r < 0.0055) this.spawnPickup('magnet', e.x + 10, e.y, 0);
         else {
-            // 金币掉率随本局击杀数递减，防止后期金币爆炸
-            const k = 1 / (1 + this.kills / 1500);
-            if (r < 0.009 + 0.002 * k) this.spawnPickup('coinbag', e.x + 10, e.y, 20);
-            else if (r < 0.009 + 0.02 * k) this.spawnPickup('coin', e.x + 10, e.y, 1 + Math.floor(Math.random() * 2));
+            // 金币掉率随本局击杀数递减，防止后期金币爆炸；四叶草期间 ×3
+            const k = 1 / (1 + this.kills / 1500) * (this.cloverT > 0 ? 3 : 1);
+            if (r < 0.0055 + 0.002 * k) this.spawnPickup('coinbag', e.x + 10, e.y, 20);
+            else if (r < 0.0055 + 0.02 * k) this.spawnPickup('coin', e.x + 10, e.y, 1 + Math.floor(Math.random() * 2));
         }
     }
 
@@ -1514,7 +1591,25 @@ export class Battle {
         if (this.hasB('twin')) m *= 1.15;
         if (this.hasB('frenzy') && this.combo >= 50) m *= 0.7;
         if (this.overloadOn > 0) m *= 0.5;
+        if (this.hasteT > 0) m *= 0.6;
+        if (this.arcaneT > 0) m *= 0.7;
         return m;
+    }
+
+    isChar(id: string) { return this.char.id === id; }
+
+    // 折射（棱镜蛙）：暴击分出一道光打向附近另一个敌人
+    private refract(from: Enemy, dmg: number) {
+        let best: Enemy | null = null, bd = 160 * 160;
+        for (const e of this.grid.query(from.x, from.y, 160, this.refractBuf)) {
+            if (e === from || !e.alive || e.def.prop) continue;
+            const d = (e.x - from.x) ** 2 + (e.y - from.y) ** 2;
+            if (d < bd) { bd = d; best = e; }
+        }
+        if (!best) return;
+        const t = best;
+        this.spawnFx('spark', t.x, t.y, 0.2, PX, 1.5).sp.color = colorOf(0xc0f0ff);
+        this.chainBoomQueue.push(() => this.hurtEnemy(t, Math.max(1, Math.round(dmg * 0.5)), 0, from.x, from.y, null));
     }
 
     private dmgOf(w: WeaponInst) {
@@ -2196,6 +2291,39 @@ export class Battle {
                 for (const g of this.pickups) if (g.alive && (g.kind === 'gem' || g.kind === 'coin')) g.pulled = true;
             }
         }
+        if (this.hasteT > 0) {
+            this.hasteT -= dt;
+            if (Math.random() < 0.25) this.burst(this.px, this.py - 10, 0x80e0ff, 1, 100);
+        }
+        if (this.cloverT > 0) {
+            this.cloverT -= dt;
+            if (Math.random() < 0.2) this.burst(this.px, this.py + 10, 0x70e070, 1, 80);
+        }
+        if (this.arcaneT > 0) {
+            this.arcaneT -= dt;
+            if (Math.random() < 0.3) this.burst(this.px, this.py, 0xb080ff, 1, 90);
+        }
+        // 烈焰之环：每 0.3 秒灼烧半径 100 内的敌人
+        if (this.fireT > 0) {
+            this.fireT -= dt;
+            if (!this.fireFx) this.fireFx = mkSprite(this.auraLayer, 'aura', 1.6);
+            this.fireFx.node.active = true;
+            this.fireFx.node.setPosition(this.px, this.py);
+            this.fireFx.color = C_FIRERING;
+            const sc = 3.1 + Math.sin(this.time * 9) * 0.12;
+            this.fireFx.node.setScale(sc, sc, 1);
+            this.fireTick -= dt;
+            if (this.fireTick <= 0) {
+                this.fireTick = 0.3;
+                const R = 100;
+                for (const e of this.grid.query(this.px, this.py, R + 30, this.qbuf).slice()) {
+                    if (e.alive && !e.def.prop && Math.hypot(e.x - this.px, e.y - this.py) < R + e.def.radius) this.hurtEnemy(e, 6 + Math.round(this.level * 0.8), 40, this.px, this.py, null);
+                }
+                const a = Math.random() * Math.PI * 2;
+                this.burst(this.px + Math.cos(a) * R * 0.8, this.py + Math.sin(a) * R * 0.8, 0xff8030, 3, 120);
+            }
+        } else if (this.fireFx) this.fireFx.node.active = false;
+        this.updateTrait(dt);
     }
 
     private freezeAll(t: number) {
@@ -2305,7 +2433,27 @@ export class Battle {
     }
 
     private collect(p: Pickup) {
+        if (p.kind !== 'gem' && p.kind !== 'coin') this.discover('i:' + p.kind);
         switch (p.kind) {
+            case 'haste':
+                this.hasteT = 12;
+                this.onBanner('急速! 冷却 -40%', new Color(140, 230, 255, 255));
+                Sound.play('power');
+                break;
+            case 'clover':
+                this.cloverT = 15;
+                this.onBanner('幸运! 暴击率 +30%', new Color(120, 230, 120, 255));
+                Sound.play('power');
+                break;
+            case 'firering':
+                this.fireT = 10;
+                this.onBanner('烈焰之环!', new Color(255, 140, 60, 255));
+                Sound.play('fire');
+                break;
+            case 'scroll':
+                this.gainXp(Math.max(0, this.xpNext - this.xp));
+                this.onBanner('智慧卷轴! 等级 +1', new Color(255, 230, 140, 255));
+                break;
             case 'gem':
                 this.gainXp(p.value * this.stats.growth * (this.mod('xp2') ? 2 : 1));
                 Sound.play('gem');
@@ -2339,7 +2487,8 @@ export class Battle {
                 break;
             case 'coin':
             case 'coinbag': {
-                const g = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB('greedpact') ? 2 : 1) * (this.mod('gold3') ? 3 : 1) * (this.nightmare ? 1.6 : 1)));
+                const lucky = this.isChar('fu') && Math.random() < 0.2;
+                const g = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB('greedpact') ? 2 : 1) * (this.mod('gold3') ? 3 : 1) * (this.nightmare ? 1.6 : 1) * (lucky ? 2 : 1)));
                 this.gold += g;
                 this.dmgText(this.px, this.py + 40, g, C_GOLD, '+');
                 Sound.play('coin');
@@ -2367,6 +2516,7 @@ export class Battle {
             this.level++;
             this.xpNext = xpForLevel(this.level);
             this.pendingLevels++;
+            if (this.isChar('mage')) this.arcaneT = 4;
         }
     }
 
@@ -2737,7 +2887,7 @@ export class Battle {
 
     // 范围爆炸：伤害玩家 + 特效
     explode(x: number, y: number, r: number, dmg: number, color: number) {
-        if (Math.hypot(this.px - x, this.py - y) < r + 10) this.hurtPlayer(dmg);
+        if (Math.hypot(this.px - x, this.py - y) < r + 10) this.hurtPlayer(this.isChar('bomber') ? dmg * 0.5 : dmg);
         const f = this.spawnFx('aura', x, y, 0.35, (r * 2) / 64, 0.6);
         f.sp.color = colorOf(color);
         this.burst(x, y, color, 16, 320);
@@ -2937,4 +3087,12 @@ export function describe(o: Option): { icon: string; name: string; tag: string; 
     }
     if (o.kind === 'heal') return { icon: 'icon_heal', name: '烤鸡', tag: '', desc: '恢复 30 点生命' };
     return { icon: 'coinbag', name: '金币袋', tag: '', desc: '获得 25 金币' };
+}
+
+function pickWeighted(table: [string, number][]): string {
+    let sum = 0;
+    for (const [, w] of table) sum += w;
+    let r = Math.random() * sum;
+    for (const [k, w] of table) { r -= w; if (r <= 0) return k; }
+    return table[0][0];
 }

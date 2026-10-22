@@ -745,7 +745,7 @@ export class GameRoot extends Component {
         const y0 = this.top - 170;
         const cols = 3;
         const rowsN = Math.ceil(CHARACTERS.length / cols);
-        const avail = y0 - (this.bottom + 310);
+        const avail = y0 - (this.bottom + 370);
         const ch = Math.min(250, avail / rowsN - 10);
         const cw = 226;
         CHARACTERS.forEach((c, i) => {
@@ -798,6 +798,13 @@ export class GameRoot extends Component {
             this.refreshAll();
         }, C_BTN_GREY, 26);
         mode.node.setPosition(0, by + 92);
+        // 选中角色的专属天赋
+        const traitLbl = mkLabel(s, '', 22, C_GOLD, 'center', 2);
+        traitLbl.node.setPosition(0, by + 240);
+        this.refreshers.push(() => {
+            const c = this.selectedChar();
+            traitLbl.string = `★ 专属天赋「${c.traitName}」\n${c.trait}`;
+        });
         // 地图选择：点击切换到下一张已解锁的地图
         const stageBtn = mkButton(s, '', 560, 64, () => {
             const d = Save.data;
@@ -1974,6 +1981,10 @@ export class GameRoot extends Component {
         const buffs: string[] = [];
         if (b.potionT > 0) buffs.push(`狂暴 ${Math.ceil(b.potionT)}s`);
         if (b.shieldHits > 0) buffs.push(`护盾 ×${b.shieldHits}`);
+        if (b.hasteT > 0) buffs.push(`急速 ${Math.ceil(b.hasteT)}s`);
+        if (b.cloverT > 0) buffs.push(`幸运 ${Math.ceil(b.cloverT)}s`);
+        if (b.fireT > 0) buffs.push(`烈焰 ${Math.ceil(b.fireT)}s`);
+        if (b.arcaneT > 0) buffs.push('奥术涌流');
         if (b.endless) buffs.push('无尽');
         const bs = buffs.join('  ');
         if (this.buffLabel.string !== bs) this.buffLabel.string = bs;

@@ -546,6 +546,8 @@ __export(Defs_exports, {
   BLESSINGS: () => BLESSINGS,
   BLOOD_MOON: () => BLOOD_MOON,
   BOSS_SCHEDULE: () => BOSS_SCHEDULE,
+  BRAZIER_DROPS: () => BRAZIER_DROPS,
+  BUFF_DROPS: () => BUFF_DROPS,
   CHARACTERS: () => CHARACTERS,
   DAILY_GOAL: () => DAILY_GOAL,
   DAILY_MODS: () => DAILY_MODS,
@@ -562,6 +564,7 @@ __export(Defs_exports, {
   MAX_WEAPONS: () => MAX_WEAPONS,
   MONSTER_INFO: () => MONSTER_INFO,
   PASSIVES: () => PASSIVES,
+  PICKUP_INFO: () => PICKUP_INFO,
   POWERUPS: () => POWERUPS,
   PX: () => PX,
   QUEST_BONUS: () => QUEST_BONUS,
@@ -631,6 +634,7 @@ ${e.desc}`, hint: `${w.name}\u6EE1\u7EA7 + \u6301\u6709${p ? p.name : ""}\uFF0C\
     }
   }
   for (const p of PASSIVES) list.push({ key: "p:" + p.id, tab: "passive", icon: p.icon, name: p.name, desc: p.desc, hint: "\u5728\u5347\u7EA7\u65F6\u83B7\u5F97\u8FD9\u4EF6\u9053\u5177" });
+  for (const id in PICKUP_INFO) list.push({ key: "i:" + id, tab: "passive", icon: id, name: PICKUP_INFO[id].name, desc: PICKUP_INFO[id].desc, hint: "\u5728\u6218\u6597\u4E2D\u62FE\u53D6\u4E00\u6B21\u5373\u53EF\u6536\u5F55" });
   for (const id in MONSTER_INFO) {
     const m = MONSTER_INFO[id];
     const def = ENEMIES[id];
@@ -648,7 +652,7 @@ function dailyQuests(date) {
   }
   return out;
 }
-var PX, HERO_SCALE, ENEMIES, WAVES, MONSTER_INFO, BOSS_SCHEDULE, SWARM_TIMES, WIN_TIME, STAGES, EVENTS, EVENT, BLOOD_MOON, MAX_ENEMIES, WEAPONS, BASE_STATS, PASSIVES, MAX_WEAPONS, MAX_PASSIVES, WEAPON_MAX_LEVEL, EVOLUTIONS, CHARACTERS, POWERUPS, BLESSINGS, ACHIEVEMENTS, ENDLESS_BOSS_INTERVAL, DAILY_MODS, DAILY_GOAL, DAILY_REWARD, ENEMY_IDS, QUEST_POOL, QUEST_BONUS, SIGNIN_REWARDS;
+var PX, HERO_SCALE, ENEMIES, WAVES, MONSTER_INFO, BOSS_SCHEDULE, SWARM_TIMES, WIN_TIME, STAGES, EVENTS, EVENT, BLOOD_MOON, MAX_ENEMIES, WEAPONS, BASE_STATS, PASSIVES, MAX_WEAPONS, MAX_PASSIVES, WEAPON_MAX_LEVEL, EVOLUTIONS, CHARACTERS, POWERUPS, BLESSINGS, ACHIEVEMENTS, ENDLESS_BOSS_INTERVAL, DAILY_MODS, DAILY_GOAL, DAILY_REWARD, PICKUP_INFO, BRAZIER_DROPS, BUFF_DROPS, ENEMY_IDS, QUEST_POOL, QUEST_BONUS, SIGNIN_REWARDS;
 var init_Defs = __esm({
   "../../assets/scripts/Defs.ts"() {
     PX = 2;
@@ -666,15 +670,15 @@ var init_Defs = __esm({
       skeleton: { frames: ["skeleton_0", "skeleton_1"], hp: 30, speed: 60, dmg: 6, xp: 3, radius: 13, anim: 0.25, color: 15657172 },
       ghost: { frames: ["ghost_0", "ghost_1"], hp: 26, speed: 92, dmg: 6, xp: 4, radius: 13, anim: 0.25, knockRes: 0.5, color: 14674175 },
       // ---- Boss
-      slimeking: { frames: ["slimeking_0", "slimeking_1"], hp: 180, speed: 46, dmg: 5, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 5227087, name: "\u53F2\u83B1\u59C6\u738B" },
-      bonelord: { frames: ["bonelord_0", "bonelord_1"], hp: 360, speed: 58, dmg: 8, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 15657172, name: "\u94C1\u7532\u5C06\u519B" },
-      vampire: { frames: ["vampire_0", "vampire_1"], hp: 650, speed: 70, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 10491944, name: "\u8759\u8760\u4F2F\u7235" },
-      lich: { frames: ["lich_0", "lich_1"], hp: 850, speed: 48, dmg: 14, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 8446207, name: "\u51B0\u971C\u5DEB\u5E08" },
-      eye: { frames: ["eye_0", "eye_1"], hp: 1e3, speed: 55, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 9058938, name: "\u6C34\u6676\u9B54\u773C" },
-      toad: { frames: ["toad_0", "toad_1"], hp: 760, speed: 52, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 5929530, name: "\u6BD2\u6CBC\u5DE8\u87FE" },
-      yeti: { frames: ["yeti_0", "yeti_1"], hp: 540, speed: 70, dmg: 9, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 15266047, name: "\u96EA\u602A\u738B" },
-      nian: { frames: ["nian_0", "nian_1"], hp: 520, speed: 76, dmg: 9, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 14172202, name: "\u5E74\u517D" },
-      reaper: { frames: ["reaper_0", "reaper_1"], hp: 1600, speed: 82, dmg: 17, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 9068736, name: "\u6697\u591C\u9B54\u672F\u5E08", final: true }
+      slimeking: { frames: ["slimeking_0", "slimeking_1"], hp: 340, speed: 46, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 5227087, name: "\u53F2\u83B1\u59C6\u738B" },
+      bonelord: { frames: ["bonelord_0", "bonelord_1"], hp: 650, speed: 58, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 15657172, name: "\u94C1\u7532\u5C06\u519B" },
+      vampire: { frames: ["vampire_0", "vampire_1"], hp: 1100, speed: 70, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 10491944, name: "\u8759\u8760\u4F2F\u7235" },
+      lich: { frames: ["lich_0", "lich_1"], hp: 1400, speed: 48, dmg: 14, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 8446207, name: "\u51B0\u971C\u5DEB\u5E08" },
+      eye: { frames: ["eye_0", "eye_1"], hp: 1700, speed: 55, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 9058938, name: "\u6C34\u6676\u9B54\u773C" },
+      toad: { frames: ["toad_0", "toad_1"], hp: 1300, speed: 52, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 5929530, name: "\u6BD2\u6CBC\u5DE8\u87FE" },
+      yeti: { frames: ["yeti_0", "yeti_1"], hp: 950, speed: 70, dmg: 9, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 15266047, name: "\u96EA\u602A\u738B" },
+      nian: { frames: ["nian_0", "nian_1"], hp: 950, speed: 76, dmg: 9, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 14172202, name: "\u5E74\u517D" },
+      reaper: { frames: ["reaper_0", "reaper_1"], hp: 3e3, speed: 82, dmg: 17, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 9068736, name: "\u6697\u591C\u9B54\u672F\u5E08", final: true }
     };
     WAVES = [
       { t: 0, types: ["rat", "rat", "rat", "bat"], interval: 0.45, batch: 3 },
@@ -1073,7 +1077,7 @@ var init_Defs = __esm({
       }
     ];
     BASE_STATS = {
-      maxHp: 100,
+      maxHp: 90,
       might: 1,
       armor: 0,
       recovery: 0,
@@ -1133,18 +1137,18 @@ var init_Defs = __esm({
       lightning: { passive: "dup", name: "\u96F7\u9706\u4E4B\u73AF", icon: "icon_lightning_evo", desc: "\u6BCF\u6B21\u843D\u4E0B\u66F4\u591A\u66F4\u5F3A\u7684\u95EA\u7535\u3002", mod: { amount: 4, damage: 25, area: 1 } }
     };
     CHARACTERS = [
-      { id: "hunter", name: "\u5976\u86D9", title: "\u97AD\u624B", sprite: "hero_hunter", weapon: "whip", desc: "\u6700\u5927\u751F\u547D +20", bonus: { maxHp: 20 }, cost: 0 },
-      { id: "mage", name: "\u6CD5\u5E08\u86D9", title: "\u6CD5\u5E08", sprite: "hero_mage", weapon: "wand", desc: "\u7ECF\u9A8C\u83B7\u53D6 +10%", bonus: { growth: 0.1 }, cost: 0 },
-      { id: "rogue", name: "\u6E38\u4FA0\u86D9", title: "\u6E38\u4FA0", sprite: "hero_rogue", weapon: "knife", desc: "\u79FB\u52A8\u901F\u5EA6 +15%", bonus: { moveSpeed: 0.15 }, cost: 500 },
-      { id: "knight", name: "\u9A91\u58EB\u86D9", title: "\u9A91\u58EB", sprite: "hero_knight", weapon: "axe", desc: "\u62A4\u7532 +1\uFF0C\u4F24\u5BB3 +10%", bonus: { armor: 1, might: 0.1 }, cost: 1e3 },
-      { id: "nun", name: "\u76FE\u536B\u86D9", title: "\u76FE\u536B\u58EB", sprite: "hero_nun", weapon: "bible", desc: "\u6BCF\u79D2\u6062\u590D +0.4 \u751F\u547D", bonus: { recovery: 0.4 }, cost: 1500 },
-      { id: "pyro", name: "\u708E\u672F\u86D9", title: "\u708E\u672F\u58EB", sprite: "hero_pyro", weapon: "fire", desc: "\u4F24\u5BB3 +15%", bonus: { might: 0.15 }, cost: 3e3 },
-      { id: "bomber", name: "\u7206\u7834\u86D9", title: "\u7206\u7834\u5DE5", sprite: "hero_bomber", weapon: "bomb", desc: "\u6700\u5927\u751F\u547D +30\uFF0C\u8303\u56F4 +15%", bonus: { maxHp: 30, area: 0.15 }, cost: 4e3 },
-      { id: "sage", name: "\u957F\u8001\u86D9", title: "\u8001\u8D24\u8005", sprite: "hero_sage", weapon: "lightning", desc: "\u51B7\u5374 -10%\uFF0C\u8303\u56F4 +10%", bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500 },
-      { id: "druid", name: "\u5FB7\u9C81\u4F0A\u86D9", title: "\u68EE\u6797\u5B88\u62A4\u8005", sprite: "hero_druid", weapon: "spikes", desc: "\u6BCF\u79D2\u6062\u590D +0.4\uFF0C\u8303\u56F4 +10%", bonus: { recovery: 0.4, area: 0.1 }, cost: 3e3 },
-      { id: "prism", name: "\u68F1\u955C\u86D9", title: "\u5149\u5B66\u602A\u624D", sprite: "hero_prism", weapon: "laser", desc: "\u66B4\u51FB\u7387 +8%\uFF0C\u4F24\u5BB3 +10%", bonus: { crit: 0.08, might: 0.1 }, cost: 3500 },
-      { id: "fu", name: "\u798F\u86D9", title: "\u65B0\u6625\u9650\u5B9A", sprite: "hero_fu", weapon: "bomb", desc: "\u91D1\u5E01 +30%\uFF0C\u6700\u5927\u751F\u547D +20", bonus: { greed: 0.3, maxHp: 20 }, cost: -1 },
-      { id: "santa", name: "\u5723\u8BDE\u86D9", title: "\u5723\u8BDE\u9650\u5B9A", sprite: "hero_santa", weapon: "frost", desc: "\u91D1\u5E01 +20%\uFF0C\u51B7\u5374 -8%", bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1 }
+      { id: "hunter", name: "\u5976\u86D9", title: "\u97AD\u624B", sprite: "hero_hunter", weapon: "whip", desc: "\u6700\u5927\u751F\u547D +20", bonus: { maxHp: 20 }, cost: 0, traitName: "\u8D8A\u6218\u8D8A\u52C7", trait: "\u6BCF\u51FB\u8D25 100 \u4E2A\u654C\u4EBA\u4F24\u5BB3 +1%\uFF08\u6700\u591A +25%\uFF09" },
+      { id: "mage", name: "\u6CD5\u5E08\u86D9", title: "\u6CD5\u5E08", sprite: "hero_mage", weapon: "wand", desc: "\u7ECF\u9A8C\u83B7\u53D6 +10%", bonus: { growth: 0.1 }, cost: 0, traitName: "\u5965\u672F\u6D8C\u6D41", trait: "\u6BCF\u6B21\u5347\u7EA7\u540E 4 \u79D2\u5185\u51B7\u5374 -30%" },
+      { id: "rogue", name: "\u6E38\u4FA0\u86D9", title: "\u6E38\u4FA0", sprite: "hero_rogue", weapon: "knife", desc: "\u79FB\u52A8\u901F\u5EA6 +15%", bonus: { moveSpeed: 0.15 }, cost: 500, traitName: "\u7075\u5DE7\u95EA\u907F", trait: "\u53D7\u5230\u653B\u51FB\u65F6 12% \u51E0\u7387\u5B8C\u5168\u95EA\u907F" },
+      { id: "knight", name: "\u9A91\u58EB\u86D9", title: "\u9A91\u58EB", sprite: "hero_knight", weapon: "axe", desc: "\u62A4\u7532 +1\uFF0C\u4F24\u5BB3 +10%", bonus: { armor: 1, might: 0.1 }, cost: 1e3, traitName: "\u4E0D\u5C48\u94C1\u58C1", trait: "\u751F\u547D\u4F4E\u4E8E 50% \u65F6\u62A4\u7532\u989D\u5916 +2" },
+      { id: "nun", name: "\u76FE\u536B\u86D9", title: "\u76FE\u536B\u58EB", sprite: "hero_nun", weapon: "bible", desc: "\u6BCF\u79D2\u6062\u590D +0.4 \u751F\u547D", bonus: { recovery: 0.4 }, cost: 1500, traitName: "\u5723\u5149\u5E87\u62A4", trait: "\u6BCF 40 \u79D2\u83B7\u5F97 1 \u5C42\u62A4\u76FE\uFF0C\u62B5\u6321\u4E00\u6B21\u4F24\u5BB3" },
+      { id: "pyro", name: "\u708E\u672F\u86D9", title: "\u708E\u672F\u58EB", sprite: "hero_pyro", weapon: "fire", desc: "\u4F24\u5BB3 +15%", bonus: { might: 0.15 }, cost: 3e3, traitName: "\u4F59\u70EC", trait: "\u51FB\u8D25\u654C\u4EBA\u65F6 12% \u51E0\u7387\u539F\u5730\u5F15\u71C3\u5C0F\u7206\u70B8" },
+      { id: "bomber", name: "\u7206\u7834\u86D9", title: "\u7206\u7834\u5DE5", sprite: "hero_bomber", weapon: "bomb", desc: "\u6700\u5927\u751F\u547D +30\uFF0C\u8303\u56F4 +15%", bonus: { maxHp: 30, area: 0.15 }, cost: 4e3, traitName: "\u4EE5\u7206\u5236\u7206", trait: "\u53D7\u4F24\u65F6 35% \u51E0\u7387\u5F15\u53D1\u7206\u70B8\uFF1B\u7206\u70B8\u4F24\u5BB3\u51CF\u534A" },
+      { id: "sage", name: "\u957F\u8001\u86D9", title: "\u8001\u8D24\u8005", sprite: "hero_sage", weapon: "lightning", desc: "\u51B7\u5374 -10%\uFF0C\u8303\u56F4 +10%", bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: "\u5929\u96F7", trait: "\u6BCF 7 \u79D2\u53EC\u5524 3 \u9053\u843D\u96F7\u5288\u5411\u5C4F\u5E55\u5185\u654C\u4EBA" },
+      { id: "druid", name: "\u5FB7\u9C81\u4F0A\u86D9", title: "\u68EE\u6797\u5B88\u62A4\u8005", sprite: "hero_druid", weapon: "spikes", desc: "\u6BCF\u79D2\u6062\u590D +0.4\uFF0C\u8303\u56F4 +10%", bonus: { recovery: 0.4, area: 0.1 }, cost: 3e3, traitName: "\u85E4\u8513\u7F20\u7ED5", trait: "\u6BCF 9 \u79D2\u7528\u85E4\u8513\u5B9A\u4F4F\u8EAB\u8FB9\u7684\u654C\u4EBA 1.5 \u79D2" },
+      { id: "prism", name: "\u68F1\u955C\u86D9", title: "\u5149\u5B66\u602A\u624D", sprite: "hero_prism", weapon: "laser", desc: "\u66B4\u51FB\u7387 +8%\uFF0C\u4F24\u5BB3 +10%", bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: "\u6298\u5C04", trait: "\u66B4\u51FB\u65F6 35% \u51E0\u7387\u6298\u5C04\u5230\u9644\u8FD1\u654C\u4EBA\uFF0850% \u4F24\u5BB3\uFF09" },
+      { id: "fu", name: "\u798F\u86D9", title: "\u65B0\u6625\u9650\u5B9A", sprite: "hero_fu", weapon: "bomb", desc: "\u91D1\u5E01 +30%\uFF0C\u6700\u5927\u751F\u547D +20", bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: "\u62DB\u8D22\u8FDB\u5B9D", trait: "\u62FE\u53D6\u91D1\u5E01\u65F6 20% \u51E0\u7387\u7FFB\u500D" },
+      { id: "santa", name: "\u5723\u8BDE\u86D9", title: "\u5723\u8BDE\u9650\u5B9A", sprite: "hero_santa", weapon: "frost", desc: "\u91D1\u5E01 +20%\uFF0C\u51B7\u5374 -8%", bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: "\u5723\u8BDE\u793C\u7269", trait: "\u6BCF 70 \u79D2\u8EAB\u8FB9\u6389\u843D\u4E00\u4E2A\u968F\u673A\u589E\u76CA\u9053\u5177" }
     ];
     POWERUPS = [
       { id: "might", name: "\u529B\u91CF", icon: "icon_might", desc: "\u4F24\u5BB3 +5%", max: 5, stat: "might", per: 0.05, cost: 200 },
@@ -1219,6 +1223,33 @@ var init_Defs = __esm({
     ];
     DAILY_GOAL = 600;
     DAILY_REWARD = 400;
+    PICKUP_INFO = {
+      chicken: { name: "\u70E4\u9E21\u817F", desc: "\u56DE\u590D 30 \u751F\u547D\u3002\u5F88\u7A00\u6709\uFF0C\u7701\u7740\u70B9\u53D7\u4F24\uFF01" },
+      coinbag: { name: "\u91D1\u5E01\u888B", desc: "\u4E00\u5927\u888B\u91D1\u5E01\u3002" },
+      magnet: { name: "\u78C1\u94C1", desc: "\u5438\u53D6\u5168\u573A\u7684\u7ECF\u9A8C\u5B9D\u77F3\u548C\u91D1\u5E01\u3002" },
+      watch: { name: "\u6000\u8868", desc: "\u65F6\u95F4\u505C\u6B62\uFF1A\u51BB\u7ED3\u6240\u6709\u654C\u4EBA 5 \u79D2\u3002" },
+      nuke: { name: "\u661F\u5149\u5BA1\u5224", desc: "\u5BF9\u5C4F\u5E55\u5185\u6240\u6709\u654C\u4EBA\u9020\u6210\u5927\u91CF\u4F24\u5BB3\u3002" },
+      potion: { name: "\u72C2\u66B4\u836F\u6C34", desc: "10 \u79D2\u5185\u4F24\u5BB3 +50%\u3001\u79FB\u901F +30%\u3002" },
+      shield: { name: "\u5723\u76FE", desc: "\u62B5\u6321\u63A5\u4E0B\u6765 3 \u6B21\u4F24\u5BB3\u3002" },
+      haste: { name: "\u6025\u901F\u6C99\u6F0F", desc: "12 \u79D2\u5185\u6240\u6709\u6B66\u5668\u51B7\u5374 -40%\u3002" },
+      clover: { name: "\u56DB\u53F6\u8349", desc: "15 \u79D2\u5185\u66B4\u51FB\u7387 +30%\uFF0C\u51FB\u8D25\u654C\u4EBA\u6389\u843D\u66F4\u591A\u91D1\u5E01\u3002" },
+      firering: { name: "\u70C8\u7130\u4E4B\u73AF", desc: "10 \u79D2\u5185\u8EAB\u8FB9\u73AF\u7ED5\u706B\u7130\uFF0C\u6301\u7EED\u707C\u70E7\u9760\u8FD1\u7684\u654C\u4EBA\u3002" },
+      scroll: { name: "\u667A\u6167\u5377\u8F74", desc: "\u7ACB\u523B\u63D0\u5347 1 \u7EA7\u3002" }
+    };
+    BRAZIER_DROPS = [
+      ["chicken", 10],
+      ["coinbag", 14],
+      ["magnet", 9],
+      ["watch", 9],
+      ["nuke", 9],
+      ["potion", 9],
+      ["shield", 9],
+      ["haste", 10],
+      ["clover", 9],
+      ["firering", 9],
+      ["scroll", 3]
+    ];
+    BUFF_DROPS = ["potion", "shield", "haste", "clover", "firering"];
     ENEMY_IDS = new Map(Object.keys(ENEMIES).map((k) => [ENEMIES[k], k]));
     QUEST_POOL = [
       { id: "kills1", stat: "kills", n: 1500, name: "\u7D2F\u8BA1\u51FB\u8D25 1500 \u53EA\u602A\u7269", gold: 120 },
@@ -2916,6 +2947,43 @@ function drawShieldPickup() {
   c.outline(OUT);
   return c;
 }
+function drawHaste() {
+  const c = new PixelCanvas(12, 16);
+  c.rect(0, 0, 12, 2, 9067056);
+  c.rect(0, 14, 12, 2, 9067056);
+  c.poly([[1, 2], [11, 2], [7, 8], [11, 14], [1, 14], [5, 8]], 14218495);
+  c.poly([[3, 3], [9, 3], [6, 7]], 6344959);
+  c.poly([[6, 9], [9, 13], [3, 13]], 6344959);
+  c.outline(OUT);
+  return c;
+}
+function drawClover() {
+  const c = new PixelCanvas(16, 16);
+  for (const [x, y] of [[5, 5], [11, 5], [5, 10], [11, 10]]) c.circle(x, y, 3.6, 5029964);
+  c.circle(8, 7.5, 2.2, 7002218);
+  c.circle(4, 4, 1.2, 10547360);
+  c.line(8, 9, 10, 15, 3050030, 255, 2);
+  c.outline(OUT);
+  return c;
+}
+function drawFireRing() {
+  const c = new PixelCanvas(16, 16);
+  c.ring(8, 8, 7, 3, 16736288);
+  c.ring(8, 8, 6, 1.5, 16760896);
+  for (const [x, y] of [[8, 1], [15, 8], [8, 15], [1, 8]]) c.circle(x, y, 1.5, 16773248);
+  c.outline(OUT);
+  return c;
+}
+function drawScroll() {
+  const c = new PixelCanvas(16, 14);
+  c.rect(2, 2, 12, 10, 16049336);
+  c.rect(0, 1, 3, 12, 13146200);
+  c.rect(13, 1, 3, 12, 13146200);
+  for (const y of [4, 7, 10]) c.line(5, y, 11, y, 9071168);
+  c.circle(10, 9, 1.6, 14692400);
+  c.outline(OUT);
+  return c;
+}
 function drawMoon() {
   const c = new PixelCanvas(80, 80);
   c.circle(40, 40, 39.5, 16769162, 22);
@@ -3111,6 +3179,10 @@ function allSprites() {
   s.nuke = drawNuke();
   s.potion = drawPotion();
   s.shield = drawShieldPickup();
+  s.haste = drawHaste();
+  s.clover = drawClover();
+  s.firering = drawFireRing();
+  s.scroll = drawScroll();
   s.moon = drawMoon();
   s.star = drawStar();
   s.ember = drawEmber();
@@ -3482,6 +3554,10 @@ var init_PixelArt = __esm({
 });
 
 // ../../assets/scripts/Art.ts
+var Art_exports = {};
+__export(Art_exports, {
+  Art: () => Art
+});
 var Art;
 var init_Art = __esm({
   "../../assets/scripts/Art.ts"() {
@@ -4327,7 +4403,17 @@ function describe(o) {
   if (o.kind === "heal") return { icon: "icon_heal", name: "\u70E4\u9E21", tag: "", desc: "\u6062\u590D 30 \u70B9\u751F\u547D" };
   return { icon: "coinbag", name: "\u91D1\u5E01\u888B", tag: "", desc: "\u83B7\u5F97 25 \u91D1\u5E01" };
 }
-var Enemy, Proj, Fx, Pickup, DmgText, Particle, PZone, LineFx, Bullet, Hazard, WeaponInst, Grid, C_WHITE, C_HURT, C_HEAL, C_GOLD, C_CRIT, C_ELITE, C_BLOODMOON, C_FROZEN, C_POTION, C_SHIELD, colorCache, C_EVO, C_EVO_RED, tmpColor, Battle;
+function pickWeighted(table) {
+  let sum = 0;
+  for (const [, w] of table) sum += w;
+  let r = Math.random() * sum;
+  for (const [k, w] of table) {
+    r -= w;
+    if (r <= 0) return k;
+  }
+  return table[0][0];
+}
+var Enemy, Proj, Fx, Pickup, DmgText, Particle, PZone, LineFx, Bullet, Hazard, WeaponInst, Grid, C_WHITE, C_HURT, C_HEAL, C_GOLD, C_CRIT, C_ELITE, C_BLOODMOON, C_FROZEN, C_POTION, C_SHIELD, C_FIRERING, colorCache, C_EVO, C_EVO_RED, tmpColor, Battle;
 var init_Battle = __esm({
   "../../assets/scripts/Battle.ts"() {
     init_cc();
@@ -4579,6 +4665,7 @@ var init_Battle = __esm({
     C_FROZEN = new Color(140, 210, 255, 255);
     C_POTION = new Color(255, 150, 160, 255);
     C_SHIELD = new Color(120, 180, 255, 140);
+    C_FIRERING = new Color(255, 120, 50, 150);
     colorCache = /* @__PURE__ */ new Map();
     C_EVO = new Color(255, 200, 90, 255);
     C_EVO_RED = new Color(255, 110, 110, 255);
@@ -4668,6 +4755,20 @@ var init_Battle = __esm({
         // 噩梦难度：怪物血量 ×1.6（Boss ×1.5）、伤害 ×1.3、金币 ×1.6
         this.potionT = 0;
         this.shieldHits = 0;
+        this.hasteT = 0;
+        // 急速沙漏：冷却 -40%
+        this.cloverT = 0;
+        // 四叶草：暴击率 +30%、金币掉率提高
+        this.fireT = 0;
+        // 烈焰之环：身边持续灼烧
+        this.arcaneT = 0;
+        // 法师天赋：升级后冷却 -30%
+        this.fireTick = 0;
+        this.fireFx = null;
+        this.traitT = 0;
+        // 角色天赋的周期计时
+        this.refractBuf = [];
+        // 折射在 hurtEnemy 内调用，不能复用 qbuf
         this.ghostT = 0;
         this.riftT = 0;
         this.overloadT = 0;
@@ -4795,6 +4896,11 @@ var init_Battle = __esm({
         this.blessings = [];
         this.pendingBlessings = 1;
         this.potionT = this.shieldHits = this.ghostT = 0;
+        this.hasteT = this.cloverT = this.fireT = this.arcaneT = this.fireTick = 0;
+        if (this.fireFx) {
+          this.fireFx.node.destroy();
+          this.fireFx = null;
+        }
         this.riftT = 25;
         this.overloadT = 30;
         this.overloadOn = 0;
@@ -4835,6 +4941,7 @@ var init_Battle = __esm({
           this.garlicAura = null;
         }
         this.char = char;
+        this.traitT = char.id === "nun" ? 10 : char.id === "santa" ? 40 : 4;
         this.px = this.py = 0;
         this.time = 0;
         this.kills = 0;
@@ -5072,6 +5179,11 @@ var init_Battle = __esm({
       }
       hurtPlayer(dmg) {
         if (this.iframe > 0) return;
+        if (this.isChar("rogue") && Math.random() < 0.12) {
+          this.iframe = 0.4;
+          this.burst(this.px, this.py, 12648384, 8, 220);
+          return;
+        }
         if (this.shieldHits > 0) {
           this.shieldHits--;
           this.iframe = 0.6;
@@ -5089,7 +5201,9 @@ var init_Battle = __esm({
           this.iframe = Math.max(this.iframe, 1.5);
         }
         if (this.hasB("thornaura")) this.explodeFriendly(this.px, this.py, 130, 40 + this.level * 3, null, 260, 10539104);
-        const d = Math.max(1, dmg * (this.mod("glass") ? 1.5 : 1) - this.stats.armor);
+        if (this.isChar("bomber") && Math.random() < 0.35) this.explodeFriendly(this.px, this.py, 110, 20 + this.level * 2, null, 260, 16744496);
+        const armor = this.stats.armor + (this.isChar("knight") && this.hp < this.stats.maxHp * 0.5 ? 2 : 0);
+        const d = Math.max(1, dmg * (this.mod("glass") ? 1.5 : 1) - armor);
         this.hp -= d;
         this.iframe = Math.max(this.iframe, 0.6);
         this.sinceHurt = 0;
@@ -5278,7 +5392,7 @@ var init_Battle = __esm({
       spawnPace() {
         const t = this.time;
         if (this.daily && this.mod("horde")) return 1.2;
-        const early = Math.min(1, 0.3 + t / 220);
+        const early = Math.min(1, 0.5 + t / 240);
         if (t < 45 || this.boss || this.bloodMoon || this.endless) return early;
         const ph = (t - 45) % 60 / 60;
         const s = Math.sin(ph * Math.PI * 2 - Math.PI / 2);
@@ -5550,9 +5664,9 @@ var init_Battle = __esm({
       updateFlow(dt) {
         this.sinceHurt += dt;
         const hpR = this.hp / this.stats.maxHp;
-        if (this.time < 60) return;
+        if (this.time < 30) return;
         if (hpR < 0.35) this.flow -= 0.03 * dt;
-        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.012 * dt;
+        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.018 * dt;
         else if (hpR > 0.5) this.flow += 3e-3 * dt;
         this.flow = Math.max(0.8, Math.min(1.7, this.flow));
       }
@@ -5574,11 +5688,56 @@ var init_Battle = __esm({
         for (const b of this.blessings) if (b.id === id) return true;
         return false;
       }
+      // 角色专属天赋中按周期触发的部分
+      updateTrait(dt) {
+        const id = this.char.id;
+        if (id !== "nun" && id !== "sage" && id !== "druid" && id !== "santa") return;
+        this.traitT -= dt;
+        if (this.traitT > 0) return;
+        if (id === "nun") {
+          this.traitT = 40;
+          if (this.shieldHits < 1) {
+            this.shieldHits = 1;
+            this.burst(this.px, this.py, 8438015, 14, 200);
+            Sound.play("power");
+          }
+        } else if (id === "sage") {
+          this.traitT = 7;
+          let hit = false;
+          for (let i = 0; i < 3; i++) {
+            const t = this.randomOnScreen();
+            if (!t) break;
+            hit = true;
+            const f = this.spawnFx("lightning", t.x, t.y, 0.25, PX, 0);
+            f.node.getComponent(UITransform).setAnchorPoint(0.5, 0);
+            f.sp.color = colorOf(13676799);
+            const x = t.x, y = t.y;
+            this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 40, 12 + this.level * 2, null, 60, 12624127, false));
+          }
+          if (hit) Sound.play("lightning");
+        } else if (id === "druid") {
+          this.traitT = 9;
+          for (const e of this.grid.query(this.px, this.py, 160, this.qbuf).slice()) {
+            if (Math.hypot(e.x - this.px, e.y - this.py) < 130 + e.def.radius) this.freezeEnemy(e, 1.5);
+          }
+          const f = this.spawnFx("aura", this.px, this.py, 0.45, 260 / 64 * 0.5, 1.3);
+          f.sp.color = colorOf(6340688);
+          this.burst(this.px, this.py, 6340688, 16, 300);
+        } else if (id === "santa") {
+          this.traitT = 70;
+          const a = Math.random() * Math.PI * 2;
+          const kind = Math.random() < 0.2 ? "magnet" : BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)];
+          this.spawnPickup(kind, this.px + Math.cos(a) * 70, this.py + Math.sin(a) * 70, 0, true);
+          this.onBanner("\u5723\u8BDE\u793C\u7269!", new Color(255, 120, 120, 255));
+          Sound.play("chest");
+        }
+      }
       // 全局伤害倍率：狂战士、狂暴药水
       dmgMul() {
         let m = 1;
         if (this.hasB("berserk")) m *= 1 + 0.8 * (1 - Math.max(0, this.hp) / this.stats.maxHp);
         if (this.potionT > 0) m *= 1.5;
+        if (this.isChar("hunter")) m *= 1 + Math.min(0.25, Math.floor(this.kills / 100) * 0.01);
         return m;
       }
       freezeEnemy(e, t) {
@@ -5589,10 +5748,11 @@ var init_Battle = __esm({
       }
       hurtEnemy(e, dmg, knock, fromX, fromY, w) {
         if (!e.alive) return;
-        const crit = !!w && (Math.random() < this.stats.crit || w.evolved && w.def.id === "cross");
+        const crit = !!w && (Math.random() < this.stats.crit + (this.cloverT > 0 ? 0.3 : 0) || w.evolved && w.def.id === "cross");
         if (crit) {
           dmg = Math.round(dmg * this.stats.critDmg);
           if (this.hasB("vampkiss")) this.heal(1);
+          if (this.isChar("prism") && Math.random() < 0.35) this.refract(e, dmg);
         }
         if (e.frozen > 0 && this.weapons.some((x) => x.evolved && x.def.id === "frost")) dmg = Math.round(dmg * 1.5);
         const real = Math.min(dmg, Math.max(0, e.hp));
@@ -5621,8 +5781,8 @@ var init_Battle = __esm({
         if (e.def.prop) {
           this.burst(e.x, e.y, 15769648, 14, 220);
           Sound.play("kill");
-          const r2 = Math.random();
-          const kind = r2 < 0.3 ? this.mod("gold3") ? "coinbag" : "chicken" : r2 < 0.48 ? "coinbag" : r2 < 0.58 ? "magnet" : r2 < 0.69 ? "watch" : r2 < 0.79 ? "nuke" : r2 < 0.9 ? "potion" : "shield";
+          let kind = pickWeighted(BRAZIER_DROPS);
+          if (kind === "chicken" && this.mod("gold3")) kind = "coinbag";
           this.spawnPickup(kind, e.x, e.y, kind === "coinbag" ? 15 : 0, true);
           return;
         }
@@ -5636,7 +5796,7 @@ var init_Battle = __esm({
         }
         if (e.elite) {
           this.spawnPickup("coinbag", e.x, e.y, 10, true);
-          if (Math.random() < 0.25) this.spawnPickup(Math.random() < 0.5 ? "potion" : "shield", e.x, e.y, 0, true);
+          if (Math.random() < 0.3) this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], e.x, e.y, 0, true);
           for (let i = 0; i < 4; i++) this.spawnPickup("gem", e.x, e.y, e.def.xp * 3, true);
           this.burst(e.x, e.y, 16106818, 24, 300);
           this.addShake(0.15, 5);
@@ -5645,6 +5805,10 @@ var init_Battle = __esm({
         if (this.hasB("chainboom") && !e.def.boss && Math.random() < 0.15) {
           const x = e.x, y = e.y;
           this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 55, 10 + this.level, null, 120, 16744496));
+        }
+        if (this.isChar("pyro") && !e.def.boss && Math.random() < 0.12) {
+          const x = e.x, y = e.y;
+          this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 50, 8 + this.level, null, 100, 16736288, false));
         }
         this.kills++;
         this.attackKills++;
@@ -5670,7 +5834,8 @@ var init_Battle = __esm({
         if (e.def.boss) {
           this.spawnPickup("chest", e.x, e.y, 0);
           this.spawnPickup("coinbag", e.x + 30, e.y, 30, true);
-          this.spawnPickup("chicken", e.x - 30, e.y, 0, true);
+          if (Math.random() < 0.4) this.spawnPickup("chicken", e.x - 30, e.y, 0, true);
+          else this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], e.x - 30, e.y, 0, true);
           e.ai = null;
           const bid = Object.keys(ENEMIES).find((k) => ENEMIES[k] === e.def) || "";
           if (!this.bossKills.includes(bid)) this.bossKills.push(bid);
@@ -5686,13 +5851,13 @@ var init_Battle = __esm({
         }
         this.spawnPickup("gem", e.x, e.y, e.def.xp * (this.time < 180 ? 1.5 : 1), true);
         const r = Math.random();
-        if (r < 6e-3) {
+        if (r < 25e-4) {
           if (!this.mod("gold3")) this.spawnPickup("chicken", e.x + 10, e.y, 0);
-        } else if (r < 9e-3) this.spawnPickup("magnet", e.x + 10, e.y, 0);
+        } else if (r < 55e-4) this.spawnPickup("magnet", e.x + 10, e.y, 0);
         else {
-          const k = 1 / (1 + this.kills / 1500);
-          if (r < 9e-3 + 2e-3 * k) this.spawnPickup("coinbag", e.x + 10, e.y, 20);
-          else if (r < 9e-3 + 0.02 * k) this.spawnPickup("coin", e.x + 10, e.y, 1 + Math.floor(Math.random() * 2));
+          const k = 1 / (1 + this.kills / 1500) * (this.cloverT > 0 ? 3 : 1);
+          if (r < 55e-4 + 2e-3 * k) this.spawnPickup("coinbag", e.x + 10, e.y, 20);
+          else if (r < 55e-4 + 0.02 * k) this.spawnPickup("coin", e.x + 10, e.y, 1 + Math.floor(Math.random() * 2));
         }
       }
       discover(key) {
@@ -5750,7 +5915,28 @@ var init_Battle = __esm({
         if (this.hasB("twin")) m *= 1.15;
         if (this.hasB("frenzy") && this.combo >= 50) m *= 0.7;
         if (this.overloadOn > 0) m *= 0.5;
+        if (this.hasteT > 0) m *= 0.6;
+        if (this.arcaneT > 0) m *= 0.7;
         return m;
+      }
+      isChar(id) {
+        return this.char.id === id;
+      }
+      // 折射（棱镜蛙）：暴击分出一道光打向附近另一个敌人
+      refract(from, dmg) {
+        let best = null, bd = 160 * 160;
+        for (const e of this.grid.query(from.x, from.y, 160, this.refractBuf)) {
+          if (e === from || !e.alive || e.def.prop) continue;
+          const d = (e.x - from.x) ** 2 + (e.y - from.y) ** 2;
+          if (d < bd) {
+            bd = d;
+            best = e;
+          }
+        }
+        if (!best) return;
+        const t = best;
+        this.spawnFx("spark", t.x, t.y, 0.2, PX, 1.5).sp.color = colorOf(12644607);
+        this.chainBoomQueue.push(() => this.hurtEnemy(t, Math.max(1, Math.round(dmg * 0.5)), 0, from.x, from.y, null));
       }
       dmgOf(w) {
         const base2 = w.stats.damage * this.stats.might * this.dmgMul();
@@ -6428,6 +6614,38 @@ var init_Battle = __esm({
             for (const g2 of this.pickups) if (g2.alive && (g2.kind === "gem" || g2.kind === "coin")) g2.pulled = true;
           }
         }
+        if (this.hasteT > 0) {
+          this.hasteT -= dt;
+          if (Math.random() < 0.25) this.burst(this.px, this.py - 10, 8446207, 1, 100);
+        }
+        if (this.cloverT > 0) {
+          this.cloverT -= dt;
+          if (Math.random() < 0.2) this.burst(this.px, this.py + 10, 7397488, 1, 80);
+        }
+        if (this.arcaneT > 0) {
+          this.arcaneT -= dt;
+          if (Math.random() < 0.3) this.burst(this.px, this.py, 11567359, 1, 90);
+        }
+        if (this.fireT > 0) {
+          this.fireT -= dt;
+          if (!this.fireFx) this.fireFx = mkSprite(this.auraLayer, "aura", 1.6);
+          this.fireFx.node.active = true;
+          this.fireFx.node.setPosition(this.px, this.py);
+          this.fireFx.color = C_FIRERING;
+          const sc = 3.1 + Math.sin(this.time * 9) * 0.12;
+          this.fireFx.node.setScale(sc, sc, 1);
+          this.fireTick -= dt;
+          if (this.fireTick <= 0) {
+            this.fireTick = 0.3;
+            const R = 100;
+            for (const e of this.grid.query(this.px, this.py, R + 30, this.qbuf).slice()) {
+              if (e.alive && !e.def.prop && Math.hypot(e.x - this.px, e.y - this.py) < R + e.def.radius) this.hurtEnemy(e, 6 + Math.round(this.level * 0.8), 40, this.px, this.py, null);
+            }
+            const a = Math.random() * Math.PI * 2;
+            this.burst(this.px + Math.cos(a) * R * 0.8, this.py + Math.sin(a) * R * 0.8, 16744496, 3, 120);
+          }
+        } else if (this.fireFx) this.fireFx.node.active = false;
+        this.updateTrait(dt);
       }
       freezeAll(t) {
         for (const e of this.enemies) if (e.alive) this.freezeEnemy(e, t);
@@ -6529,7 +6747,27 @@ var init_Battle = __esm({
         }
       }
       collect(p) {
+        if (p.kind !== "gem" && p.kind !== "coin") this.discover("i:" + p.kind);
         switch (p.kind) {
+          case "haste":
+            this.hasteT = 12;
+            this.onBanner("\u6025\u901F! \u51B7\u5374 -40%", new Color(140, 230, 255, 255));
+            Sound.play("power");
+            break;
+          case "clover":
+            this.cloverT = 15;
+            this.onBanner("\u5E78\u8FD0! \u66B4\u51FB\u7387 +30%", new Color(120, 230, 120, 255));
+            Sound.play("power");
+            break;
+          case "firering":
+            this.fireT = 10;
+            this.onBanner("\u70C8\u7130\u4E4B\u73AF!", new Color(255, 140, 60, 255));
+            Sound.play("fire");
+            break;
+          case "scroll":
+            this.gainXp(Math.max(0, this.xpNext - this.xp));
+            this.onBanner("\u667A\u6167\u5377\u8F74! \u7B49\u7EA7 +1", new Color(255, 230, 140, 255));
+            break;
           case "gem":
             this.gainXp(p.value * this.stats.growth * (this.mod("xp2") ? 2 : 1));
             Sound.play("gem");
@@ -6563,7 +6801,8 @@ var init_Battle = __esm({
             break;
           case "coin":
           case "coinbag": {
-            const g2 = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB("greedpact") ? 2 : 1) * (this.mod("gold3") ? 3 : 1) * (this.nightmare ? 1.6 : 1)));
+            const lucky = this.isChar("fu") && Math.random() < 0.2;
+            const g2 = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB("greedpact") ? 2 : 1) * (this.mod("gold3") ? 3 : 1) * (this.nightmare ? 1.6 : 1) * (lucky ? 2 : 1)));
             this.gold += g2;
             this.dmgText(this.px, this.py + 40, g2, C_GOLD, "+");
             Sound.play("coin");
@@ -6590,6 +6829,7 @@ var init_Battle = __esm({
           this.level++;
           this.xpNext = xpForLevel(this.level);
           this.pendingLevels++;
+          if (this.isChar("mage")) this.arcaneT = 4;
         }
       }
       // ------------------------------------------------------------------ 特效 & 伤害数字
@@ -6971,7 +7211,7 @@ var init_Battle = __esm({
       }
       // 范围爆炸：伤害玩家 + 特效
       explode(x, y, r, dmg, color) {
-        if (Math.hypot(this.px - x, this.py - y) < r + 10) this.hurtPlayer(dmg);
+        if (Math.hypot(this.px - x, this.py - y) < r + 10) this.hurtPlayer(this.isChar("bomber") ? dmg * 0.5 : dmg);
         const f = this.spawnFx("aura", x, y, 0.35, r * 2 / 64, 0.6);
         f.sp.color = colorOf(color);
         this.burst(x, y, color, 16, 320);
@@ -7915,7 +8155,7 @@ var init_GameRoot = __esm({
         const y0 = this.top - 170;
         const cols = 3;
         const rowsN = Math.ceil(CHARACTERS.length / cols);
-        const avail = y0 - (this.bottom + 310);
+        const avail = y0 - (this.bottom + 370);
         const ch = Math.min(250, avail / rowsN - 10);
         const cw = 226;
         CHARACTERS.forEach((c, i) => {
@@ -7976,6 +8216,13 @@ var init_GameRoot = __esm({
           this.refreshAll();
         }, C_BTN_GREY, 26);
         mode.node.setPosition(0, by + 92);
+        const traitLbl = mkLabel(s, "", 22, C_GOLD2, "center", 2);
+        traitLbl.node.setPosition(0, by + 240);
+        this.refreshers.push(() => {
+          const c = this.selectedChar();
+          traitLbl.string = `\u2605 \u4E13\u5C5E\u5929\u8D4B\u300C${c.traitName}\u300D
+${c.trait}`;
+        });
         const stageBtn = mkButton(s, "", 560, 64, () => {
           const d = Save.data;
           const unlocked = STAGES.filter((st) => this.stageOpen(st.id));
@@ -9179,6 +9426,10 @@ var init_GameRoot = __esm({
         const buffs = [];
         if (b.potionT > 0) buffs.push(`\u72C2\u66B4 ${Math.ceil(b.potionT)}s`);
         if (b.shieldHits > 0) buffs.push(`\u62A4\u76FE \xD7${b.shieldHits}`);
+        if (b.hasteT > 0) buffs.push(`\u6025\u901F ${Math.ceil(b.hasteT)}s`);
+        if (b.cloverT > 0) buffs.push(`\u5E78\u8FD0 ${Math.ceil(b.cloverT)}s`);
+        if (b.fireT > 0) buffs.push(`\u70C8\u7130 ${Math.ceil(b.fireT)}s`);
+        if (b.arcaneT > 0) buffs.push("\u5965\u672F\u6D8C\u6D41");
         if (b.endless) buffs.push("\u65E0\u5C3D");
         const bs = buffs.join("  ");
         if (this.buffLabel.string !== bs) this.buffLabel.string = bs;
@@ -9414,7 +9665,7 @@ if (MODE === "C") {
     lo = Math.min(lo, p);
     hi = Math.max(hi, p);
   }
-  ok(p0 < 0.4, `\u5F00\u5C40\u5237\u602A\u901F\u5EA6\u4F4E\uFF08${p0.toFixed(2)} \u500D\uFF09`);
+  ok(p0 < 0.6, `\u5F00\u5C40\u5237\u602A\u901F\u5EA6\u4F4E\uFF08${p0.toFixed(2)} \u500D\uFF09`);
   ok(hi / lo > 2.5, `5 \u5206\u949F\u540E\u6709\u6CE2\u5CF0\u6CE2\u8C37\uFF08${lo.toFixed(2)} ~ ${hi.toFixed(2)}\uFF09`);
   B().bossIdx = 1;
   B().time = 160;
@@ -9521,7 +9772,7 @@ if (MODE === "C") {
   }
   section("\u56FE\u9274 / \u6BCF\u65E5\u4EFB\u52A1 / \u7B7E\u5230");
   const all = D.codexEntries();
-  ok(all.length === 67 && new Set(all.map((e) => e.key)).size === 67, "\u56FE\u9274 67 \u9879\u4E14\u4E0D\u91CD\u590D");
+  ok(all.length === 78 && new Set(all.map((e) => e.key)).size === 78, "\u56FE\u9274 78 \u9879\u4E14\u4E0D\u91CD\u590D");
   base();
   Save2.data.codex = [];
   start();
@@ -9593,6 +9844,59 @@ if (MODE === "C") {
   Save2.data.mode = "normal";
   ok(D.BLESSINGS.length === 16, "\u547D\u8FD0\u5361\u724C 16 \u5F20");
   ok(Object.values(D.EVOLUTIONS).length === 16 && new Set(Object.values(D.EVOLUTIONS).map((e) => e.passive)).size === 16, "16 \u4E2A\u9053\u5177\u90FD\u662F\u8FDB\u5316\u94A5\u5319");
+  section("\u573A\u666F\u9053\u5177 / \u89D2\u8272\u5929\u8D4B");
+  const { Art: Art2 } = await Promise.resolve().then(() => (init_Art(), Art_exports));
+  ok(Object.keys(D.PICKUP_INFO).every((k) => !!Art2.f(k)), "\u6240\u6709\u573A\u666F\u9053\u5177\u90FD\u6709\u56FE\u6807");
+  const dropSum = D.BRAZIER_DROPS.reduce((a, x) => a + x[1], 0);
+  const chick = D.BRAZIER_DROPS.find((x) => x[0] === "chicken")[1];
+  ok(chick / dropSum <= 0.12, `\u706B\u76C6\u6389\u70E4\u9E21\u817F\u6982\u7387\u964D\u4F4E\uFF08${Math.round(chick / dropSum * 100)}%\uFF09`);
+  ok(D.CHARACTERS.every((c) => c.trait && c.traitName) && new Set(D.CHARACTERS.map((c) => c.traitName)).size === D.CHARACTERS.length, "\u6BCF\u4E2A\u89D2\u8272\u90FD\u6709\u72EC\u7ACB\u7684\u4E13\u5C5E\u5929\u8D4B");
+  base();
+  start();
+  const pick = (kind) => B().collect({ kind, value: 0 });
+  pick("haste");
+  pick("clover");
+  pick("firering");
+  ok(B().hasteT > 0 && B().cloverT > 0 && B().fireT > 0, "\u6025\u901F\u6C99\u6F0F / \u56DB\u53F6\u8349 / \u70C8\u7130\u4E4B\u73AF\u751F\u6548");
+  ok(Save2.data.codex.includes("i:haste"), "\u62FE\u53D6\u9053\u5177\u4F1A\u6536\u5F55\u56FE\u9274");
+  const lv0 = B().level;
+  pick("scroll");
+  ok(B().level === lv0 + 1, "\u667A\u6167\u5377\u8F74\u7ACB\u523B\u5347 1 \u7EA7");
+  clearCards();
+  const k0 = B().kills;
+  play(60 * 10);
+  ok(B().kills > k0, "\u70C8\u7130\u4E4B\u73AF\u671F\u95F4\u6B63\u5E38\u6218\u6597");
+  for (const id of ["nun", "sage", "druid", "santa"]) {
+    base();
+    Save2.data.chars = D.CHARACTERS.map((c) => c.id);
+    Save2.data.selected = id;
+    start();
+    if (id === "nun") {
+      B().traitT = 0;
+      B().shieldHits = 0;
+      step(2);
+      ok(B().shieldHits === 1, "\u5723\u5149\u5E87\u62A4\uFF1A\u8BA1\u65F6\u5230\u540E\u83B7\u5F97 1 \u5C42\u62A4\u76FE");
+      continue;
+    }
+    const sh2 = B().shieldHits, pk = B().pickups.filter((p) => p.alive && p.kind !== "gem" && p.kind !== "coin").length;
+    play(60 * 75);
+    const okT = id === "nun" ? B().shieldHits >= 1 || sh2 >= 1 : id === "santa" ? Save2.data.codex.some((k) => k.startsWith("i:")) || B().pickups.some((p) => p.alive && D.BUFF_DROPS.includes(p.kind)) || pk > 0 : B().kills > 0;
+    ok(okT && B().char.id === id, `${D.CHARACTERS.find((c) => c.id === id).traitName} \u6B63\u5E38\u8FD0\u884C`);
+  }
+  base();
+  Save2.data.selected = "rogue";
+  start();
+  let dodged = 0;
+  for (let i = 0; i < 200; i++) {
+    B().iframe = 0;
+    B().shieldHits = 0;
+    B().hp = 1e3;
+    B().hurtPlayer(5);
+    if (B().hp === 1e3) dodged++;
+  }
+  ok(dodged > 5 && dodged < 60, `\u6E38\u4FA0\u86D9\u95EA\u907F\uFF08200 \u6B21\u4E2D\u95EA\u907F ${dodged} \u6B21\uFF09`);
+  base();
+  Save2.data.selected = "hunter";
   section("\u5185\u5BB9\u5408\u89C4\uFF08\u663E\u793A\u6587\u5B57\u4E0D\u542B\u654F\u611F\u8BCD\uFF09");
   const texts = [];
   for (const k in D.ENEMIES) texts.push(D.ENEMIES[k].name || "");
@@ -9602,7 +9906,8 @@ if (MODE === "C") {
   for (const k in D.EVOLUTIONS) texts.push(D.EVOLUTIONS[k].name, D.EVOLUTIONS[k].desc);
   for (const b of D.BLESSINGS) texts.push(b.name, b.desc);
   for (const a of D.ACHIEVEMENTS) texts.push(a.name, a.desc);
-  for (const c of D.CHARACTERS) texts.push(c.name, c.title, c.desc);
+  for (const c of D.CHARACTERS) texts.push(c.name, c.title, c.desc, c.traitName, c.trait);
+  for (const k in D.PICKUP_INFO) texts.push(D.PICKUP_INFO[k].name, D.PICKUP_INFO[k].desc);
   const banned = /血|死|杀|骷髅|鬼|尸|魂|墓|骨|屠|斩|弑|恶魔|地狱|圣经|十字架/;
   const hits = texts.filter((t) => t && banned.test(t));
   ok(hits.length === 0, "\u540D\u79F0\u4E0E\u63CF\u8FF0\u65E0\u654F\u611F\u8BCD" + (hits.length ? "\uFF1A" + hits.slice(0, 5).join(" / ") : ""));

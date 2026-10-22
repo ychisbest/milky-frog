@@ -114,13 +114,17 @@ for (let run = 1; run <= RUNS; run++) {
       const ph = this.time < 360 ? 'early' : this.time < 780 ? 'mid' : 'late'; const k = cat + '_' + ph + (this.boss ? '_boss' : ''); (globalThis as any).__dmg[k] = ((globalThis as any).__dmg[k] || 0) + lost; } }; }
   (globalThis as any).__dmg = dmgBy;
   (globalThis as any).__last = [];
-  let lastLv = 1, firstEvo = 0, frames = 0;
+  let lastLv = 1, firstEvo = 0, frames = 0, curBoss: any = null, bossT0 = 0, minHpEarly = 1;
+  const bossFight: Record<string, number> = {};
   while (g.state !== 'result' && frames < 60 * 60 * 16) {
     const [mx, my] = steer(B, frames);
     g.joyX = mx; g.joyY = my;
     g.update(1 / 60); frames++;
     if (B.level !== lastLv) { lastLv = B.level; lvTimes.push(B.time); }
     if (!firstEvo && B.evolvedCount > 0) firstEvo = B.time;
+    if (curBoss && !curBoss.alive && curBoss.hp <= 0 && bossFight[curBoss.def.name] === undefined) bossFight[curBoss.def.name] = Math.round(B.time - bossT0);
+    if (B.boss !== curBoss) { if (B.boss) bossT0 = B.time; curBoss = B.boss; }
+    if (B.time < 360) minHpEarly = Math.min(minHpEarly, B.hp / B.stats.maxHp);
     if (g.state === 'levelup') {
       if (g.cardMode === 'blessing') g.choose(Math.floor(Math.random() * g.blessOpts.length));
       else { let bi = 0, bs = -1; g.options.forEach((o: any, k: number) => { const sc = scoreOption(B, o); if (sc > bs) { bs = sc; bi = k; } }); g.choose(bi); }
@@ -131,7 +135,7 @@ for (let run = 1; run <= RUNS; run++) {
   // 平均升级间隔（按阶段）
   const gap = (t0: number, t1: number) => { const ts = lvTimes.filter(t => t >= t0 && t < t1); return ts.length > 1 ? +((ts[ts.length - 1] - ts[0]) / (ts.length - 1)).toFixed(1) : null; };
   const rec = { run, win: g.resultTitle.string === '胜利!', t: Math.round(B.time), lv: B.level, kills: B.kills, gold: goldBefore, firstEvo: Math.round(firstEvo), bosses: B.bossKills.length,
-    gap0_2: gap(0, 120), gap2_6: gap(120, 360), gap6_15: gap(360, 900), char: B.char.id, power: Save.totalBought(), runGold: B.gold, ach: Save.data.achievements.length, dmgBy, flow: +B.flow.toFixed(2), last: (globalThis as any).__last.reduce((m: any, x: any) => { m[x[1]] = (m[x[1]] || 0) + x[2]; return m; }, {}) };
+    gap0_2: gap(0, 120), gap2_6: gap(120, 360), gap6_15: gap(360, 900), char: B.char.id, power: Save.totalBought(), runGold: B.gold, ach: Save.data.achievements.length, dmgBy, flow: +B.flow.toFixed(2), bossFight, minHpEarly: +minHpEarly.toFixed(2), last: (globalThis as any).__last.reduce((m: any, x: any) => { m[x[1]] = (m[x[1]] || 0) + x[2]; return m; }, {}) };
   out.push(rec);
   g.toMenu();
   shop();
