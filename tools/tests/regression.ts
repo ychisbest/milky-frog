@@ -164,7 +164,7 @@ if (MODE === 'C') {
 
     section('图鉴 / 每日任务 / 签到');
     const all = D.codexEntries();
-    ok(all.length === 103 && new Set(all.map(e => e.key)).size === 103, `图鉴 103 项且不重复（${all.length}）`);
+    ok(all.length === 121 && new Set(all.map(e => e.key)).size === 121, `图鉴 121 项且不重复（${all.length}）`);
     base(); Save.data.codex = []; start(); play(60 * 30);
     ok(Save.data.codex.includes('w:whip') && Save.data.codex.includes('m:rat'), '获得武器 / 击败怪物会收录图鉴');
     const qs = D.dailyQuests(today);
@@ -203,7 +203,7 @@ if (MODE === 'C') {
     ok(Save.data.achievements.includes('nightmare1'), '噩梦胜利获得「噩梦征服者」');
     Save.data.mode = 'normal';
     ok(D.BLESSINGS.length === 20, '命运卡牌 20 张');
-    ok(Object.values(D.EVOLUTIONS).length === D.WEAPONS.length && new Set(Object.values(D.EVOLUTIONS).map((e: any) => e.passive)).size === D.PASSIVES.length && D.PASSIVES.length === 18, `${D.PASSIVES.length} 个道具都是进化钥匙`);
+    ok(Object.values(D.EVOLUTIONS).length === D.WEAPONS.length && new Set(Object.values(D.EVOLUTIONS).map((e: any) => e.passive)).size === D.PASSIVES.length && D.PASSIVES.length === 24, `${D.PASSIVES.length} 个道具都是进化钥匙`);
 
     section('场景道具 / 角色天赋');
     const { Art } = await import('../../assets/scripts/Art');
@@ -404,7 +404,7 @@ if (MODE === 'C') {
     clearCards(); g.endRun(false);
 
     section('新武器：弹弹锯 / 音波喇叭；新道具：能量核心 / 时之沙');
-    for (const id of ['saw', 'sonic']) {
+    for (const id of ['saw', 'sonic', 'tadpole', 'whirl', 'mirror', 'tongue', 'turret', 'mine']) {
         for (const evo of [false, true]) {
             base(); start(); B().time = 300; B().bossIdx = 2;
             B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === id), level: 1 });
@@ -435,6 +435,7 @@ if (MODE === 'C') {
     ok(B().showerOn > 0, '流星雨开始');
     const ks = B().kills; play(60 * 9);
     ok(B().showerOn <= 0 && B().kills > ks, '流星雨持续 8 秒后结束');
+    clearCards(); B().pendingLevels = B().pendingChests = 0; g.ultHinted = false;
     B().ult = 1; step(2);
     ok(g.ultHinted && g.toast.node.active, '新玩家第一次大招充满时提示');
     clearCards(); g.endRun(false);
@@ -448,6 +449,72 @@ if (MODE === 'C') {
     ok(mim.mode === 1, '靠近后宝箱怪苏醒');
     B().hurtEnemy(mim, 1e9, 0, B().px, B().py, null); step(1);
     ok(B().pickups.some((p: any) => p.alive && p.kind.startsWith('epic_')) || !!B().epic, '击败宝箱怪掉落神兵');
+    clearCards(); g.endRun(false);
+
+    section('镜盾 / 猎王徽章 / 羽毛披风 / 穿甲箭头');
+    base(); start(); B().time = 300; B().bossIdx = 2;
+    B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'mirror'), level: 1 });
+    step(2);
+    const mr = B().mirrors[0];
+    B().fireBullet('shot_bone', mr.node.position.x, mr.node.position.y, 0, 1, 5);
+    const refl0 = B().projs.filter((p: any) => p.alive && p.kind === 'refl').length;
+    step(1);
+    ok(B().projs.filter((p: any) => p.alive && p.kind === 'refl').length > refl0, '镜盾：挡下敌方子弹并反射');
+    const pp = (id: string) => D.PASSIVES.find((p: any) => p.id === id);
+    for (let i = 0; i < 3; i++) B().applyOption({ kind: 'passive', pdef: pp('arrow'), level: i + 1 });
+    B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'wand'), level: 1 });
+    const wand = B().weapons.find((w: any) => w.def.id === 'wand');
+    const pr = B().spawnProj('bolt', 'bolt', wand, B().px, B().py, 1, 0, 1, 1, 1, 5);
+    ok(pr.pierce === 4, '穿甲箭头：弹道穿透 +3');
+    for (let i = 0; i < 5; i++) B().applyOption({ kind: 'passive', pdef: pp('badge'), level: i + 1 });
+    B().summon('zombie', B().px + 300, B().py);
+    const z2 = B().enemies.filter((e: any) => e.alive && e.def === D.ENEMIES.zombie).pop();
+    z2.hp = z2.maxHp = 1e6; z2.elite = true; B().stats.crit = 0;
+    B().hurtEnemy(z2, 100, 0, B().px, B().py, null);
+    ok(Math.round(1e6 - z2.hp) === 150, `猎王徽章：对精英伤害 +50%（${Math.round(1e6 - z2.hp)}）`);
+    clearCards(); g.endRun(false);
+    base(); start();
+    for (let i = 0; i < 5; i++) B().applyOption({ kind: 'passive', pdef: D.PASSIVES.find((p: any) => p.id === 'cloak'), level: i + 1 });
+    let dg = 0; for (let i = 0; i < 400; i++) { B().iframe = 0; B().shieldHits = 0; B().hp = 1000; B().hurtPlayer(5); if (B().hp === 1000) dg++; }
+    ok(dg > 50 && dg < 120, `羽毛披风：闪避 20%（400 次闪避 ${dg} 次）`);
+    clearCards(); g.endRun(false);
+
+    section('蛙舌 / 蘑菇炮台 / 荷叶地雷 / 先手符 / 寻宝罗盘 / 苔藓护甲');
+    base(); start(); B().time = 300; B().bossIdx = 2; play(10);
+    for (const e of B().enemies) e.alive = false; step(1);
+    B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'tongue'), level: 1 });
+    B().summon('mummy', B().px + 200, B().py);
+    const mu = B().enemies.find((e: any) => e.alive && e.def === D.ENEMIES.mummy); mu.hp = mu.maxHp = 1e6;
+    const d0 = Math.hypot(mu.x - B().px, mu.y - B().py);
+    for (let i = 0; i < 60 * 2; i++) { g.joyX = 0; g.joyY = 0; B().hp = B().stats.maxHp; g.update(1 / 60); }
+    ok(mu.hp < 1e6 && Math.hypot(mu.x - B().px, mu.y - B().py) < d0 - 30, '蛙舌：命中并把敌人拽近');
+    B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'turret'), level: 1 });
+    B().summon('mummy', B().px + 150, B().py + 100);
+    B().weapons[0].timer = 0; step(3);
+    const tur = B().projs.find((p: any) => p.alive && p.kind === 'turret');
+    const tx = tur.x; for (let i = 0; i < 60; i++) { g.joyX = 1; g.joyY = 0; g.update(1 / 60); }
+    ok(tur.alive && tur.x === tx && B().projs.some((p: any) => p.alive && p.kind === 'tshot'), '蘑菇炮台：原地不动并自动射击');
+    for (const e of B().enemies) e.alive = false; for (const p of B().projs) p.alive = false; step(1);
+    B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'mine'), level: 1 });
+    B().weapons[0].timer = 0; step(2);
+    const mine = B().projs.find((p: any) => p.alive && p.kind === 'mine');
+    B().summon('zombie', mine.x + 300, mine.y);
+    step(40);
+    const zz = B().enemies.find((e: any) => e.alive && e.def === D.ENEMIES.zombie); zz.x = mine.x; zz.y = mine.y; zz.hp = zz.maxHp = 1e6; step(2);
+    ok(!mine.alive && zz.hp < 1e6, '荷叶地雷：敌人踩到后爆炸');
+    clearCards(); g.endRun(false);
+    base(); start(); B().stats.crit = 0;
+    const pp2 = (id: string) => D.PASSIVES.find((p: any) => p.id === id);
+    for (let i = 0; i < 5; i++) { B().applyOption({ kind: 'passive', pdef: pp2('fresh'), level: i + 1 }); B().applyOption({ kind: 'passive', pdef: pp2('moss'), level: i + 1 }); B().applyOption({ kind: 'passive', pdef: pp2('finder'), level: i + 1 }); }
+    B().stats.crit = 0;
+    B().summon('zombie', B().px + 300, B().py);
+    const z3 = B().enemies.filter((e: any) => e.alive && e.def === D.ENEMIES.zombie).pop(); z3.hp = z3.maxHp = 1e6;
+    B().hurtEnemy(z3, 100, 0, B().px, B().py, null); const h1 = 1e6 - z3.hp;
+    B().hurtEnemy(z3, 100, 0, B().px, B().py, null); const h2 = 1e6 - z3.hp - h1;
+    ok(h1 === 175 && h2 === 100, `先手符：只对满血敌人增伤（${h1} / ${h2}）`);
+    B().iframe = 0; B().shieldHits = 0; B().stats.dodge = 0; B().stats.armor = 0; B().hp = B().stats.maxHp; const hm = B().hp; B().hurtPlayer(20);
+    ok(Math.abs(hm - B().hp - 10) < 0.01, `苔藓护甲：高血量时减伤 50%（${(hm - B().hp).toFixed(1)}）`);
+    ok(Math.abs(B().stats.finder - 0.75) < 1e-6, '寻宝罗盘满级 +75%');
     clearCards(); g.endRun(false);
 
     section('内容合规（显示文字不含敏感词）');

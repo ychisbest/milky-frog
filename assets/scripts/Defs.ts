@@ -427,6 +427,84 @@ export const WEAPONS: WeaponDef[] = [
         ],
     },
     {
+        id: 'tadpole', name: '蝌蚪军团', icon: 'icon_tadpole', desc: '放出会追踪敌人的蝌蚪，撞上就爆炸。',
+        base: { damage: 14, cooldown: 2.4, amount: 2, area: 1, speed: 1, pierce: 1, duration: 3 },
+        levels: [
+            { desc: '蝌蚪 +1', mod: { amount: 1 } },
+            { desc: '伤害 +6', mod: { damage: 6 } },
+            { desc: '爆炸范围 +20%', mod: { area: 0.2 } },
+            { desc: '蝌蚪 +1', mod: { amount: 1 } },
+            { desc: '冷却 -0.3 秒', mod: { cooldown: -0.3 } },
+            { desc: '伤害 +8', mod: { damage: 8 } },
+            { desc: '蝌蚪 +2', mod: { amount: 2 } },
+        ],
+    },
+    {
+        id: 'whirl', name: '龙卷风瓶', icon: 'icon_whirl', desc: '召唤四处游走的小龙卷风，把附近敌人吸进来绞伤。',
+        base: { damage: 3, cooldown: 4.5, amount: 1, area: 1, speed: 1, pierce: 999, duration: 4 },
+        levels: [
+            { desc: '持续 +1 秒', mod: { duration: 1 } },
+            { desc: '伤害 +2', mod: { damage: 2 } },
+            { desc: '龙卷风 +1', mod: { amount: 1 } },
+            { desc: '范围 +20%', mod: { area: 0.2 } },
+            { desc: '伤害 +3', mod: { damage: 3 } },
+            { desc: '冷却 -0.6 秒', mod: { cooldown: -0.6 } },
+            { desc: '龙卷风 +1', mod: { amount: 1 } },
+        ],
+    },
+    {
+        id: 'mirror', name: '镜盾', icon: 'icon_mirror', desc: '环绕身边的镜盾，挡下敌方子弹并反射回去，还会撞开敌人。',
+        base: { damage: 8, cooldown: 0.8, amount: 1, area: 1, speed: 1, pierce: 1, duration: 0 },
+        levels: [
+            { desc: '镜盾 +1', mod: { amount: 1 } },
+            { desc: '伤害 +6', mod: { damage: 6 } },
+            { desc: '镜盾变大 20%', mod: { area: 0.2 } },
+            { desc: '旋转加快 30%', mod: { speed: 0.3 } },
+            { desc: '镜盾 +1', mod: { amount: 1 } },
+            { desc: '伤害 +8', mod: { damage: 8 } },
+            { desc: '镜盾变大 20%', mod: { area: 0.2 } },
+        ],
+    },
+    {
+        id: 'tongue', name: '蛙舌', icon: 'icon_tongue', desc: '伸出长舌卷向敌人，沿途造成伤害并把敌人拽到身边。',
+        base: { damage: 18, cooldown: 1.2, amount: 1, area: 1, speed: 1, pierce: 999, duration: 0 },
+        levels: [
+            { desc: '舌头 +1', mod: { amount: 1 } },
+            { desc: '伤害 +9', mod: { damage: 9 } },
+            { desc: '舌头更长更粗 20%', mod: { area: 0.2 } },
+            { desc: '冷却 -0.3 秒', mod: { cooldown: -0.3 } },
+            { desc: '舌头 +1', mod: { amount: 1 } },
+            { desc: '伤害 +12', mod: { damage: 12 } },
+            { desc: '舌头 +1', mod: { amount: 1 } },
+        ],
+    },
+    {
+        id: 'turret', name: '蘑菇炮台', icon: 'icon_turret', desc: '在脚下放置一座蘑菇炮台，自动射击附近的敌人。',
+        base: { damage: 7, cooldown: 4, amount: 1, area: 1, speed: 1, pierce: 1, duration: 7 },
+        levels: [
+            { desc: '持续 +2 秒', mod: { duration: 2 } },
+            { desc: '伤害 +3', mod: { damage: 3 } },
+            { desc: '炮台 +1', mod: { amount: 1 } },
+            { desc: '穿透 +1', mod: { pierce: 1 } },
+            { desc: '伤害 +3', mod: { damage: 3 } },
+            { desc: '冷却 -1 秒', mod: { cooldown: -1 } },
+            { desc: '炮台 +1', mod: { amount: 1 } },
+        ],
+    },
+    {
+        id: 'mine', name: '荷叶地雷', icon: 'icon_mine', desc: '在身后布下荷叶地雷，敌人踩到就爆炸。',
+        base: { damage: 15, cooldown: 1.4, amount: 1, area: 1, speed: 1, pierce: 999, duration: 10 },
+        levels: [
+            { desc: '伤害 +7', mod: { damage: 7 } },
+            { desc: '爆炸范围 +20%', mod: { area: 0.2 } },
+            { desc: '每次布雷 +1', mod: { amount: 1 } },
+            { desc: '伤害 +7', mod: { damage: 7 } },
+            { desc: '冷却 -0.3 秒', mod: { cooldown: -0.3 } },
+            { desc: '爆炸范围 +20%', mod: { area: 0.2 } },
+            { desc: '伤害 +9', mod: { damage: 9 } },
+        ],
+    },
+    {
         id: 'spikes', name: '荆棘地刺', icon: 'icon_spikes', desc: '在附近敌人脚下依次刺出尖刺。',
         base: { damage: 9, cooldown: 2.2, amount: 3, area: 1, speed: 1, pierce: 999, duration: 0 },
         levels: [
@@ -462,6 +540,12 @@ export interface PlayerStats {
     lifesteal: number; // 每次击杀回复生命
     thorns: number;    // 受击时反伤
     ultCharge: number; // 大招充能速度加成
+    eliteDmg: number;  // 对精英与 Boss 的伤害加成
+    dodge: number;     // 闪避率
+    pierce: number;    // 弹道额外穿透
+    fresh: number;     // 对满血敌人的伤害加成
+    finder: number;    // 火盆与神兵祭坛出现频率加成
+    calm: number;      // 生命高于 70% 时的减伤
     buffTime: number;  // 增益道具与神兵持续时间倍率
 }
 
@@ -469,7 +553,7 @@ export const BASE_STATS: PlayerStats = {
     maxHp: 90, might: 1, armor: 0, recovery: 0, cooldown: 1, area: 1,
     speed: 1, moveSpeed: 1, magnet: 70, amount: 0, duration: 1, growth: 1,
     greed: 1, revival: 0, reroll: 0,
-    crit: 0.1, critDmg: 2, lifesteal: 0, thorns: 0, ultCharge: 0, buffTime: 1,
+    crit: 0.1, critDmg: 2, lifesteal: 0, thorns: 0, ultCharge: 0, buffTime: 1, eliteDmg: 0, dodge: 0, pierce: 0, fresh: 0, finder: 0, calm: 0,
 };
 
 export interface PassiveDef {
@@ -501,6 +585,12 @@ export const PASSIVES: PassiveDef[] = [
     { id: 'fang', name: '活力獠牙', icon: 'icon_fang', desc: '每次击败敌人回复 0.2 生命', max: 5, stat: 'lifesteal', per: 0.2 },
     { id: 'thorns', name: '荆棘甲', icon: 'icon_thorns', desc: '受击时对周围敌人造成 30 伤害', max: 5, stat: 'thorns', per: 30 },
     { id: 'core', name: '能量核心', icon: 'icon_core', desc: '大招充能速度 +12%', max: 5, stat: 'ultCharge', per: 0.12 },
+    { id: 'badge', name: '猎王徽章', icon: 'icon_badge', desc: '对精英怪与 Boss 伤害 +10%', max: 5, stat: 'eliteDmg', per: 0.1 },
+    { id: 'cloak', name: '羽毛披风', icon: 'icon_cloak', desc: '闪避率 +4%', max: 5, stat: 'dodge', per: 0.04 },
+    { id: 'arrow', name: '穿甲箭头', icon: 'icon_arrow', desc: '弹道穿透 +1', max: 3, stat: 'pierce', per: 1 },
+    { id: 'fresh', name: '先手符', icon: 'icon_fresh', desc: '对生命全满的敌人伤害 +15%', max: 5, stat: 'fresh', per: 0.15 },
+    { id: 'finder', name: '寻宝罗盘', icon: 'icon_finder', desc: '火盆与神兵祭坛出现频率 +15%', max: 5, stat: 'finder', per: 0.15 },
+    { id: 'moss', name: '苔藓护甲', icon: 'icon_moss', desc: '生命高于 70% 时受到伤害 -10%', max: 5, stat: 'calm', per: 0.1 },
     { id: 'sand', name: '时之沙', icon: 'icon_sand', desc: '增益道具与神兵持续时间 +10%', max: 5, stat: 'buffTime', per: 0.1 },
 ];
 
@@ -549,6 +639,12 @@ export const EVOLUTIONS: Record<string, EvoDef> = {
     spikes:    { passive: 'fang', name: '生命荆棘', icon: 'icon_spikes_evo', desc: '地刺数量大增，命中时有几率回复生命。', mod: { amount: 4, damage: 10, area: 0.2 } },
     saw:       { passive: 'core', name: '风暴锯轮', icon: 'icon_saw_evo', desc: '更多更大的锯片，命中时迸出火花引发小爆炸。', mod: { amount: 2, damage: 12, area: 0.4, duration: 2 } },
     sonic:     { passive: 'sand', name: '音爆', icon: 'icon_sonic_evo', desc: '音波同时轰向四面八方，并震晕敌人 0.6 秒。', mod: { amount: 2, damage: 12, area: 0.3, cooldown: -0.2 } },
+    tadpole:   { passive: 'badge', name: '青蛙王子军团', icon: 'icon_tadpole_evo', desc: '蝌蚪长成小青蛙：数量更多、爆炸更大，命中后分裂出两只小蝌蚪。', mod: { amount: 3, damage: 15, area: 0.4 } },
+    whirl:     { passive: 'cloak', name: '风暴之眼', icon: 'icon_whirl_evo', desc: '龙卷风更大更久，会主动追向敌群。', mod: { amount: 1, damage: 8, area: 0.5, duration: 2 } },
+    mirror:    { passive: 'arrow', name: '万花镜', icon: 'icon_mirror_evo', desc: '镜盾更多更快，反射的子弹分裂成三发并穿透。', mod: { amount: 2, damage: 20, speed: 0.4, area: 0.2 } },
+    tongue:    { passive: 'fresh', name: '千舌', icon: 'icon_tongue_evo', desc: '舌头更多更长，卷住的敌人每次命中回复 1 生命。', mod: { amount: 2, damage: 24, area: 0.3 } },
+    turret:    { passive: 'finder', name: '重炮堡垒', icon: 'icon_turret_evo', desc: '炮台体型更大，每次齐射三发会爆炸的炮弹。', mod: { damage: 3 } },
+    mine:      { passive: 'moss', name: '荷花雷阵', icon: 'icon_mine_evo', desc: '爆炸更大，每次爆炸再弹出 3 颗小地雷。', mod: { damage: 20, area: 0.4 } },
     lightning: { passive: 'dup', name: '雷霆之环', icon: 'icon_lightning_evo', desc: '每次落下更多更强的闪电。', mod: { amount: 4, damage: 25, area: 1 } },
 };
 

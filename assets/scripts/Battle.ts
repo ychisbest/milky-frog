@@ -387,6 +387,7 @@ export class Battle {
     private lines: LineFx[] = [];
     private linePool: LineFx[] = [];
     private familiars: { node: Node; sp: Sprite; x: number; y: number; t: number }[] = [];
+    private mirrors: Sprite[] = [];
     // 命运卡牌 / 增益
     blessings: BlessingDef[] = [];
     pendingBlessings = 0;
@@ -569,6 +570,8 @@ export class Battle {
         this.lines.length = 0;
         for (const f of this.familiars) f.node.destroy();
         this.familiars = [];
+        for (const m of this.mirrors) m.node.destroy();
+        this.mirrors = [];
         if (this.shieldFx) { this.shieldFx.node.destroy(); this.shieldFx = null; }
         this.endless = endless;
         this.blessings = [];
@@ -923,6 +926,12 @@ export class Battle {
             this.burst(this.px, this.py, 0xc0ffc0, 8, 220);
             return;
         }
+        // 羽毛披风：闪避
+        if (this.stats.dodge > 0 && Math.random() < this.stats.dodge) {
+            this.iframe = 0.4;
+            this.burst(this.px, this.py, 0xc0f0e0, 6, 200);
+            return;
+        }
         // 圣盾：抵挡一次伤害
         if (this.shieldHits > 0) {
             this.shieldHits--;
@@ -944,7 +953,8 @@ export class Battle {
         // 爆破蛙：受伤时引爆周围
         if (this.isChar('bomber') && Math.random() < 0.35) this.explodeFriendly(this.px, this.py, 110, 20 + this.level * 2, null, 260, 0xff8030);
         const armor = this.stats.armor + (this.isChar('knight') && this.hp < this.stats.maxHp * 0.5 ? 2 : 0);
-        const d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) - armor);
+        const calm = this.hp > this.stats.maxHp * 0.7 ? 1 - this.stats.calm : 1; // 苔藓护甲
+        const d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) * calm - armor);
         this.hp -= d;
         if (this.char.charge === 'hurt') this.chargeUlt(0.12);
         this.iframe = Math.max(this.iframe, 0.6);
@@ -1607,6 +1617,10 @@ export class Battle {
             if (this.isChar('prism') && Math.random() < 0.35) this.refract(e, dmg);
             if (this.char.charge === 'crit') this.chargeUlt(1 / (150 + this.time * 0.4));
         }
+        // 先手符：对满血敌人增伤
+        if (this.stats.fresh > 0 && e.hp >= e.maxHp) dmg = Math.round(dmg * (1 + this.stats.fresh));
+        // 猎王徽章：对精英与 Boss 增伤
+        if ((e.elite || e.def.boss) && this.stats.eliteDmg > 0) dmg = Math.round(dmg * (1 + this.stats.eliteDmg));
         // 永冻领域：被冻结的敌人受到额外伤害
         if (e.frozen > 0 && this.weapons.some(x => x.evolved && x.def.id === 'frost')) dmg = Math.round(dmg * 1.5);
         const real = Math.min(dmg, Math.max(0, e.hp));
@@ -1781,6 +1795,10 @@ export class Battle {
                 this.updateFamiliars(w, dt);
                 continue;
             }
+            if (w.def.id === 'mirror') {
+                this.updateMirrors(w, dt);
+                continue;
+            }
             w.timer -= dt;
             if (w.timer <= 0 && w.shots <= 0) {
                 w.timer = Math.max(0.1, s.cooldown * st.cooldown * this.cdMul());
@@ -1801,7 +1819,7 @@ export class Battle {
                 while (w.shots > 0 && w.shotTimer <= 0) {
                     this.fireOne(w, w.shotIdx++);
                     w.shots--;
-                    w.shotTimer += w.def.id === 'axe' ? 0.15 : w.def.id === 'whip' ? 0.12 : w.def.id === 'bomb' ? 0.25 : w.def.id === 'holy' || w.def.id === 'fire' ? 0.15 : w.def.id === 'cross' ? 0.12 : w.def.id === 'saw' ? 0.15 : w.def.id === 'sonic' ? 0.1 : w.def.id === 'laser' ? (w.evolved ? 0 : 0.18) : 0.07;
+                    w.shotTimer += w.def.id === 'axe' ? 0.15 : w.def.id === 'whip' ? 0.12 : w.def.id === 'bomb' ? 0.25 : w.def.id === 'holy' || w.def.id === 'fire' ? 0.15 : w.def.id === 'cross' ? 0.12 : w.def.id === 'saw' ? 0.15 : w.def.id === 'tadpole' ? 0.08 : w.def.id === 'tongue' ? 0.12 : w.def.id === 'turret' ? 0.2 : w.def.id === 'mine' ? 0.15 : w.def.id === 'whirl' ? 0.3 : w.def.id === 'sonic' ? 0.1 : w.def.id === 'laser' ? (w.evolved ? 0 : 0.18) : 0.07;
                 }
             }
         }
@@ -1976,6 +1994,65 @@ export class Battle {
                 this.lineFx(this.px, this.py, ex, ey, 0xffffff, Math.max(3, half * 0.7));
                 this.spawnFx('spark', this.px + dx * 18, this.py + dy * 18, 0.15, PX * 0.8, 1.5);
                 Sound.play('beam');
+                break;
+            }
+            case 'tongue': {
+                // 蛙舌：卷向第 idx 近的敌人，沿线伤害并把目标拽向奶蛙
+                const L = 270 * area, half = 14 * area;
+                const near = this.grid.query(this.px, this.py, L, this.qbuf).filter(e => e.alive && !e.def.prop && Math.hypot(e.x - this.px, e.y - this.py) < L);
+                near.sort((a, b) => ((a.x - this.px) ** 2 + (a.y - this.py) ** 2) - ((b.x - this.px) ** 2 + (b.y - this.py) ** 2));
+                const t = near[Math.min(idx * 3, near.length - 1)];
+                const a = t ? Math.atan2(t.y - this.py, t.x - this.px) : Math.atan2(this.dirY, this.dirX) + idx * 0.8;
+                const len = t ? Math.min(L, Math.hypot(t.x - this.px, t.y - this.py) + 20) : L * 0.6;
+                const dx = Math.cos(a), dy = Math.sin(a);
+                for (const e of near) {
+                    const rx = e.x - this.px, ry = e.y - this.py, along = rx * dx + ry * dy;
+                    if (along < 0 || along > len || Math.abs(rx * dy - ry * dx) > half + e.def.radius) continue;
+                    // 击退方向取"远离 舌尖外侧一点"，即把敌人拽向奶蛙
+                    this.hurtEnemy(e, this.dmgOf(w), 260, e.x + dx * 60, e.y + dy * 60, w);
+                    if (w.evolved && Math.random() < 0.3) this.heal(1);
+                }
+                this.lineFx(this.px, this.py, this.px + dx * len, this.py + dy * len, w.evolved ? 0xff4070 : 0xff7090, half * 2);
+                this.lineFx(this.px, this.py, this.px + dx * len, this.py + dy * len, 0xffc0d0, Math.max(2, half * 0.5));
+                Sound.play('whip');
+                break;
+            }
+            case 'turret': {
+                // 蘑菇炮台：放在脚下，持续自动射击
+                const a = idx * 2.4, r = idx === 0 ? 0 : 50;
+                const p = this.spawnProj('turret', 'turret', w, this.px + Math.cos(a) * r, this.py - 10 + Math.sin(a) * r, 0, 0, 0, 999, s.duration * st.duration, 0);
+                p.node.setScale(PX * (w.evolved ? 1.3 : 1.1), PX * (w.evolved ? 1.3 : 1.1), 1);
+                p.ax = 0.3; // 射击计时
+                Sound.play('throw');
+                break;
+            }
+            case 'mine': {
+                // 荷叶地雷：布在身后，0.5 秒后上膛，敌人踩到就爆炸
+                if (this.projs.filter(q => q.alive && q.kind === 'mine').length >= 40) break;
+                const off = (idx - (s.amount + st.amount - 1) / 2) * 28;
+                const p = this.spawnProj('mine', 'mine', w, this.px - this.dirX * 30 - this.dirY * off, this.py - this.dirY * 30 + this.dirX * off - 10, 0, 0, this.dmgOf(w), 999, s.duration * st.duration, 16 * area);
+                p.node.setScale(PX, PX, 1);
+                p.ax = 0.5; // 上膛时间
+                break;
+            }
+            case 'tadpole': {
+                // 蝌蚪军团：朝四周游出，随后追踪最近的敌人，撞上即爆炸
+                const a = Math.random() * TAU, v = 260 * spd;
+                const p = this.spawnProj('tadpole', w.evolved ? 'froglet' : 'tadpole', w, this.px, this.py, Math.cos(a) * v, Math.sin(a) * v, this.dmgOf(w), 1, s.duration * st.duration, 8);
+                p.turn = 5;
+                p.node.angle = a * 180 / Math.PI;
+                p.node.setScale(PX * (w.evolved ? 1.4 : 1.1), PX * (w.evolved ? 1.4 : 1.1), 1);
+                if (idx === 0) Sound.play('splash');
+                break;
+            }
+            case 'whirl': {
+                // 龙卷风瓶：小龙卷风四处游走，把附近敌人吸进来
+                const a = Math.random() * TAU;
+                const p = this.spawnProj('whirl', 'tornado_0', w, this.px + Math.cos(a) * 60, this.py + Math.sin(a) * 60, Math.cos(a) * 80, Math.sin(a) * 80, this.dmgOf(w), 999, s.duration * st.duration, 50 * area);
+                const sc = PX * 0.7 * area * (w.evolved ? 1.3 : 1);
+                p.node.setScale(sc, sc, 1);
+                if (w.evolved) p.sp.color = C_EVO;
+                if (idx === 0) Sound.play('dash');
                 break;
             }
             case 'saw': {
@@ -2169,7 +2246,7 @@ export class Battle {
         p.w = w;
         p.x = x; p.y = y; p.vx = vx; p.vy = vy;
         p.dmg = dmg;
-        p.pierce = pierce;
+        p.pierce = w && pierce < 999 ? pierce + this.stats.pierce : pierce;
         p.life = life;
         p.radius = radius;
         p.rot = 0;
@@ -2200,6 +2277,18 @@ export class Battle {
                 // 炸弹：原地闪烁，引信结束后爆炸
                 const fast = p.life < 0.5 ? 12 : 5;
                 p.sp.spriteFrame = Art.f(Math.floor(p.life * fast) % 2 ? 'bomb_1' : 'bomb_0');
+                continue;
+            }
+            if (p.kind === 'whirl') { this.updateWhirl(p, dt); continue; }
+            if (p.kind === 'turret') { this.updateTurret(p, dt); continue; }
+            if (p.kind === 'mine') {
+                p.ax -= dt;
+                p.sp.color = p.ax > 0 ? tmpColor.set(255, 255, 255, 150) : (Math.floor(this.time * 4) % 2 ? C_WHITE : C_HURT);
+                if (p.ax <= 0) {
+                    for (const e of this.grid.query(p.x, p.y, p.radius + 30, this.qbuf)) {
+                        if (e.alive && !e.def.prop && Math.hypot(e.x - p.x, e.y - p.y) < p.radius + e.def.radius) { this.endProj(p); break; }
+                    }
+                }
                 continue;
             }
             if (p.kind === 'cross') {
@@ -2296,6 +2385,38 @@ export class Battle {
         if (!w) return;
         const st = this.stats, s = w.stats, area = s.area * st.area;
         switch (p.kind) {
+            case 'mine': {
+                const r = 70 * area * (w.evolved ? 1.4 : 1) * (p.mini ? 0.6 : 1);
+                this.explodeFriendly(p.x, p.y, r, p.dmg, w, 240, w.evolved ? 0xff90c0 : 0xffa040, !p.mini);
+                if (w.evolved && !p.mini) {
+                    for (let i = 0; i < 3; i++) {
+                        const a = (i / 3) * TAU + Math.random();
+                        const m = this.spawnProj('mine', 'mine', w, p.x + Math.cos(a) * 70, p.y + Math.sin(a) * 70, 0, 0, Math.round(p.dmg * 0.5), 999, 4, p.radius * 0.7);
+                        m.mini = true; m.ax = 0.4;
+                        m.node.setScale(PX * 0.7, PX * 0.7, 1);
+                    }
+                }
+                break;
+            }
+            case 'turret':
+                this.burst(p.x, p.y, 0xe03030, 8, 160);
+                break;
+            case 'shell':
+                this.explodeFriendly(p.x, p.y, 36, Math.round(p.dmg * 0.4), w, 80, 0xffa040, false);
+                break;
+            case 'tadpole': {
+                const big = w.evolved ? 1.4 : 1;
+                this.explodeFriendly(p.x, p.y, 42 * area * big * (p.mini ? 0.6 : 1), p.dmg, w, 120, w.evolved ? 0x80e060 : 0x60b0ff, false);
+                if (w.evolved && !p.mini) {
+                    for (let i = 0; i < 2; i++) {
+                        const a = Math.random() * TAU;
+                        const m = this.spawnProj('tadpole', 'froglet', w, p.x, p.y, Math.cos(a) * 240, Math.sin(a) * 240, Math.round(p.dmg * 0.5), 1, 1.5, 7);
+                        m.turn = 6; m.mini = true;
+                        m.node.setScale(PX * 0.8, PX * 0.8, 1);
+                    }
+                }
+                break;
+            }
             case 'fireball': {
                 const big = w.evolved ? 1.6 : 1;
                 this.explodeFriendly(p.x, p.y, 42 * area * big, p.dmg, w, 80, 0xff6020);
@@ -2443,6 +2564,98 @@ export class Battle {
             if (l.life <= 0) { l.alive = false; continue; }
             const c = l.sp.color;
             l.sp.color = tmpColor.set(c.r, c.g, c.b, Math.floor(255 * l.life / l.max));
+        }
+    }
+
+    // 蘑菇炮台：朝 380 范围内最近的敌人射击；进化后三连发爆炸炮弹
+    private updateTurret(p: Proj, dt: number) {
+        const w = p.w!;
+        p.ax -= dt;
+        if (p.life < 1) p.sp.color = tmpColor.set(255, 255, 255, Math.floor(255 * p.life));
+        if (p.ax > 0) return;
+        p.ax = Math.max(0.3, 0.6 * w.stats.cooldown / w.def.base.cooldown * this.stats.cooldown * this.cdMul());
+        let best = 380 * 380, t: Enemy | null = null;
+        for (const e of this.grid.query(p.x, p.y, 380, this.qbuf)) {
+            if (!e.alive || e.def.prop) continue;
+            const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+            if (d < best) { best = d; t = e; }
+        }
+        if (!t) return;
+        const a = Math.atan2(t.y - p.y, t.x - p.x), v = 520 * w.stats.speed * this.stats.speed;
+        for (const off of w.evolved ? [-0.15, 0, 0.15] : [0]) {
+            const b = this.spawnProj(w.evolved ? 'shell' : 'tshot', 'fshot', w, p.x, p.y + 8, Math.cos(a + off) * v, Math.sin(a + off) * v, this.dmgOf(w), w.stats.pierce, 1.2, 7);
+            b.node.setScale(PX * 1.2, PX * 1.2, 1);
+            b.sp.color = colorOf(w.evolved ? 0xffa040 : 0xff6060);
+        }
+        Sound.play('pew');
+    }
+
+    // 小龙卷风：游走（进化后追向敌群），吸住并绞伤附近敌人；离奶蛙太远会折返
+    private updateWhirl(p: Proj, dt: number) {
+        const w = p.w!;
+        const ox = this.px - p.x, oy = this.py - p.y;
+        if (Math.abs(ox) > this.vw / 2 - 40 || Math.abs(oy) > this.vh / 2 - 60) {
+            const d = Math.hypot(ox, oy) || 1;
+            p.vx += (ox / d) * 300 * dt; p.vy += (oy / d) * 300 * dt;
+        } else if (w.evolved) {
+            const t = this.nearestEnemy();
+            if (t) { const dx = t.x - p.x, dy = t.y - p.y, d = Math.hypot(dx, dy) || 1; p.vx += (dx / d) * 160 * dt; p.vy += (dy / d) * 160 * dt; }
+        } else if (Math.random() < dt * 0.8) {
+            const a = Math.random() * TAU;
+            p.vx = Math.cos(a) * 80; p.vy = Math.sin(a) * 80;
+        }
+        const sp = Math.hypot(p.vx, p.vy), max = w.evolved ? 150 : 110;
+        if (sp > max) { p.vx *= max / sp; p.vy *= max / sp; }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.node.setPosition(p.x, p.y + 20);
+        p.sp.spriteFrame = Art.f(Math.floor(this.time * 10 + p.radius) % 2 ? 'tornado_1' : 'tornado_0');
+        const R = p.radius;
+        for (const e of this.grid.query(p.x, p.y, R + 40, this.qbuf).slice()) {
+            if (!e.alive || e.def.prop) continue;
+            const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+            if (d > R + e.def.radius) continue;
+            if (!e.def.boss && e.frozen <= 0 && d > 6) { const st = Math.min(d, 140 * dt); e.x += (dx / d) * st; e.y += (dy / d) * st; }
+            if (this.time < (e.hits.get('whirl') || 0)) continue;
+            e.hits.set('whirl', this.time + 0.3);
+            this.hurtEnemy(e, this.dmgOf(w), 0, p.x, p.y, w);
+        }
+        if (Math.random() < 0.3) this.burst(p.x, p.y, 0xd8c090, 1, 90);
+    }
+
+    // 镜盾：绕身旋转，挡下敌方子弹并反射给最近的敌人；撞到敌人造成伤害并击退
+    private updateMirrors(w: WeaponInst, dt: number) {
+        const st = this.stats, s = w.stats;
+        const n = s.amount + st.amount, area = s.area * st.area;
+        while (this.mirrors.length < n) this.mirrors.push(mkSprite(this.projLayer, 'mirror', PX));
+        const R = 72 * area, hit = 18 * area;
+        for (let i = 0; i < this.mirrors.length; i++) {
+            const m = this.mirrors[i];
+            const a = this.time * 2.4 * s.speed * st.speed + (i / n) * TAU;
+            const mx = this.px + Math.cos(a) * R, my = this.py + Math.sin(a) * R;
+            m.node.setPosition(mx, my);
+            m.node.angle = a * 180 / Math.PI - 90;
+            m.node.setScale(PX * area, PX * area, 1);
+            m.color = w.evolved ? C_EVO : C_WHITE;
+            for (const b of this.bullets) {
+                if (!b.alive || (b.x - mx) ** 2 + (b.y - my) ** 2 > (hit + b.radius) ** 2) continue;
+                b.alive = false;
+                this.burst(b.x, b.y, 0xd8f0ff, 5, 160);
+                const t = this.nearestEnemy();
+                const ba = t ? Math.atan2(t.y - my, t.x - mx) : a;
+                for (const off of w.evolved ? [-0.25, 0, 0.25] : [0]) {
+                    const p = this.spawnProj('refl', 'starshot', w, mx, my, Math.cos(ba + off) * 560, Math.sin(ba + off) * 560, this.dmgOf(w) * 2, w.evolved ? 4 : 1, 1.2, 9);
+                    p.node.setScale(PX * 1.3, PX * 1.3, 1);
+                    p.sp.color = colorOf(0xc0f0ff);
+                }
+                Sound.play('pew');
+            }
+            for (const e of this.grid.query(mx, my, hit + 30, this.qbuf).slice()) {
+                if (!e.alive || e.def.prop || Math.hypot(e.x - mx, e.y - my) > hit + e.def.radius) continue;
+                if (this.time < (e.hits.get('mirror') || 0)) continue;
+                e.hits.set('mirror', this.time + Math.max(0.3, s.cooldown * st.cooldown));
+                this.hurtEnemy(e, this.dmgOf(w), 300, this.px, this.py, w);
+            }
         }
     }
 
@@ -2596,7 +2809,7 @@ export class Battle {
         // 火盆：附近保持几个可破坏的火盆
         this.brazierT -= dt;
         if (this.brazierT <= 0) {
-            this.brazierT = 10;
+            this.brazierT = 10 / (1 + this.stats.finder);
             let props = 0;
             for (const e of this.enemies) if (e.alive && e.def.prop) props++;
             if (props < 3) {
@@ -2608,7 +2821,7 @@ export class Battle {
         // 神兵祭坛：1:40 起约每 150 秒在附近出现一座，打碎得到一把 30 秒神兵
         this.altarT -= dt;
         if (this.altarT <= 0) {
-            this.altarT = (140 + Math.random() * 30) * (this.hasB('epicfan') ? 0.6 : 1);
+            this.altarT = (140 + Math.random() * 30) * (this.hasB('epicfan') ? 0.6 : 1) / (1 + this.stats.finder);
             const a = Math.random() * Math.PI * 2, r = 200 + Math.random() * 120;
             const al = this.spawnEnemy('altar', this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true)!;
             al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 120);

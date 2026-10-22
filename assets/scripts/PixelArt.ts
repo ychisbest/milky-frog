@@ -1622,6 +1622,68 @@ const ICONS: Record<string, () => PixelCanvas> = {
         c.ring(9, 8, 6, 1, 0x80d0ff); c.ring(9, 8, 8.5, 1, 0x80d0ff);
         for (let y = 0; y < 16; y++) for (let x = 0; x < 12; x++) if (c.alpha(x, y) && c.data[(y * 16 + x) * 4] === 0x80) c.clear(x, y);
     }),
+    icon_tadpole: () => icon(c => {
+        c.ellipse(5, 7, 4, 3.5, 0x3a3a50);
+        c.poly([[8, 6], [15, 3], [12, 8], [15, 13], [8, 9]], 0x5a5a70);
+        c.px(4, 6, 0xffffff); c.px(3, 6, OUT);
+        c.circle(12, 13, 2, 0xff8030); c.px(12, 13, 0xfff080);
+    }),
+    icon_whirl: () => icon(c => {
+        c.rect(5, 12, 6, 4, 0x8ad0e0); c.rect(6, 10, 4, 2, 0xc0e8f0);
+        for (let y = 0; y < 10; y++) { const w = 1 + (10 - y) * 0.45, cx = 8 + Math.sin(y / 2) * 1.5; c.rect(Math.round(cx - w), y, Math.round(w * 2), 1, y % 3 ? 0xd8c090 : 0xb89a68); }
+    }),
+    icon_mirror: () => icon(c => {
+        c.poly([[2, 1], [14, 1], [14, 9], [8, 15], [2, 9]], 0xa8b4c8);
+        c.poly([[4, 3], [12, 3], [12, 8.5], [8, 13], [4, 8.5]], 0xd8f0ff);
+        c.line(5, 4, 9, 8, 0xffffff); c.line(9, 4, 11, 6, 0xffffff);
+    }),
+    icon_badge: () => icon(c => {
+        c.poly([[3, 1], [7, 1], [8, 6], [6, 6]], 0xd03030); c.poly([[13, 1], [9, 1], [8, 6], [10, 6]], 0x3050d0);
+        c.circle(8, 10.5, 5, 0xf5c542); c.circle(8, 10.5, 3.5, 0xffe080);
+        c.poly([[6, 8], [8, 10], [10, 8], [10, 13], [6, 13]], 0xc89830);
+    }),
+    icon_cloak: () => icon(c => {
+        c.poly([[5, 1], [11, 1], [15, 15], [8, 13], [1, 15]], 0x60b0a0);
+        c.poly([[8, 2], [11, 2], [13, 13], [8, 12]], 0x4a8a80);
+        for (let y = 5; y < 14; y += 3) c.line(3 + y / 4, y, 13 - y / 4, y, 0x90e0d0);
+        c.rect(6, 1, 4, 2, 0xf5c542);
+    }),
+    icon_arrow: () => icon(c => {
+        c.line(2, 14, 11, 5, 0x8a5a30, 255, 2);
+        c.poly([[9, 3], [15, 1], [13, 7]], 0xb8c0cc);
+        c.poly([[1, 12], [4, 11], [5, 12], [4, 15], [2, 15]], 0xe05050);
+    }),
+    icon_tongue: () => icon(c => {
+        c.ellipse(4, 8, 4, 4, 0x6ac058); c.px(3, 6, OUT);
+        c.line(6, 9, 13, 5, 0xff7090, 255, 2);
+        c.circle(13.5, 4.5, 2, 0xff90a8);
+    }),
+    icon_turret: () => icon(c => {
+        c.ellipse(8, 6, 7, 5, 0xe03030);
+        c.circle(5, 5, 1.3, 0xffffff); c.circle(11, 4, 1.1, 0xffffff);
+        c.rect(5, 10, 6, 5, 0xf4ecd8);
+        c.rect(10, 7, 6, 3, 0x6a6a80); c.px(15, 8, 0xffe060);
+    }),
+    icon_mine: () => icon(c => {
+        c.ellipse(8, 11, 7.5, 4, 0x4a9a40);
+        c.poly([[8, 11], [15, 9], [15, 12]], 0x2e6a2a);
+        c.circle(8, 7, 3.5, 0x3a3a48); c.px(7, 6, 0xffffff);
+        c.line(10, 4, 12, 1, 0x8a5a30); c.px(12, 1, 0xffc040);
+    }),
+    icon_fresh: () => icon(c => {
+        c.rect(3, 1, 10, 14, 0xf4e4b8); c.rect(3, 1, 10, 2, 0xd03030); c.rect(3, 13, 10, 2, 0xd03030);
+        c.poly([[9, 4], [6, 8], [8, 8], [7, 12], [10, 7], [8, 7]], 0xd03030);
+    }),
+    icon_finder: () => icon(c => {
+        c.circle(8, 8, 7, 0xc89830); c.circle(8, 8, 5.5, 0xf4ecd8);
+        c.poly([[8, 3], [9.5, 8], [8, 8.5]], 0xd03030); c.poly([[8, 13], [6.5, 8], [8, 7.5]], 0x3a3a48);
+        c.px(8, 8, 0xf5c542);
+    }),
+    icon_moss: () => icon(c => {
+        c.poly([[2, 2], [14, 2], [14, 8], [8, 15], [2, 8]], 0x7a8290);
+        c.ellipse(6, 4, 4, 2.5, 0x5ab048); c.ellipse(11, 7, 3, 2, 0x5ab048); c.ellipse(7, 10, 3, 2, 0x4a9a40);
+        c.px(5, 3, 0xa0e080); c.px(11, 6, 0xa0e080);
+    }),
     icon_core: () => icon(c => {
         c.poly([[8, 0], [15, 4], [15, 12], [8, 16], [1, 12], [1, 4]], 0x3a4a80);
         c.poly([[8, 3], [12, 5.5], [12, 10.5], [8, 13], [4, 10.5], [4, 5.5]], 0x60e0ff);
@@ -2242,6 +2304,46 @@ function drawHolySword() {
     return c;
 }
 
+// 蝌蚪（朝右游）；进化后是绿色小青蛙
+function drawTadpole(body: number, tail: number) {
+    const c = new PixelCanvas(14, 8);
+    c.poly([[6, 3], [13, 1], [11, 4], [13, 7], [6, 5]], tail);
+    c.ellipse(4, 4, 3.5, 3, body);
+    c.px(5, 3, 0xffffff); c.px(6, 3, OUT);
+    c.outline(OUT);
+    return c;
+}
+
+function PICKUP_TURRET() {
+    const c = new PixelCanvas(20, 22);
+    c.ellipse(10, 8, 9, 6.5, 0xe03030);
+    c.circle(6, 6, 1.8, 0xffffff); c.circle(13, 5, 1.5, 0xffffff); c.circle(10, 10, 1.2, 0xffffff);
+    c.rect(6, 13, 8, 8, 0xf4ecd8);
+    c.rect(12, 15, 8, 3, 0x6a6a80); c.rect(18, 15, 2, 3, 0x3a3a48);
+    c.px(8, 16, OUT); c.px(11, 16, OUT);
+    c.outline(OUT);
+    return c;
+}
+
+function drawMine() {
+    const c = new PixelCanvas(18, 12);
+    c.ellipse(9, 7, 8.5, 4.5, 0x4a9a40);
+    c.poly([[9, 7], [17, 5], [17, 9]], 0x2e6a2a);
+    c.ellipse(9, 5, 3.5, 3, 0x3a3a48); c.px(8, 4, 0xffffff);
+    c.px(9, 2, 0xff4040);
+    c.outline(OUT);
+    return c;
+}
+
+function drawMirror() {
+    const c = new PixelCanvas(16, 18);
+    c.poly([[1, 1], [15, 1], [15, 10], [8, 17], [1, 10]], 0x8a98b0);
+    c.poly([[3, 3], [13, 3], [13, 9.5], [8, 15], [3, 9.5]], 0xd8f0ff);
+    c.line(4, 4, 9, 9, 0xffffff); c.line(9, 4, 12, 7, 0xffffff);
+    c.outline(OUT);
+    return c;
+}
+
 function drawSawBlade() {
     const c = new PixelCanvas(20, 20);
     c.circle(10, 10, 7.5, 0xa8b0c0);
@@ -2482,8 +2584,13 @@ export function allSprites(): Record<string, PixelCanvas> {
     for (const k in ICONS) s[k] = ICONS[k]();
     for (const k in UI_ICONS) s[k] = UI_ICONS[k]();
     for (const w of ['whip', 'wand', 'knife', 'axe', 'bible', 'garlic', 'lightning']) s['icon_' + w + '_evo'] = evoIcon(s['icon_' + w]);
-    for (const w of ['fire', 'holy', 'cross', 'frost', 'familiar', 'chain', 'bomb', 'laser', 'spikes', 'saw', 'sonic']) s['icon_' + w + '_evo'] = evoIcon(s['icon_' + w]);
+    for (const w of ['fire', 'holy', 'cross', 'frost', 'familiar', 'chain', 'bomb', 'laser', 'spikes', 'saw', 'sonic', 'tadpole', 'whirl', 'mirror', 'tongue', 'turret', 'mine']) s['icon_' + w + '_evo'] = evoIcon(s['icon_' + w]);
     s.sawblade = drawSawBlade();
+    s.tadpole = drawTadpole(0x3a3a50, 0x5a5a70);
+    s.froglet = drawTadpole(0x4aa040, 0x6ac058);
+    s.mirror = drawMirror();
+    s.turret = PICKUP_TURRET();
+    s.mine = drawMine();
     s.wave = drawWave();
     s.fireball = drawFireball();
     s.flame_0 = drawFlame(0);

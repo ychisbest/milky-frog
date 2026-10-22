@@ -629,3 +629,18 @@ if (SCENE === 'desert') {
     dump('04_worm2');
     g.endRun(false);
 }
+
+// 新武器展示：蝌蚪军团 / 龙卷风瓶 / 镜盾（各自进化版）
+if (SCENE === 'weapons2') {
+    const { BOSS_SCHEDULE } = await import('../../assets/scripts/Defs');
+    for (const [id, char] of (process.env.SET === '3' ? [['tongue', 'druid'], ['turret', 'bomber'], ['mine', 'rogue']] : [['tadpole', 'hunter'], ['whirl', 'mage'], ['mirror', 'knight']])) {
+        startRun(char, [id], 600);
+        B().bossIdx = BOSS_SCHEDULE.findIndex((x: any) => x.t > 600);
+        const w = B().weapons[0]; w.level = 8; w.recalc(); B().evolve(w); g.refreshIcons();
+        for (let i = 0; i < 6; i++) B().summon('imp', B().px + 250 * Math.cos(i), B().py + 250 * Math.sin(i));
+        autoplay(60 * 6, { god: true });
+        g.bannerT = 0; g.bannerLabel.node.active = false;
+        dump('w_' + id);
+        g.endRun(false);
+    }
+}

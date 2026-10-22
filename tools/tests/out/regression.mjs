@@ -1122,6 +1122,102 @@ var init_Defs = __esm({
         ]
       },
       {
+        id: "tadpole",
+        name: "\u874C\u86AA\u519B\u56E2",
+        icon: "icon_tadpole",
+        desc: "\u653E\u51FA\u4F1A\u8FFD\u8E2A\u654C\u4EBA\u7684\u874C\u86AA\uFF0C\u649E\u4E0A\u5C31\u7206\u70B8\u3002",
+        base: { damage: 14, cooldown: 2.4, amount: 2, area: 1, speed: 1, pierce: 1, duration: 3 },
+        levels: [
+          { desc: "\u874C\u86AA +1", mod: { amount: 1 } },
+          { desc: "\u4F24\u5BB3 +6", mod: { damage: 6 } },
+          { desc: "\u7206\u70B8\u8303\u56F4 +20%", mod: { area: 0.2 } },
+          { desc: "\u874C\u86AA +1", mod: { amount: 1 } },
+          { desc: "\u51B7\u5374 -0.3 \u79D2", mod: { cooldown: -0.3 } },
+          { desc: "\u4F24\u5BB3 +8", mod: { damage: 8 } },
+          { desc: "\u874C\u86AA +2", mod: { amount: 2 } }
+        ]
+      },
+      {
+        id: "whirl",
+        name: "\u9F99\u5377\u98CE\u74F6",
+        icon: "icon_whirl",
+        desc: "\u53EC\u5524\u56DB\u5904\u6E38\u8D70\u7684\u5C0F\u9F99\u5377\u98CE\uFF0C\u628A\u9644\u8FD1\u654C\u4EBA\u5438\u8FDB\u6765\u7EDE\u4F24\u3002",
+        base: { damage: 3, cooldown: 4.5, amount: 1, area: 1, speed: 1, pierce: 999, duration: 4 },
+        levels: [
+          { desc: "\u6301\u7EED +1 \u79D2", mod: { duration: 1 } },
+          { desc: "\u4F24\u5BB3 +2", mod: { damage: 2 } },
+          { desc: "\u9F99\u5377\u98CE +1", mod: { amount: 1 } },
+          { desc: "\u8303\u56F4 +20%", mod: { area: 0.2 } },
+          { desc: "\u4F24\u5BB3 +3", mod: { damage: 3 } },
+          { desc: "\u51B7\u5374 -0.6 \u79D2", mod: { cooldown: -0.6 } },
+          { desc: "\u9F99\u5377\u98CE +1", mod: { amount: 1 } }
+        ]
+      },
+      {
+        id: "mirror",
+        name: "\u955C\u76FE",
+        icon: "icon_mirror",
+        desc: "\u73AF\u7ED5\u8EAB\u8FB9\u7684\u955C\u76FE\uFF0C\u6321\u4E0B\u654C\u65B9\u5B50\u5F39\u5E76\u53CD\u5C04\u56DE\u53BB\uFF0C\u8FD8\u4F1A\u649E\u5F00\u654C\u4EBA\u3002",
+        base: { damage: 8, cooldown: 0.8, amount: 1, area: 1, speed: 1, pierce: 1, duration: 0 },
+        levels: [
+          { desc: "\u955C\u76FE +1", mod: { amount: 1 } },
+          { desc: "\u4F24\u5BB3 +6", mod: { damage: 6 } },
+          { desc: "\u955C\u76FE\u53D8\u5927 20%", mod: { area: 0.2 } },
+          { desc: "\u65CB\u8F6C\u52A0\u5FEB 30%", mod: { speed: 0.3 } },
+          { desc: "\u955C\u76FE +1", mod: { amount: 1 } },
+          { desc: "\u4F24\u5BB3 +8", mod: { damage: 8 } },
+          { desc: "\u955C\u76FE\u53D8\u5927 20%", mod: { area: 0.2 } }
+        ]
+      },
+      {
+        id: "tongue",
+        name: "\u86D9\u820C",
+        icon: "icon_tongue",
+        desc: "\u4F38\u51FA\u957F\u820C\u5377\u5411\u654C\u4EBA\uFF0C\u6CBF\u9014\u9020\u6210\u4F24\u5BB3\u5E76\u628A\u654C\u4EBA\u62FD\u5230\u8EAB\u8FB9\u3002",
+        base: { damage: 18, cooldown: 1.2, amount: 1, area: 1, speed: 1, pierce: 999, duration: 0 },
+        levels: [
+          { desc: "\u820C\u5934 +1", mod: { amount: 1 } },
+          { desc: "\u4F24\u5BB3 +9", mod: { damage: 9 } },
+          { desc: "\u820C\u5934\u66F4\u957F\u66F4\u7C97 20%", mod: { area: 0.2 } },
+          { desc: "\u51B7\u5374 -0.3 \u79D2", mod: { cooldown: -0.3 } },
+          { desc: "\u820C\u5934 +1", mod: { amount: 1 } },
+          { desc: "\u4F24\u5BB3 +12", mod: { damage: 12 } },
+          { desc: "\u820C\u5934 +1", mod: { amount: 1 } }
+        ]
+      },
+      {
+        id: "turret",
+        name: "\u8611\u83C7\u70AE\u53F0",
+        icon: "icon_turret",
+        desc: "\u5728\u811A\u4E0B\u653E\u7F6E\u4E00\u5EA7\u8611\u83C7\u70AE\u53F0\uFF0C\u81EA\u52A8\u5C04\u51FB\u9644\u8FD1\u7684\u654C\u4EBA\u3002",
+        base: { damage: 7, cooldown: 4, amount: 1, area: 1, speed: 1, pierce: 1, duration: 7 },
+        levels: [
+          { desc: "\u6301\u7EED +2 \u79D2", mod: { duration: 2 } },
+          { desc: "\u4F24\u5BB3 +3", mod: { damage: 3 } },
+          { desc: "\u70AE\u53F0 +1", mod: { amount: 1 } },
+          { desc: "\u7A7F\u900F +1", mod: { pierce: 1 } },
+          { desc: "\u4F24\u5BB3 +3", mod: { damage: 3 } },
+          { desc: "\u51B7\u5374 -1 \u79D2", mod: { cooldown: -1 } },
+          { desc: "\u70AE\u53F0 +1", mod: { amount: 1 } }
+        ]
+      },
+      {
+        id: "mine",
+        name: "\u8377\u53F6\u5730\u96F7",
+        icon: "icon_mine",
+        desc: "\u5728\u8EAB\u540E\u5E03\u4E0B\u8377\u53F6\u5730\u96F7\uFF0C\u654C\u4EBA\u8E29\u5230\u5C31\u7206\u70B8\u3002",
+        base: { damage: 15, cooldown: 1.4, amount: 1, area: 1, speed: 1, pierce: 999, duration: 10 },
+        levels: [
+          { desc: "\u4F24\u5BB3 +7", mod: { damage: 7 } },
+          { desc: "\u7206\u70B8\u8303\u56F4 +20%", mod: { area: 0.2 } },
+          { desc: "\u6BCF\u6B21\u5E03\u96F7 +1", mod: { amount: 1 } },
+          { desc: "\u4F24\u5BB3 +7", mod: { damage: 7 } },
+          { desc: "\u51B7\u5374 -0.3 \u79D2", mod: { cooldown: -0.3 } },
+          { desc: "\u7206\u70B8\u8303\u56F4 +20%", mod: { area: 0.2 } },
+          { desc: "\u4F24\u5BB3 +9", mod: { damage: 9 } }
+        ]
+      },
+      {
         id: "spikes",
         name: "\u8346\u68D8\u5730\u523A",
         icon: "icon_spikes",
@@ -1159,7 +1255,13 @@ var init_Defs = __esm({
       lifesteal: 0,
       thorns: 0,
       ultCharge: 0,
-      buffTime: 1
+      buffTime: 1,
+      eliteDmg: 0,
+      dodge: 0,
+      pierce: 0,
+      fresh: 0,
+      finder: 0,
+      calm: 0
     };
     PASSIVES = [
       { id: "might", name: "\u83E0\u83DC", icon: "icon_might", desc: "\u4F24\u5BB3 +10%", max: 5, stat: "might", per: 0.1 },
@@ -1179,6 +1281,12 @@ var init_Defs = __esm({
       { id: "fang", name: "\u6D3B\u529B\u7360\u7259", icon: "icon_fang", desc: "\u6BCF\u6B21\u51FB\u8D25\u654C\u4EBA\u56DE\u590D 0.2 \u751F\u547D", max: 5, stat: "lifesteal", per: 0.2 },
       { id: "thorns", name: "\u8346\u68D8\u7532", icon: "icon_thorns", desc: "\u53D7\u51FB\u65F6\u5BF9\u5468\u56F4\u654C\u4EBA\u9020\u6210 30 \u4F24\u5BB3", max: 5, stat: "thorns", per: 30 },
       { id: "core", name: "\u80FD\u91CF\u6838\u5FC3", icon: "icon_core", desc: "\u5927\u62DB\u5145\u80FD\u901F\u5EA6 +12%", max: 5, stat: "ultCharge", per: 0.12 },
+      { id: "badge", name: "\u730E\u738B\u5FBD\u7AE0", icon: "icon_badge", desc: "\u5BF9\u7CBE\u82F1\u602A\u4E0E Boss \u4F24\u5BB3 +10%", max: 5, stat: "eliteDmg", per: 0.1 },
+      { id: "cloak", name: "\u7FBD\u6BDB\u62AB\u98CE", icon: "icon_cloak", desc: "\u95EA\u907F\u7387 +4%", max: 5, stat: "dodge", per: 0.04 },
+      { id: "arrow", name: "\u7A7F\u7532\u7BAD\u5934", icon: "icon_arrow", desc: "\u5F39\u9053\u7A7F\u900F +1", max: 3, stat: "pierce", per: 1 },
+      { id: "fresh", name: "\u5148\u624B\u7B26", icon: "icon_fresh", desc: "\u5BF9\u751F\u547D\u5168\u6EE1\u7684\u654C\u4EBA\u4F24\u5BB3 +15%", max: 5, stat: "fresh", per: 0.15 },
+      { id: "finder", name: "\u5BFB\u5B9D\u7F57\u76D8", icon: "icon_finder", desc: "\u706B\u76C6\u4E0E\u795E\u5175\u796D\u575B\u51FA\u73B0\u9891\u7387 +15%", max: 5, stat: "finder", per: 0.15 },
+      { id: "moss", name: "\u82D4\u85D3\u62A4\u7532", icon: "icon_moss", desc: "\u751F\u547D\u9AD8\u4E8E 70% \u65F6\u53D7\u5230\u4F24\u5BB3 -10%", max: 5, stat: "calm", per: 0.1 },
       { id: "sand", name: "\u65F6\u4E4B\u6C99", icon: "icon_sand", desc: "\u589E\u76CA\u9053\u5177\u4E0E\u795E\u5175\u6301\u7EED\u65F6\u95F4 +10%", max: 5, stat: "buffTime", per: 0.1 }
     ];
     MAX_WEAPONS = 6;
@@ -1202,6 +1310,12 @@ var init_Defs = __esm({
       spikes: { passive: "fang", name: "\u751F\u547D\u8346\u68D8", icon: "icon_spikes_evo", desc: "\u5730\u523A\u6570\u91CF\u5927\u589E\uFF0C\u547D\u4E2D\u65F6\u6709\u51E0\u7387\u56DE\u590D\u751F\u547D\u3002", mod: { amount: 4, damage: 10, area: 0.2 } },
       saw: { passive: "core", name: "\u98CE\u66B4\u952F\u8F6E", icon: "icon_saw_evo", desc: "\u66F4\u591A\u66F4\u5927\u7684\u952F\u7247\uFF0C\u547D\u4E2D\u65F6\u8FF8\u51FA\u706B\u82B1\u5F15\u53D1\u5C0F\u7206\u70B8\u3002", mod: { amount: 2, damage: 12, area: 0.4, duration: 2 } },
       sonic: { passive: "sand", name: "\u97F3\u7206", icon: "icon_sonic_evo", desc: "\u97F3\u6CE2\u540C\u65F6\u8F70\u5411\u56DB\u9762\u516B\u65B9\uFF0C\u5E76\u9707\u6655\u654C\u4EBA 0.6 \u79D2\u3002", mod: { amount: 2, damage: 12, area: 0.3, cooldown: -0.2 } },
+      tadpole: { passive: "badge", name: "\u9752\u86D9\u738B\u5B50\u519B\u56E2", icon: "icon_tadpole_evo", desc: "\u874C\u86AA\u957F\u6210\u5C0F\u9752\u86D9\uFF1A\u6570\u91CF\u66F4\u591A\u3001\u7206\u70B8\u66F4\u5927\uFF0C\u547D\u4E2D\u540E\u5206\u88C2\u51FA\u4E24\u53EA\u5C0F\u874C\u86AA\u3002", mod: { amount: 3, damage: 15, area: 0.4 } },
+      whirl: { passive: "cloak", name: "\u98CE\u66B4\u4E4B\u773C", icon: "icon_whirl_evo", desc: "\u9F99\u5377\u98CE\u66F4\u5927\u66F4\u4E45\uFF0C\u4F1A\u4E3B\u52A8\u8FFD\u5411\u654C\u7FA4\u3002", mod: { amount: 1, damage: 8, area: 0.5, duration: 2 } },
+      mirror: { passive: "arrow", name: "\u4E07\u82B1\u955C", icon: "icon_mirror_evo", desc: "\u955C\u76FE\u66F4\u591A\u66F4\u5FEB\uFF0C\u53CD\u5C04\u7684\u5B50\u5F39\u5206\u88C2\u6210\u4E09\u53D1\u5E76\u7A7F\u900F\u3002", mod: { amount: 2, damage: 20, speed: 0.4, area: 0.2 } },
+      tongue: { passive: "fresh", name: "\u5343\u820C", icon: "icon_tongue_evo", desc: "\u820C\u5934\u66F4\u591A\u66F4\u957F\uFF0C\u5377\u4F4F\u7684\u654C\u4EBA\u6BCF\u6B21\u547D\u4E2D\u56DE\u590D 1 \u751F\u547D\u3002", mod: { amount: 2, damage: 24, area: 0.3 } },
+      turret: { passive: "finder", name: "\u91CD\u70AE\u5821\u5792", icon: "icon_turret_evo", desc: "\u70AE\u53F0\u4F53\u578B\u66F4\u5927\uFF0C\u6BCF\u6B21\u9F50\u5C04\u4E09\u53D1\u4F1A\u7206\u70B8\u7684\u70AE\u5F39\u3002", mod: { damage: 3 } },
+      mine: { passive: "moss", name: "\u8377\u82B1\u96F7\u9635", icon: "icon_mine_evo", desc: "\u7206\u70B8\u66F4\u5927\uFF0C\u6BCF\u6B21\u7206\u70B8\u518D\u5F39\u51FA 3 \u9897\u5C0F\u5730\u96F7\u3002", mod: { damage: 20, area: 0.4 } },
       lightning: { passive: "dup", name: "\u96F7\u9706\u4E4B\u73AF", icon: "icon_lightning_evo", desc: "\u6BCF\u6B21\u843D\u4E0B\u66F4\u591A\u66F4\u5F3A\u7684\u95EA\u7535\u3002", mod: { amount: 4, damage: 25, area: 1 } }
     };
     CHARGE_DESC = {
@@ -3332,6 +3446,48 @@ function drawHolySword() {
   c.outline(16765024, 160);
   return c;
 }
+function drawTadpole(body, tail) {
+  const c = new PixelCanvas(14, 8);
+  c.poly([[6, 3], [13, 1], [11, 4], [13, 7], [6, 5]], tail);
+  c.ellipse(4, 4, 3.5, 3, body);
+  c.px(5, 3, 16777215);
+  c.px(6, 3, OUT);
+  c.outline(OUT);
+  return c;
+}
+function PICKUP_TURRET() {
+  const c = new PixelCanvas(20, 22);
+  c.ellipse(10, 8, 9, 6.5, 14692400);
+  c.circle(6, 6, 1.8, 16777215);
+  c.circle(13, 5, 1.5, 16777215);
+  c.circle(10, 10, 1.2, 16777215);
+  c.rect(6, 13, 8, 8, 16051416);
+  c.rect(12, 15, 8, 3, 6974080);
+  c.rect(18, 15, 2, 3, 3816008);
+  c.px(8, 16, OUT);
+  c.px(11, 16, OUT);
+  c.outline(OUT);
+  return c;
+}
+function drawMine() {
+  const c = new PixelCanvas(18, 12);
+  c.ellipse(9, 7, 8.5, 4.5, 4889152);
+  c.poly([[9, 7], [17, 5], [17, 9]], 3041834);
+  c.ellipse(9, 5, 3.5, 3, 3816008);
+  c.px(8, 4, 16777215);
+  c.px(9, 2, 16728128);
+  c.outline(OUT);
+  return c;
+}
+function drawMirror() {
+  const c = new PixelCanvas(16, 18);
+  c.poly([[1, 1], [15, 1], [15, 10], [8, 17], [1, 10]], 9083056);
+  c.poly([[3, 3], [13, 3], [13, 9.5], [8, 15], [3, 9.5]], 14217471);
+  c.line(4, 4, 9, 9, 16777215);
+  c.line(9, 4, 12, 7, 16777215);
+  c.outline(OUT);
+  return c;
+}
 function drawSawBlade() {
   const c = new PixelCanvas(20, 20);
   c.circle(10, 10, 7.5, 11055296);
@@ -3553,8 +3709,13 @@ function allSprites() {
   for (const k in ICONS) s[k] = ICONS[k]();
   for (const k in UI_ICONS) s[k] = UI_ICONS[k]();
   for (const w of ["whip", "wand", "knife", "axe", "bible", "garlic", "lightning"]) s["icon_" + w + "_evo"] = evoIcon(s["icon_" + w]);
-  for (const w of ["fire", "holy", "cross", "frost", "familiar", "chain", "bomb", "laser", "spikes", "saw", "sonic"]) s["icon_" + w + "_evo"] = evoIcon(s["icon_" + w]);
+  for (const w of ["fire", "holy", "cross", "frost", "familiar", "chain", "bomb", "laser", "spikes", "saw", "sonic", "tadpole", "whirl", "mirror", "tongue", "turret", "mine"]) s["icon_" + w + "_evo"] = evoIcon(s["icon_" + w]);
   s.sawblade = drawSawBlade();
+  s.tadpole = drawTadpole(3816016, 5921392);
+  s.froglet = drawTadpole(4890688, 6996056);
+  s.mirror = drawMirror();
+  s.turret = PICKUP_TURRET();
+  s.mine = drawMine();
   s.wave = drawWave();
   s.fireball = drawFireball();
   s.flame_0 = drawFlame(0);
@@ -3928,6 +4089,89 @@ var init_PixelArt = __esm({
         c.ring(9, 8, 6, 1, 8442111);
         c.ring(9, 8, 8.5, 1, 8442111);
         for (let y = 0; y < 16; y++) for (let x = 0; x < 12; x++) if (c.alpha(x, y) && c.data[(y * 16 + x) * 4] === 128) c.clear(x, y);
+      }),
+      icon_tadpole: () => icon((c) => {
+        c.ellipse(5, 7, 4, 3.5, 3816016);
+        c.poly([[8, 6], [15, 3], [12, 8], [15, 13], [8, 9]], 5921392);
+        c.px(4, 6, 16777215);
+        c.px(3, 6, OUT);
+        c.circle(12, 13, 2, 16744496);
+        c.px(12, 13, 16773248);
+      }),
+      icon_whirl: () => icon((c) => {
+        c.rect(5, 12, 6, 4, 9097440);
+        c.rect(6, 10, 4, 2, 12642544);
+        for (let y = 0; y < 10; y++) {
+          const w = 1 + (10 - y) * 0.45, cx = 8 + Math.sin(y / 2) * 1.5;
+          c.rect(Math.round(cx - w), y, Math.round(w * 2), 1, y % 3 ? 14205072 : 12098152);
+        }
+      }),
+      icon_mirror: () => icon((c) => {
+        c.poly([[2, 1], [14, 1], [14, 9], [8, 15], [2, 9]], 11056328);
+        c.poly([[4, 3], [12, 3], [12, 8.5], [8, 13], [4, 8.5]], 14217471);
+        c.line(5, 4, 9, 8, 16777215);
+        c.line(9, 4, 11, 6, 16777215);
+      }),
+      icon_badge: () => icon((c) => {
+        c.poly([[3, 1], [7, 1], [8, 6], [6, 6]], 13643824);
+        c.poly([[13, 1], [9, 1], [8, 6], [10, 6]], 3166416);
+        c.circle(8, 10.5, 5, 16106818);
+        c.circle(8, 10.5, 3.5, 16769152);
+        c.poly([[6, 8], [8, 10], [10, 8], [10, 13], [6, 13]], 13146160);
+      }),
+      icon_cloak: () => icon((c) => {
+        c.poly([[5, 1], [11, 1], [15, 15], [8, 13], [1, 15]], 6336672);
+        c.poly([[8, 2], [11, 2], [13, 13], [8, 12]], 4885120);
+        for (let y = 5; y < 14; y += 3) c.line(3 + y / 4, y, 13 - y / 4, y, 9494736);
+        c.rect(6, 1, 4, 2, 16106818);
+      }),
+      icon_arrow: () => icon((c) => {
+        c.line(2, 14, 11, 5, 9067056, 255, 2);
+        c.poly([[9, 3], [15, 1], [13, 7]], 12107980);
+        c.poly([[1, 12], [4, 11], [5, 12], [4, 15], [2, 15]], 14700624);
+      }),
+      icon_tongue: () => icon((c) => {
+        c.ellipse(4, 8, 4, 4, 6996056);
+        c.px(3, 6, OUT);
+        c.line(6, 9, 13, 5, 16740496, 255, 2);
+        c.circle(13.5, 4.5, 2, 16748712);
+      }),
+      icon_turret: () => icon((c) => {
+        c.ellipse(8, 6, 7, 5, 14692400);
+        c.circle(5, 5, 1.3, 16777215);
+        c.circle(11, 4, 1.1, 16777215);
+        c.rect(5, 10, 6, 5, 16051416);
+        c.rect(10, 7, 6, 3, 6974080);
+        c.px(15, 8, 16769120);
+      }),
+      icon_mine: () => icon((c) => {
+        c.ellipse(8, 11, 7.5, 4, 4889152);
+        c.poly([[8, 11], [15, 9], [15, 12]], 3041834);
+        c.circle(8, 7, 3.5, 3816008);
+        c.px(7, 6, 16777215);
+        c.line(10, 4, 12, 1, 9067056);
+        c.px(12, 1, 16760896);
+      }),
+      icon_fresh: () => icon((c) => {
+        c.rect(3, 1, 10, 14, 16049336);
+        c.rect(3, 1, 10, 2, 13643824);
+        c.rect(3, 13, 10, 2, 13643824);
+        c.poly([[9, 4], [6, 8], [8, 8], [7, 12], [10, 7], [8, 7]], 13643824);
+      }),
+      icon_finder: () => icon((c) => {
+        c.circle(8, 8, 7, 13146160);
+        c.circle(8, 8, 5.5, 16051416);
+        c.poly([[8, 3], [9.5, 8], [8, 8.5]], 13643824);
+        c.poly([[8, 13], [6.5, 8], [8, 7.5]], 3816008);
+        c.px(8, 8, 16106818);
+      }),
+      icon_moss: () => icon((c) => {
+        c.poly([[2, 2], [14, 2], [14, 8], [8, 15], [2, 8]], 8028816);
+        c.ellipse(6, 4, 4, 2.5, 5943368);
+        c.ellipse(11, 7, 3, 2, 5943368);
+        c.ellipse(7, 10, 3, 2, 4889152);
+        c.px(5, 3, 10543232);
+        c.px(11, 6, 10543232);
       }),
       icon_core: () => icon((c) => {
         c.poly([[8, 0], [15, 4], [15, 12], [8, 16], [1, 12], [1, 4]], 3820160);
@@ -5395,6 +5639,7 @@ var init_Battle = __esm({
         this.lines = [];
         this.linePool = [];
         this.familiars = [];
+        this.mirrors = [];
         // 命运卡牌 / 增益
         this.blessings = [];
         this.pendingBlessings = 0;
@@ -5599,6 +5844,8 @@ var init_Battle = __esm({
         this.lines.length = 0;
         for (const f of this.familiars) f.node.destroy();
         this.familiars = [];
+        for (const m of this.mirrors) m.node.destroy();
+        this.mirrors = [];
         if (this.shieldFx) {
           this.shieldFx.node.destroy();
           this.shieldFx = null;
@@ -5960,6 +6207,11 @@ var init_Battle = __esm({
           this.burst(this.px, this.py, 12648384, 8, 220);
           return;
         }
+        if (this.stats.dodge > 0 && Math.random() < this.stats.dodge) {
+          this.iframe = 0.4;
+          this.burst(this.px, this.py, 12644576, 6, 200);
+          return;
+        }
         if (this.shieldHits > 0) {
           this.shieldHits--;
           this.iframe = 0.6;
@@ -5980,7 +6232,8 @@ var init_Battle = __esm({
         if (this.hasB("thornaura")) this.explodeFriendly(this.px, this.py, 130, 40 + this.level * 3, null, 260, 10539104);
         if (this.isChar("bomber") && Math.random() < 0.35) this.explodeFriendly(this.px, this.py, 110, 20 + this.level * 2, null, 260, 16744496);
         const armor = this.stats.armor + (this.isChar("knight") && this.hp < this.stats.maxHp * 0.5 ? 2 : 0);
-        const d = Math.max(1, dmg * (this.mod("glass") ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) - armor);
+        const calm = this.hp > this.stats.maxHp * 0.7 ? 1 - this.stats.calm : 1;
+        const d = Math.max(1, dmg * (this.mod("glass") ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) * calm - armor);
         this.hp -= d;
         if (this.char.charge === "hurt") this.chargeUlt(0.12);
         this.iframe = Math.max(this.iframe, 0.6);
@@ -6608,6 +6861,8 @@ var init_Battle = __esm({
           if (this.isChar("prism") && Math.random() < 0.35) this.refract(e, dmg);
           if (this.char.charge === "crit") this.chargeUlt(1 / (150 + this.time * 0.4));
         }
+        if (this.stats.fresh > 0 && e.hp >= e.maxHp) dmg = Math.round(dmg * (1 + this.stats.fresh));
+        if ((e.elite || e.def.boss) && this.stats.eliteDmg > 0) dmg = Math.round(dmg * (1 + this.stats.eliteDmg));
         if (e.frozen > 0 && this.weapons.some((x) => x.evolved && x.def.id === "frost")) dmg = Math.round(dmg * 1.5);
         const real = Math.min(dmg, Math.max(0, e.hp));
         e.hp -= dmg;
@@ -6767,6 +7022,10 @@ var init_Battle = __esm({
             this.updateFamiliars(w, dt);
             continue;
           }
+          if (w.def.id === "mirror") {
+            this.updateMirrors(w, dt);
+            continue;
+          }
           w.timer -= dt;
           if (w.timer <= 0 && w.shots <= 0) {
             w.timer = Math.max(0.1, s.cooldown * st.cooldown * this.cdMul());
@@ -6786,7 +7045,7 @@ var init_Battle = __esm({
             while (w.shots > 0 && w.shotTimer <= 0) {
               this.fireOne(w, w.shotIdx++);
               w.shots--;
-              w.shotTimer += w.def.id === "axe" ? 0.15 : w.def.id === "whip" ? 0.12 : w.def.id === "bomb" ? 0.25 : w.def.id === "holy" || w.def.id === "fire" ? 0.15 : w.def.id === "cross" ? 0.12 : w.def.id === "saw" ? 0.15 : w.def.id === "sonic" ? 0.1 : w.def.id === "laser" ? w.evolved ? 0 : 0.18 : 0.07;
+              w.shotTimer += w.def.id === "axe" ? 0.15 : w.def.id === "whip" ? 0.12 : w.def.id === "bomb" ? 0.25 : w.def.id === "holy" || w.def.id === "fire" ? 0.15 : w.def.id === "cross" ? 0.12 : w.def.id === "saw" ? 0.15 : w.def.id === "tadpole" ? 0.08 : w.def.id === "tongue" ? 0.12 : w.def.id === "turret" ? 0.2 : w.def.id === "mine" ? 0.15 : w.def.id === "whirl" ? 0.3 : w.def.id === "sonic" ? 0.1 : w.def.id === "laser" ? w.evolved ? 0 : 0.18 : 0.07;
             }
           }
         }
@@ -6958,6 +7217,59 @@ var init_Battle = __esm({
             this.lineFx(this.px, this.py, ex, ey, 16777215, Math.max(3, half * 0.7));
             this.spawnFx("spark", this.px + dx * 18, this.py + dy * 18, 0.15, PX * 0.8, 1.5);
             Sound.play("beam");
+            break;
+          }
+          case "tongue": {
+            const L = 270 * area, half = 14 * area;
+            const near = this.grid.query(this.px, this.py, L, this.qbuf).filter((e) => e.alive && !e.def.prop && Math.hypot(e.x - this.px, e.y - this.py) < L);
+            near.sort((a2, b) => (a2.x - this.px) ** 2 + (a2.y - this.py) ** 2 - ((b.x - this.px) ** 2 + (b.y - this.py) ** 2));
+            const t = near[Math.min(idx * 3, near.length - 1)];
+            const a = t ? Math.atan2(t.y - this.py, t.x - this.px) : Math.atan2(this.dirY, this.dirX) + idx * 0.8;
+            const len = t ? Math.min(L, Math.hypot(t.x - this.px, t.y - this.py) + 20) : L * 0.6;
+            const dx = Math.cos(a), dy = Math.sin(a);
+            for (const e of near) {
+              const rx = e.x - this.px, ry = e.y - this.py, along = rx * dx + ry * dy;
+              if (along < 0 || along > len || Math.abs(rx * dy - ry * dx) > half + e.def.radius) continue;
+              this.hurtEnemy(e, this.dmgOf(w), 260, e.x + dx * 60, e.y + dy * 60, w);
+              if (w.evolved && Math.random() < 0.3) this.heal(1);
+            }
+            this.lineFx(this.px, this.py, this.px + dx * len, this.py + dy * len, w.evolved ? 16728176 : 16740496, half * 2);
+            this.lineFx(this.px, this.py, this.px + dx * len, this.py + dy * len, 16761040, Math.max(2, half * 0.5));
+            Sound.play("whip");
+            break;
+          }
+          case "turret": {
+            const a = idx * 2.4, r = idx === 0 ? 0 : 50;
+            const p = this.spawnProj("turret", "turret", w, this.px + Math.cos(a) * r, this.py - 10 + Math.sin(a) * r, 0, 0, 0, 999, s.duration * st.duration, 0);
+            p.node.setScale(PX * (w.evolved ? 1.3 : 1.1), PX * (w.evolved ? 1.3 : 1.1), 1);
+            p.ax = 0.3;
+            Sound.play("throw");
+            break;
+          }
+          case "mine": {
+            if (this.projs.filter((q) => q.alive && q.kind === "mine").length >= 40) break;
+            const off = (idx - (s.amount + st.amount - 1) / 2) * 28;
+            const p = this.spawnProj("mine", "mine", w, this.px - this.dirX * 30 - this.dirY * off, this.py - this.dirY * 30 + this.dirX * off - 10, 0, 0, this.dmgOf(w), 999, s.duration * st.duration, 16 * area);
+            p.node.setScale(PX, PX, 1);
+            p.ax = 0.5;
+            break;
+          }
+          case "tadpole": {
+            const a = Math.random() * TAU2, v = 260 * spd;
+            const p = this.spawnProj("tadpole", w.evolved ? "froglet" : "tadpole", w, this.px, this.py, Math.cos(a) * v, Math.sin(a) * v, this.dmgOf(w), 1, s.duration * st.duration, 8);
+            p.turn = 5;
+            p.node.angle = a * 180 / Math.PI;
+            p.node.setScale(PX * (w.evolved ? 1.4 : 1.1), PX * (w.evolved ? 1.4 : 1.1), 1);
+            if (idx === 0) Sound.play("splash");
+            break;
+          }
+          case "whirl": {
+            const a = Math.random() * TAU2;
+            const p = this.spawnProj("whirl", "tornado_0", w, this.px + Math.cos(a) * 60, this.py + Math.sin(a) * 60, Math.cos(a) * 80, Math.sin(a) * 80, this.dmgOf(w), 999, s.duration * st.duration, 50 * area);
+            const sc = PX * 0.7 * area * (w.evolved ? 1.3 : 1);
+            p.node.setScale(sc, sc, 1);
+            if (w.evolved) p.sp.color = C_EVO;
+            if (idx === 0) Sound.play("dash");
             break;
           }
           case "saw": {
@@ -7152,7 +7464,7 @@ var init_Battle = __esm({
         p.vx = vx;
         p.vy = vy;
         p.dmg = dmg;
-        p.pierce = pierce;
+        p.pierce = w && pierce < 999 ? pierce + this.stats.pierce : pierce;
         p.life = life;
         p.radius = radius;
         p.rot = 0;
@@ -7183,6 +7495,27 @@ var init_Battle = __esm({
           if (p.kind === "bomb" || p.kind === "ubomb") {
             const fast = p.life < 0.5 ? 12 : 5;
             p.sp.spriteFrame = Art.f(Math.floor(p.life * fast) % 2 ? "bomb_1" : "bomb_0");
+            continue;
+          }
+          if (p.kind === "whirl") {
+            this.updateWhirl(p, dt);
+            continue;
+          }
+          if (p.kind === "turret") {
+            this.updateTurret(p, dt);
+            continue;
+          }
+          if (p.kind === "mine") {
+            p.ax -= dt;
+            p.sp.color = p.ax > 0 ? tmpColor.set(255, 255, 255, 150) : Math.floor(this.time * 4) % 2 ? C_WHITE : C_HURT;
+            if (p.ax <= 0) {
+              for (const e of this.grid.query(p.x, p.y, p.radius + 30, this.qbuf)) {
+                if (e.alive && !e.def.prop && Math.hypot(e.x - p.x, e.y - p.y) < p.radius + e.def.radius) {
+                  this.endProj(p);
+                  break;
+                }
+              }
+            }
             continue;
           }
           if (p.kind === "cross") {
@@ -7284,6 +7617,40 @@ var init_Battle = __esm({
         if (!w) return;
         const st = this.stats, s = w.stats, area = s.area * st.area;
         switch (p.kind) {
+          case "mine": {
+            const r = 70 * area * (w.evolved ? 1.4 : 1) * (p.mini ? 0.6 : 1);
+            this.explodeFriendly(p.x, p.y, r, p.dmg, w, 240, w.evolved ? 16748736 : 16752704, !p.mini);
+            if (w.evolved && !p.mini) {
+              for (let i = 0; i < 3; i++) {
+                const a = i / 3 * TAU2 + Math.random();
+                const m = this.spawnProj("mine", "mine", w, p.x + Math.cos(a) * 70, p.y + Math.sin(a) * 70, 0, 0, Math.round(p.dmg * 0.5), 999, 4, p.radius * 0.7);
+                m.mini = true;
+                m.ax = 0.4;
+                m.node.setScale(PX * 0.7, PX * 0.7, 1);
+              }
+            }
+            break;
+          }
+          case "turret":
+            this.burst(p.x, p.y, 14692400, 8, 160);
+            break;
+          case "shell":
+            this.explodeFriendly(p.x, p.y, 36, Math.round(p.dmg * 0.4), w, 80, 16752704, false);
+            break;
+          case "tadpole": {
+            const big = w.evolved ? 1.4 : 1;
+            this.explodeFriendly(p.x, p.y, 42 * area * big * (p.mini ? 0.6 : 1), p.dmg, w, 120, w.evolved ? 8446048 : 6336767, false);
+            if (w.evolved && !p.mini) {
+              for (let i = 0; i < 2; i++) {
+                const a = Math.random() * TAU2;
+                const m = this.spawnProj("tadpole", "froglet", w, p.x, p.y, Math.cos(a) * 240, Math.sin(a) * 240, Math.round(p.dmg * 0.5), 1, 1.5, 7);
+                m.turn = 6;
+                m.mini = true;
+                m.node.setScale(PX * 0.8, PX * 0.8, 1);
+              }
+            }
+            break;
+          }
           case "fireball": {
             const big = w.evolved ? 1.6 : 1;
             this.explodeFriendly(p.x, p.y, 42 * area * big, p.dmg, w, 80, 16736288);
@@ -7436,6 +7803,111 @@ var init_Battle = __esm({
           l.sp.color = tmpColor.set(c.r, c.g, c.b, Math.floor(255 * l.life / l.max));
         }
       }
+      // 蘑菇炮台：朝 380 范围内最近的敌人射击；进化后三连发爆炸炮弹
+      updateTurret(p, dt) {
+        const w = p.w;
+        p.ax -= dt;
+        if (p.life < 1) p.sp.color = tmpColor.set(255, 255, 255, Math.floor(255 * p.life));
+        if (p.ax > 0) return;
+        p.ax = Math.max(0.3, 0.6 * w.stats.cooldown / w.def.base.cooldown * this.stats.cooldown * this.cdMul());
+        let best = 380 * 380, t = null;
+        for (const e of this.grid.query(p.x, p.y, 380, this.qbuf)) {
+          if (!e.alive || e.def.prop) continue;
+          const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+          if (d < best) {
+            best = d;
+            t = e;
+          }
+        }
+        if (!t) return;
+        const a = Math.atan2(t.y - p.y, t.x - p.x), v = 520 * w.stats.speed * this.stats.speed;
+        for (const off of w.evolved ? [-0.15, 0, 0.15] : [0]) {
+          const b = this.spawnProj(w.evolved ? "shell" : "tshot", "fshot", w, p.x, p.y + 8, Math.cos(a + off) * v, Math.sin(a + off) * v, this.dmgOf(w), w.stats.pierce, 1.2, 7);
+          b.node.setScale(PX * 1.2, PX * 1.2, 1);
+          b.sp.color = colorOf(w.evolved ? 16752704 : 16736352);
+        }
+        Sound.play("pew");
+      }
+      // 小龙卷风：游走（进化后追向敌群），吸住并绞伤附近敌人；离奶蛙太远会折返
+      updateWhirl(p, dt) {
+        const w = p.w;
+        const ox = this.px - p.x, oy = this.py - p.y;
+        if (Math.abs(ox) > this.vw / 2 - 40 || Math.abs(oy) > this.vh / 2 - 60) {
+          const d = Math.hypot(ox, oy) || 1;
+          p.vx += ox / d * 300 * dt;
+          p.vy += oy / d * 300 * dt;
+        } else if (w.evolved) {
+          const t = this.nearestEnemy();
+          if (t) {
+            const dx = t.x - p.x, dy = t.y - p.y, d = Math.hypot(dx, dy) || 1;
+            p.vx += dx / d * 160 * dt;
+            p.vy += dy / d * 160 * dt;
+          }
+        } else if (Math.random() < dt * 0.8) {
+          const a = Math.random() * TAU2;
+          p.vx = Math.cos(a) * 80;
+          p.vy = Math.sin(a) * 80;
+        }
+        const sp = Math.hypot(p.vx, p.vy), max = w.evolved ? 150 : 110;
+        if (sp > max) {
+          p.vx *= max / sp;
+          p.vy *= max / sp;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.node.setPosition(p.x, p.y + 20);
+        p.sp.spriteFrame = Art.f(Math.floor(this.time * 10 + p.radius) % 2 ? "tornado_1" : "tornado_0");
+        const R = p.radius;
+        for (const e of this.grid.query(p.x, p.y, R + 40, this.qbuf).slice()) {
+          if (!e.alive || e.def.prop) continue;
+          const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+          if (d > R + e.def.radius) continue;
+          if (!e.def.boss && e.frozen <= 0 && d > 6) {
+            const st = Math.min(d, 140 * dt);
+            e.x += dx / d * st;
+            e.y += dy / d * st;
+          }
+          if (this.time < (e.hits.get("whirl") || 0)) continue;
+          e.hits.set("whirl", this.time + 0.3);
+          this.hurtEnemy(e, this.dmgOf(w), 0, p.x, p.y, w);
+        }
+        if (Math.random() < 0.3) this.burst(p.x, p.y, 14205072, 1, 90);
+      }
+      // 镜盾：绕身旋转，挡下敌方子弹并反射给最近的敌人；撞到敌人造成伤害并击退
+      updateMirrors(w, dt) {
+        const st = this.stats, s = w.stats;
+        const n = s.amount + st.amount, area = s.area * st.area;
+        while (this.mirrors.length < n) this.mirrors.push(mkSprite(this.projLayer, "mirror", PX));
+        const R = 72 * area, hit = 18 * area;
+        for (let i = 0; i < this.mirrors.length; i++) {
+          const m = this.mirrors[i];
+          const a = this.time * 2.4 * s.speed * st.speed + i / n * TAU2;
+          const mx = this.px + Math.cos(a) * R, my = this.py + Math.sin(a) * R;
+          m.node.setPosition(mx, my);
+          m.node.angle = a * 180 / Math.PI - 90;
+          m.node.setScale(PX * area, PX * area, 1);
+          m.color = w.evolved ? C_EVO : C_WHITE;
+          for (const b of this.bullets) {
+            if (!b.alive || (b.x - mx) ** 2 + (b.y - my) ** 2 > (hit + b.radius) ** 2) continue;
+            b.alive = false;
+            this.burst(b.x, b.y, 14217471, 5, 160);
+            const t = this.nearestEnemy();
+            const ba = t ? Math.atan2(t.y - my, t.x - mx) : a;
+            for (const off of w.evolved ? [-0.25, 0, 0.25] : [0]) {
+              const p = this.spawnProj("refl", "starshot", w, mx, my, Math.cos(ba + off) * 560, Math.sin(ba + off) * 560, this.dmgOf(w) * 2, w.evolved ? 4 : 1, 1.2, 9);
+              p.node.setScale(PX * 1.3, PX * 1.3, 1);
+              p.sp.color = colorOf(12644607);
+            }
+            Sound.play("pew");
+          }
+          for (const e of this.grid.query(mx, my, hit + 30, this.qbuf).slice()) {
+            if (!e.alive || e.def.prop || Math.hypot(e.x - mx, e.y - my) > hit + e.def.radius) continue;
+            if (this.time < (e.hits.get("mirror") || 0)) continue;
+            e.hits.set("mirror", this.time + Math.max(0.3, s.cooldown * st.cooldown));
+            this.hurtEnemy(e, this.dmgOf(w), 300, this.px, this.py, w);
+          }
+        }
+      }
       // 精灵使魔：跟随玩家，各自独立射击
       updateFamiliars(w, dt) {
         const st = this.stats, s = w.stats;
@@ -7584,7 +8056,7 @@ var init_Battle = __esm({
         this.updateWind(dt);
         this.brazierT -= dt;
         if (this.brazierT <= 0) {
-          this.brazierT = 10;
+          this.brazierT = 10 / (1 + this.stats.finder);
           let props = 0;
           for (const e of this.enemies) if (e.alive && e.def.prop) props++;
           if (props < 3) {
@@ -7595,7 +8067,7 @@ var init_Battle = __esm({
         this.eliteT -= dt;
         this.altarT -= dt;
         if (this.altarT <= 0) {
-          this.altarT = (140 + Math.random() * 30) * (this.hasB("epicfan") ? 0.6 : 1);
+          this.altarT = (140 + Math.random() * 30) * (this.hasB("epicfan") ? 0.6 : 1) / (1 + this.stats.finder);
           const a = Math.random() * Math.PI * 2, r = 200 + Math.random() * 120;
           const al = this.spawnEnemy("altar", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
           al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 120);
@@ -11625,7 +12097,7 @@ if (MODE === "C") {
   }
   section("\u56FE\u9274 / \u6BCF\u65E5\u4EFB\u52A1 / \u7B7E\u5230");
   const all = D.codexEntries();
-  ok(all.length === 103 && new Set(all.map((e) => e.key)).size === 103, `\u56FE\u9274 103 \u9879\u4E14\u4E0D\u91CD\u590D\uFF08${all.length}\uFF09`);
+  ok(all.length === 121 && new Set(all.map((e) => e.key)).size === 121, `\u56FE\u9274 121 \u9879\u4E14\u4E0D\u91CD\u590D\uFF08${all.length}\uFF09`);
   base();
   Save2.data.codex = [];
   start();
@@ -11671,7 +12143,7 @@ if (MODE === "C") {
     g.update(1 / 60);
     if (g.state === "levelup") g.choose(0);
     if (g.state === "chest") g.afterReward();
-    clouds = Math.max(clouds, B().pzones.filter((z2) => z2.alive && z2.kind === "poison").length);
+    clouds = Math.max(clouds, B().pzones.filter((z4) => z4.alive && z4.kind === "poison").length);
   }
   ok(clouds > 0, "\u6BD2\u6CE1\u55B7\u53D1\u7559\u4E0B\u6BD2\u4E91");
   ok(B().nextBoss()?.name === "\u6BD2\u6CBC\u5DE8\u87FE" || B().bossKills.length > 0, "\u6CBC\u6CFD 7:00 \u7684 Boss \u6362\u6210\u6BD2\u6CBC\u5DE8\u87FE");
@@ -11698,7 +12170,7 @@ if (MODE === "C") {
   ok(Save2.data.achievements.includes("nightmare1"), "\u5669\u68A6\u80DC\u5229\u83B7\u5F97\u300C\u5669\u68A6\u5F81\u670D\u8005\u300D");
   Save2.data.mode = "normal";
   ok(D.BLESSINGS.length === 20, "\u547D\u8FD0\u5361\u724C 20 \u5F20");
-  ok(Object.values(D.EVOLUTIONS).length === D.WEAPONS.length && new Set(Object.values(D.EVOLUTIONS).map((e) => e.passive)).size === D.PASSIVES.length && D.PASSIVES.length === 18, `${D.PASSIVES.length} \u4E2A\u9053\u5177\u90FD\u662F\u8FDB\u5316\u94A5\u5319`);
+  ok(Object.values(D.EVOLUTIONS).length === D.WEAPONS.length && new Set(Object.values(D.EVOLUTIONS).map((e) => e.passive)).size === D.PASSIVES.length && D.PASSIVES.length === 24, `${D.PASSIVES.length} \u4E2A\u9053\u5177\u90FD\u662F\u8FDB\u5316\u94A5\u5319`);
   section("\u573A\u666F\u9053\u5177 / \u89D2\u8272\u5929\u8D4B");
   const { Art: Art2 } = await Promise.resolve().then(() => (init_Art(), Art_exports));
   ok(Object.keys(D.PICKUP_INFO).every((k) => !!Art2.f(k)), "\u6240\u6709\u573A\u666F\u9053\u5177\u90FD\u6709\u56FE\u6807");
@@ -11896,7 +12368,7 @@ if (MODE === "C") {
     g.joyY = 0;
     g.update(1 / 60);
   }
-  ok(B().bootsT > 0 && B().px - x0 > 145 * 1.4 && B().pzones.some((z2) => z2.alive && z2.kind === "fire"), "\u75BE\u98CE\u9774\uFF1A\u52A0\u901F\u5E76\u7559\u4E0B\u71C3\u70E7\u8DB3\u8FF9");
+  ok(B().bootsT > 0 && B().px - x0 > 145 * 1.4 && B().pzones.some((z4) => z4.alive && z4.kind === "fire"), "\u75BE\u98CE\u9774\uFF1A\u52A0\u901F\u5E76\u7559\u4E0B\u71C3\u70E7\u8DB3\u8FF9");
   const gold0b = B().gold;
   p2("bank");
   play(60 * 7);
@@ -12112,7 +12584,7 @@ if (MODE === "C") {
   clearCards();
   g.endRun(false);
   section("\u65B0\u6B66\u5668\uFF1A\u5F39\u5F39\u952F / \u97F3\u6CE2\u5587\u53ED\uFF1B\u65B0\u9053\u5177\uFF1A\u80FD\u91CF\u6838\u5FC3 / \u65F6\u4E4B\u6C99");
-  for (const id of ["saw", "sonic"]) {
+  for (const id of ["saw", "sonic", "tadpole", "whirl", "mirror", "tongue", "turret", "mine"]) {
     for (const evo of [false, true]) {
       base();
       start();
@@ -12177,6 +12649,9 @@ if (MODE === "C") {
   const ks = B().kills;
   play(60 * 9);
   ok(B().showerOn <= 0 && B().kills > ks, "\u6D41\u661F\u96E8\u6301\u7EED 8 \u79D2\u540E\u7ED3\u675F");
+  clearCards();
+  B().pendingLevels = B().pendingChests = 0;
+  g.ultHinted = false;
   B().ult = 1;
   step(2);
   ok(g.ultHinted && g.toast.node.active, "\u65B0\u73A9\u5BB6\u7B2C\u4E00\u6B21\u5927\u62DB\u5145\u6EE1\u65F6\u63D0\u793A");
@@ -12201,6 +12676,130 @@ if (MODE === "C") {
   B().hurtEnemy(mim, 1e9, 0, B().px, B().py, null);
   step(1);
   ok(B().pickups.some((p) => p.alive && p.kind.startsWith("epic_")) || !!B().epic, "\u51FB\u8D25\u5B9D\u7BB1\u602A\u6389\u843D\u795E\u5175");
+  clearCards();
+  g.endRun(false);
+  section("\u955C\u76FE / \u730E\u738B\u5FBD\u7AE0 / \u7FBD\u6BDB\u62AB\u98CE / \u7A7F\u7532\u7BAD\u5934");
+  base();
+  start();
+  B().time = 300;
+  B().bossIdx = 2;
+  B().weapons = [];
+  B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w) => w.id === "mirror"), level: 1 });
+  step(2);
+  const mr = B().mirrors[0];
+  B().fireBullet("shot_bone", mr.node.position.x, mr.node.position.y, 0, 1, 5);
+  const refl0 = B().projs.filter((p) => p.alive && p.kind === "refl").length;
+  step(1);
+  ok(B().projs.filter((p) => p.alive && p.kind === "refl").length > refl0, "\u955C\u76FE\uFF1A\u6321\u4E0B\u654C\u65B9\u5B50\u5F39\u5E76\u53CD\u5C04");
+  const pp = (id) => D.PASSIVES.find((p) => p.id === id);
+  for (let i = 0; i < 3; i++) B().applyOption({ kind: "passive", pdef: pp("arrow"), level: i + 1 });
+  B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w) => w.id === "wand"), level: 1 });
+  const wand = B().weapons.find((w) => w.def.id === "wand");
+  const pr = B().spawnProj("bolt", "bolt", wand, B().px, B().py, 1, 0, 1, 1, 1, 5);
+  ok(pr.pierce === 4, "\u7A7F\u7532\u7BAD\u5934\uFF1A\u5F39\u9053\u7A7F\u900F +3");
+  for (let i = 0; i < 5; i++) B().applyOption({ kind: "passive", pdef: pp("badge"), level: i + 1 });
+  B().summon("zombie", B().px + 300, B().py);
+  const z2 = B().enemies.filter((e) => e.alive && e.def === D.ENEMIES.zombie).pop();
+  z2.hp = z2.maxHp = 1e6;
+  z2.elite = true;
+  B().stats.crit = 0;
+  B().hurtEnemy(z2, 100, 0, B().px, B().py, null);
+  ok(Math.round(1e6 - z2.hp) === 150, `\u730E\u738B\u5FBD\u7AE0\uFF1A\u5BF9\u7CBE\u82F1\u4F24\u5BB3 +50%\uFF08${Math.round(1e6 - z2.hp)}\uFF09`);
+  clearCards();
+  g.endRun(false);
+  base();
+  start();
+  for (let i = 0; i < 5; i++) B().applyOption({ kind: "passive", pdef: D.PASSIVES.find((p) => p.id === "cloak"), level: i + 1 });
+  let dg = 0;
+  for (let i = 0; i < 400; i++) {
+    B().iframe = 0;
+    B().shieldHits = 0;
+    B().hp = 1e3;
+    B().hurtPlayer(5);
+    if (B().hp === 1e3) dg++;
+  }
+  ok(dg > 50 && dg < 120, `\u7FBD\u6BDB\u62AB\u98CE\uFF1A\u95EA\u907F 20%\uFF08400 \u6B21\u95EA\u907F ${dg} \u6B21\uFF09`);
+  clearCards();
+  g.endRun(false);
+  section("\u86D9\u820C / \u8611\u83C7\u70AE\u53F0 / \u8377\u53F6\u5730\u96F7 / \u5148\u624B\u7B26 / \u5BFB\u5B9D\u7F57\u76D8 / \u82D4\u85D3\u62A4\u7532");
+  base();
+  start();
+  B().time = 300;
+  B().bossIdx = 2;
+  play(10);
+  for (const e of B().enemies) e.alive = false;
+  step(1);
+  B().weapons = [];
+  B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w) => w.id === "tongue"), level: 1 });
+  B().summon("mummy", B().px + 200, B().py);
+  const mu = B().enemies.find((e) => e.alive && e.def === D.ENEMIES.mummy);
+  mu.hp = mu.maxHp = 1e6;
+  const d0 = Math.hypot(mu.x - B().px, mu.y - B().py);
+  for (let i = 0; i < 60 * 2; i++) {
+    g.joyX = 0;
+    g.joyY = 0;
+    B().hp = B().stats.maxHp;
+    g.update(1 / 60);
+  }
+  ok(mu.hp < 1e6 && Math.hypot(mu.x - B().px, mu.y - B().py) < d0 - 30, "\u86D9\u820C\uFF1A\u547D\u4E2D\u5E76\u628A\u654C\u4EBA\u62FD\u8FD1");
+  B().weapons = [];
+  B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w) => w.id === "turret"), level: 1 });
+  B().summon("mummy", B().px + 150, B().py + 100);
+  B().weapons[0].timer = 0;
+  step(3);
+  const tur = B().projs.find((p) => p.alive && p.kind === "turret");
+  const tx = tur.x;
+  for (let i = 0; i < 60; i++) {
+    g.joyX = 1;
+    g.joyY = 0;
+    g.update(1 / 60);
+  }
+  ok(tur.alive && tur.x === tx && B().projs.some((p) => p.alive && p.kind === "tshot"), "\u8611\u83C7\u70AE\u53F0\uFF1A\u539F\u5730\u4E0D\u52A8\u5E76\u81EA\u52A8\u5C04\u51FB");
+  for (const e of B().enemies) e.alive = false;
+  for (const p of B().projs) p.alive = false;
+  step(1);
+  B().weapons = [];
+  B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w) => w.id === "mine"), level: 1 });
+  B().weapons[0].timer = 0;
+  step(2);
+  const mine = B().projs.find((p) => p.alive && p.kind === "mine");
+  B().summon("zombie", mine.x + 300, mine.y);
+  step(40);
+  const zz = B().enemies.find((e) => e.alive && e.def === D.ENEMIES.zombie);
+  zz.x = mine.x;
+  zz.y = mine.y;
+  zz.hp = zz.maxHp = 1e6;
+  step(2);
+  ok(!mine.alive && zz.hp < 1e6, "\u8377\u53F6\u5730\u96F7\uFF1A\u654C\u4EBA\u8E29\u5230\u540E\u7206\u70B8");
+  clearCards();
+  g.endRun(false);
+  base();
+  start();
+  B().stats.crit = 0;
+  const pp2 = (id) => D.PASSIVES.find((p) => p.id === id);
+  for (let i = 0; i < 5; i++) {
+    B().applyOption({ kind: "passive", pdef: pp2("fresh"), level: i + 1 });
+    B().applyOption({ kind: "passive", pdef: pp2("moss"), level: i + 1 });
+    B().applyOption({ kind: "passive", pdef: pp2("finder"), level: i + 1 });
+  }
+  B().stats.crit = 0;
+  B().summon("zombie", B().px + 300, B().py);
+  const z3 = B().enemies.filter((e) => e.alive && e.def === D.ENEMIES.zombie).pop();
+  z3.hp = z3.maxHp = 1e6;
+  B().hurtEnemy(z3, 100, 0, B().px, B().py, null);
+  const h1 = 1e6 - z3.hp;
+  B().hurtEnemy(z3, 100, 0, B().px, B().py, null);
+  const h2 = 1e6 - z3.hp - h1;
+  ok(h1 === 175 && h2 === 100, `\u5148\u624B\u7B26\uFF1A\u53EA\u5BF9\u6EE1\u8840\u654C\u4EBA\u589E\u4F24\uFF08${h1} / ${h2}\uFF09`);
+  B().iframe = 0;
+  B().shieldHits = 0;
+  B().stats.dodge = 0;
+  B().stats.armor = 0;
+  B().hp = B().stats.maxHp;
+  const hm = B().hp;
+  B().hurtPlayer(20);
+  ok(Math.abs(hm - B().hp - 10) < 0.01, `\u82D4\u85D3\u62A4\u7532\uFF1A\u9AD8\u8840\u91CF\u65F6\u51CF\u4F24 50%\uFF08${(hm - B().hp).toFixed(1)}\uFF09`);
+  ok(Math.abs(B().stats.finder - 0.75) < 1e-6, "\u5BFB\u5B9D\u7F57\u76D8\u6EE1\u7EA7 +75%");
   clearCards();
   g.endRun(false);
   section("\u5185\u5BB9\u5408\u89C4\uFF08\u663E\u793A\u6587\u5B57\u4E0D\u542B\u654F\u611F\u8BCD\uFF09");
