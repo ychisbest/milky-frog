@@ -490,6 +490,7 @@ function defaults() {
     lossStreak: 0,
     bonusDay: "",
     privacyOk: false,
+    privacyVer: 0,
     firstDay: "",
     runsSinceInter: 0,
     stage: "grass",
@@ -9745,6 +9746,162 @@ var init_Battle = __esm({
   }
 });
 
+// ../../assets/scripts/SocialConfig.ts
+var SocialConfig_exports = {};
+__export(SocialConfig_exports, {
+  SOCIAL_CONFIG: () => SOCIAL_CONFIG
+});
+var SOCIAL_CONFIG;
+var init_SocialConfig = __esm({
+  "../../assets/scripts/SocialConfig.ts"() {
+    SOCIAL_CONFIG = {
+      // 微信云开发环境 ID（云开发控制台 → 设置 → 环境 ID，形如 cloud1-xxxxxx）；留空 = 不启用云存档，只存本地
+      cloudEnv: "",
+      // 云存档集合名（需在云开发控制台「数据库」中创建，权限选「仅创建者可读写」）
+      cloudCollection: "saves",
+      // 主菜单显示游戏圈按钮
+      gameClub: true,
+      // 好友排行榜（需要构建后运行 node tools/wechat-postbuild.mjs 放入开放数据域）
+      friendRank: true
+    };
+  }
+});
+
+// ../../assets/scripts/Legal.ts
+function paginate(text, cols, rows) {
+  const unit = (ch) => ch.charCodeAt(0) <= 255 ? 0.5 : 1;
+  const lines = [];
+  for (const para of text.split("\n")) {
+    if (!para) {
+      lines.push("");
+      continue;
+    }
+    let line = "";
+    let width = 0;
+    for (const ch of para) {
+      const u = unit(ch);
+      if (width + u > cols && line) {
+        lines.push(line);
+        line = ch;
+        width = u;
+      } else {
+        line += ch;
+        width += u;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  const pages = [];
+  for (let i = 0; i < lines.length; i += rows) pages.push(lines.slice(i, i + rows).join("\n"));
+  while (pages.length > 1 && !pages[pages.length - 1].trim()) pages.pop();
+  return pages.length ? pages : [""];
+}
+function privacySummary(gameName) {
+  const lines = [
+    `\u6B22\u8FCE\u6765\u5230\u300A${gameName}\u300B\uFF01`,
+    "",
+    "\u6211\u4EEC\u975E\u5E38\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\uFF1A",
+    "\xB7 \u4E0D\u6536\u96C6\u59D3\u540D\u3001\u624B\u673A\u53F7\u7B49\u4E2A\u4EBA\u4FE1\u606F\uFF1B",
+    SOCIAL_CONFIG.cloudEnv ? "\xB7 \u6E38\u620F\u8FDB\u5EA6\u4FDD\u5B58\u5728\u624B\u673A\u672C\u5730\uFF0C\n  \u5E76\u5907\u4EFD\u5230\u5FAE\u4FE1\u4E91\u5F00\u53D1\uFF1B" : "\xB7 \u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF1B",
+    "\xB7 \u901A\u8FC7\u5FAE\u4FE1\u7EDF\u8BA1\u533F\u540D\u7684\u6E38\u620F\u884C\u4E3A\uFF1B"
+  ];
+  if (SOCIAL_CONFIG.friendRank) lines.push("\xB7 \u597D\u53CB\u6392\u884C\u53EA\u63D0\u4EA4\u6E38\u620F\u6210\u7EE9\uFF1B");
+  lines.push(
+    "\xB7 \u5E7F\u544A\u7531\u5FAE\u4FE1\u5E73\u53F0\u63D0\u4F9B\uFF1B",
+    "\xB7 \u4F60\u53EF\u4EE5\u968F\u65F6\u5220\u9664\u672C\u5C0F\u6E38\u620F\u53CA\u6570\u636E\u3002",
+    "",
+    "\u8BF7\u5148\u70B9\u4E0B\u9762\u4E24\u4E2A\u6309\u94AE\uFF0C\u9605\u8BFB\u5B8C\u6574\u534F\u8BAE\u3002",
+    "\u70B9\u300C\u540C\u610F\u300D\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F\u3002"
+  );
+  return lines.join("\n");
+}
+function userTerms(gameName) {
+  return {
+    title: "\u7528\u6237\u534F\u8BAE",
+    body: [
+      `\u66F4\u65B0\u65E5\u671F\uFF1A${UPDATED}`,
+      "\u8FD0\u8425\u8005\uFF1A\u4E2A\u4EBA\u5F00\u53D1\u8005",
+      "",
+      "1. \u534F\u8BAE\u8303\u56F4",
+      `\u672C\u534F\u8BAE\u662F\u4F60\u4E0E\u5C0F\u6E38\u620F\u300A${gameName}\u300B\u8FD0\u8425\u8005\u4E4B\u95F4\u7684\u7EA6\u5B9A\u3002\u4F60\u70B9\u300C\u540C\u610F\u300D\u6216\u5F00\u59CB\u6E38\u620F\uFF0C\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F\u672C\u534F\u8BAE\u548C\u9690\u79C1\u653F\u7B56\u3002`,
+      "",
+      "2. \u670D\u52A1\u5185\u5BB9",
+      "\u672C\u6E38\u620F\u662F\u514D\u8D39\u7684\u4F11\u95F2\u5C0F\u6E38\u620F\uFF0C\u5728\u5FAE\u4FE1\u5185\u6253\u5F00\u5373\u53EF\u6E38\u73A9\uFF0C\u4E0D\u7528\u5355\u72EC\u4E0B\u8F7D\u5B89\u88C5\u3002\u6E38\u620F\u5185\u6CA1\u6709\u5145\u503C\uFF0C\u4E5F\u6CA1\u6709\u4ED8\u8D39\u8D2D\u4E70\u3002\u91D1\u5E01\u53EA\u80FD\u901A\u8FC7\u6E38\u73A9\u83B7\u5F97\uFF0C\u4E0D\u80FD\u4EA4\u6613\u6216\u63D0\u73B0\u3002",
+      "",
+      "3. \u5E7F\u544A",
+      "\u672C\u6E38\u620F\u901A\u8FC7\u5FAE\u4FE1\u63D0\u4F9B\u7684\u6FC0\u52B1\u89C6\u9891\u548C\u63D2\u5C4F\u5E7F\u544A\u83B7\u5F97\u6536\u5165\u3002\u6FC0\u52B1\u89C6\u9891\u7531\u4F60\u81EA\u613F\u89C2\u770B\uFF0C\u7528\u4E8E\u590D\u6D3B\u3001\u91D1\u5E01\u7FFB\u500D\u3001\u5237\u65B0\u9009\u9879\u7B49\u989D\u5916\u5956\u52B1\u3002\u4E0D\u770B\u5E7F\u544A\u4E5F\u53EF\u4EE5\u6B63\u5E38\u6E38\u73A9\u548C\u901A\u5173\u3002\u63D2\u5C4F\u5E7F\u544A\u53EA\u5728\u79BB\u5F00\u7ED3\u7B97\u9875\u65F6\u51FA\u73B0\u3002",
+      "",
+      "4. \u884C\u4E3A\u89C4\u8303",
+      "\u8BF7\u4E0D\u8981\u4F7F\u7528\u5916\u6302\u3001\u4FEE\u6539\u5668\u6216\u5176\u4ED6\u975E\u6B63\u5E38\u624B\u6BB5\u5F71\u54CD\u6E38\u620F\uFF0C\u4E5F\u4E0D\u8981\u5229\u7528\u672C\u6E38\u620F\u4ECE\u4E8B\u8FDD\u6CD5\u8FDD\u89C4\u6D3B\u52A8\u3002",
+      "",
+      "5. \u6E38\u620F\u6570\u636E",
+      "\u6E38\u620F\u8FDB\u5EA6\uFF08\u91D1\u5E01\u3001\u89D2\u8272\u3001\u5730\u56FE\u3001\u5F3A\u5316\u3001\u6210\u5C31\u3001\u7EAA\u5F55\u548C\u8BBE\u7F6E\uFF09\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\u3002\u5220\u9664\u5C0F\u6E38\u620F\u3001\u6E05\u7406\u5FAE\u4FE1\u7F13\u5B58\u6216\u66F4\u6362\u624B\u673A\uFF0C\u672C\u5730\u8FDB\u5EA6\u53EF\u80FD\u4E22\u5931\uFF0C\u8FD0\u8425\u8005\u65E0\u6CD5\u5E2E\u4F60\u627E\u56DE\u3002",
+      SOCIAL_CONFIG.friendRank ? "\u6700\u957F\u5B58\u6D3B\u3001\u51FB\u8D25\u6570\u91CF\u548C\u6BCF\u65E5\u6311\u6218\u6210\u7EE9\u4F1A\u63D0\u4EA4\u7ED9\u5FAE\u4FE1\uFF0C\u53EA\u7528\u4E8E\u597D\u53CB\u6392\u884C\u5C55\u793A\u3002" : "\u5F53\u524D\u7248\u672C\u4E0D\u4F1A\u628A\u6E38\u620F\u6210\u7EE9\u63D0\u4EA4\u5230\u7F51\u4E0A\u3002",
+      "",
+      "6. \u672A\u6210\u5E74\u4EBA\u4FDD\u62A4",
+      "\u672C\u6E38\u620F\u9002\u9F84\u63D0\u793A\u4E3A 12+\u3002\u672A\u6210\u5E74\u4EBA\u5E94\u5728\u76D1\u62A4\u4EBA\u6307\u5BFC\u4E0B\u4F7F\u7528\uFF0C\u5E76\u5408\u7406\u5B89\u6392\u6E38\u620F\u65F6\u95F4\u3002\u542F\u52A8\u9875\u5C55\u793A\u5065\u5EB7\u6E38\u620F\u5FE0\u544A\u3002\u9632\u6C89\u8FF7\u7531\u5FAE\u4FE1\u5C0F\u6E38\u620F\u5E73\u53F0\u7EDF\u4E00\u5904\u7406\u3002",
+      "",
+      "7. \u77E5\u8BC6\u4EA7\u6743",
+      "\u672C\u6E38\u620F\u7684\u7A0B\u5E8F\u3001\u7F8E\u672F\u3001\u97F3\u4E50\u548C\u6587\u5B57\u7684\u77E5\u8BC6\u4EA7\u6743\u5F52\u8FD0\u8425\u8005\u6240\u6709\u3002\u672A\u7ECF\u8BB8\u53EF\uFF0C\u4E0D\u8981\u590D\u5236\u3001\u4FEE\u6539\u6216\u4F20\u64AD\u3002",
+      "",
+      "8. \u514D\u8D23\u4E0E\u53D8\u66F4",
+      "\u56E0\u4E0D\u53EF\u6297\u529B\u3001\u5E73\u53F0\u653F\u7B56\u6216\u7F51\u7EDC\u539F\u56E0\u5BFC\u81F4\u65E0\u6CD5\u6E38\u620F\u7684\uFF0C\u8FD0\u8425\u8005\u4E0D\u627F\u62C5\u8D23\u4EFB\u3002\u534F\u8BAE\u66F4\u65B0\u540E\uFF0C\u4F1A\u5728\u6E38\u620F\u5185\u91CD\u65B0\u5C55\u793A\u3002\u4F60\u7EE7\u7EED\u6E38\u620F\uFF0C\u5373\u8868\u793A\u63A5\u53D7\u66F4\u65B0\u540E\u7684\u534F\u8BAE\u3002",
+      "",
+      "9. \u8054\u7CFB\u6211\u4EEC",
+      "\u5982\u6709\u7591\u95EE\u3001\u6295\u8BC9\u6216\u5EFA\u8BAE\uFF0C\u8BF7\u70B9\u5FAE\u4FE1\u5C0F\u6E38\u620F\u53F3\u4E0A\u89D2\u80F6\u56CA\u6309\u94AE\u91CC\u7684\u300C\u2026\u300D\uFF0C\u9009\u62E9\u300C\u53CD\u9988\u4E0E\u6295\u8BC9\u300D\u8054\u7CFB\u5F00\u53D1\u8005\u3002\u6211\u4EEC\u4F1A\u5728 15 \u4E2A\u5DE5\u4F5C\u65E5\u5185\u56DE\u590D\u3002"
+    ].join("\n")
+  };
+}
+function privacyPolicy(gameName) {
+  const cloud = SOCIAL_CONFIG.cloudEnv ? "\u4F60\u540C\u610F\u672C\u653F\u7B56\u4E4B\u540E\uFF0C\u6E38\u620F\u8FDB\u5EA6\u4F1A\u5907\u4EFD\u5230\u5FAE\u4FE1\u4E91\u5F00\u53D1\uFF0C\u53EA\u7528\u4E8E\u6362\u673A\u540E\u6062\u590D\u3002\u5907\u4EFD\u5185\u5BB9\u4E0E\u7B2C 2 \u6761\u76F8\u540C\uFF0C\u4E0D\u542B\u59D3\u540D\u548C\u624B\u673A\u53F7\u3002\u97F3\u4E50\u3001\u97F3\u6548\u7B49\u672C\u673A\u8BBE\u7F6E\u4E0D\u4F1A\u88AB\u4E91\u7AEF\u8986\u76D6\u3002" : "\u5F53\u524D\u7248\u672C\u7684\u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF0C\u4E0D\u4F1A\u4E0A\u4F20\u5230\u5F00\u53D1\u8005\u7684\u670D\u52A1\u5668\uFF0C\u4E5F\u6CA1\u6709\u5F00\u542F\u4E91\u7AEF\u5907\u4EFD\u3002";
+  const rank = SOCIAL_CONFIG.friendRank ? "\u672C\u6E38\u620F\u628A\u4F60\u7684\u6700\u957F\u5B58\u6D3B\u3001\u51FB\u8D25\u6570\u91CF\u3001\u80DC\u5229\u6B21\u6570\u548C\u5F53\u65E5\u6311\u6218\u6210\u7EE9\u5199\u5165\u5FAE\u4FE1\u7684\u597D\u53CB\u6570\u636E\u5B58\u50A8\uFF0C\u53EA\u7528\u4E8E\u597D\u53CB\u6392\u884C\u3002\u5FAE\u4FE1\u5728\u6392\u884C\u699C\u91CC\u5411\u4F60\u7684\u597D\u53CB\u5C55\u793A\u8FD9\u4E9B\u6210\u7EE9\u3002\u6E38\u620F\u4E3B\u7A0B\u5E8F\u62FF\u4E0D\u5230\u597D\u53CB\u7684\u6635\u79F0\u548C\u5934\u50CF\uFF0C\u5C55\u793A\u7531\u5FAE\u4FE1\u7684\u5F00\u653E\u6570\u636E\u57DF\u5B8C\u6210\u3002" : "\u5F53\u524D\u7248\u672C\u6CA1\u6709\u597D\u53CB\u6392\u884C\uFF0C\u4E0D\u4F1A\u628A\u6E38\u620F\u6210\u7EE9\u5199\u5165\u5FAE\u4FE1\u3002";
+  return {
+    title: "\u9690\u79C1\u653F\u7B56",
+    body: [
+      `\u66F4\u65B0\u65E5\u671F\uFF1A${UPDATED}`,
+      "\u8FD0\u8425\u8005\uFF1A\u4E2A\u4EBA\u5F00\u53D1\u8005",
+      "",
+      `\u6211\u4EEC\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\u3002\u8BF7\u9605\u8BFB\u672C\u653F\u7B56\u540E\u518D\u70B9\u300C\u540C\u610F\u300D\u3002\u672C\u653F\u7B56\u9002\u7528\u4E8E\u5C0F\u6E38\u620F\u300A${gameName}\u300B\u3002`,
+      "",
+      "1. \u6211\u4EEC\u4E0D\u6536\u96C6\u7684\u5185\u5BB9",
+      "\u672C\u6E38\u620F\u4E0D\u6536\u96C6\u4F60\u7684\u59D3\u540D\u3001\u8EAB\u4EFD\u8BC1\u53F7\u3001\u624B\u673A\u53F7\u3001\u7CBE\u786E\u4F4D\u7F6E\u3001\u76F8\u518C\u3001\u6444\u50CF\u5934\u3001\u9EA6\u514B\u98CE\u3001\u901A\u8BAF\u5F55\u3002\u4E0D\u8981\u6C42\u5355\u72EC\u6CE8\u518C\u8D26\u53F7\u3002\u6E38\u620F\u4E3B\u7A0B\u5E8F\u4E0D\u8BFB\u53D6\u5FAE\u4FE1\u6635\u79F0\u548C\u5934\u50CF\u3002",
+      "",
+      "2. \u4FDD\u5B58\u5728\u4F60\u624B\u673A\u91CC\u7684\u6570\u636E",
+      "\u4E3A\u4E86\u8BB0\u4F4F\u6E38\u620F\u8FDB\u5EA6\uFF0C\u672C\u6E38\u620F\u5728\u4F60\u7684\u8BBE\u5907\u672C\u5730\u4FDD\u5B58\uFF1A\u91D1\u5E01\u3001\u5DF2\u89E3\u9501\u7684\u89D2\u8272\u548C\u5730\u56FE\u3001\u6C38\u4E45\u5F3A\u5316\u3001\u6210\u5C31\u3001\u6700\u4F73\u7EAA\u5F55\u3001\u6BCF\u65E5\u6311\u6218\u3001\u7B7E\u5230\u3001\u97F3\u6548\u548C\u753B\u8D28\u8BBE\u7F6E\u3002",
+      "",
+      "3. \u5FAE\u4FE1\u5E73\u53F0\u4F1A\u5904\u7406\u7684\u4FE1\u606F",
+      "\uFF081\uFF09\u533F\u540D\u6E38\u620F\u884C\u4E3A\u3002\u4E3A\u6539\u8FDB\u6E38\u620F\uFF0C\u672C\u6E38\u620F\u901A\u8FC7\u5FAE\u4FE1\u7EDF\u8BA1\u901A\u5173\u3001\u5B58\u6D3B\u65F6\u95F4\u3001\u5E7F\u544A\u662F\u5426\u770B\u5B8C\u7B49\u884C\u4E3A\u6570\u636E\u3002\u7EDF\u8BA1\u91CC\u6CA1\u6709\u59D3\u540D\u3001\u5934\u50CF\u548C\u624B\u673A\u53F7\u3002",
+      "\uFF082\uFF09\u597D\u53CB\u6392\u884C\u3002" + rank,
+      "\uFF083\uFF09\u5E7F\u544A\u3002\u6FC0\u52B1\u89C6\u9891\u548C\u63D2\u5C4F\u7531\u5FAE\u4FE1\u5E7F\u544A\u5E73\u53F0\u63D0\u4F9B\u3002\u5E7F\u544A\u76F8\u5173\u7684\u4FE1\u606F\u7531\u5FAE\u4FE1\u6309\u5176\u9690\u79C1\u4FDD\u62A4\u6307\u5F15\u5904\u7406\uFF0C\u672C\u6E38\u620F\u65E0\u6CD5\u83B7\u53D6\u3002",
+      "\uFF084\uFF09\u5206\u4EAB\u3002\u53EA\u6709\u4F60\u4E3B\u52A8\u70B9\u5206\u4EAB\u65F6\uFF0C\u624D\u4F1A\u751F\u6210\u5206\u4EAB\u5361\u7247\u3002\u5361\u7247\u542B\u6709\u672C\u5C40\u6218\u7EE9\u6587\u5B57\uFF1B\u7ED3\u7B97\u9875\u5206\u4EAB\u53EF\u80FD\u9644\u5E26\u5F53\u524D\u753B\u9762\u622A\u56FE\u3002\u53D1\u4E0D\u53D1\u7ED9\u597D\u53CB\u7531\u4F60\u51B3\u5B9A\u3002\u5206\u4EAB\u6CA1\u6709\u6E38\u620F\u5956\u52B1\u3002",
+      "\uFF085\uFF09\u8BBE\u5907\u6027\u80FD\u3002\u9996\u6B21\u542F\u52A8\u4F1A\u8BFB\u53D6\u673A\u578B\u6027\u80FD\u7B49\u7EA7\uFF0C\u7528\u6765\u51B3\u5B9A\u662F\u5426\u81EA\u52A8\u6253\u5F00\u6027\u80FD\u6A21\u5F0F\u3002\u8BE5\u7B49\u7EA7\u4E0D\u80FD\u7528\u6765\u8BC6\u522B\u4F60\u662F\u8C01\u3002",
+      "",
+      "4. \u4E91\u7AEF\u5907\u4EFD",
+      cloud,
+      "",
+      "5. \u672A\u6210\u5E74\u4EBA",
+      "\u6211\u4EEC\u4E0D\u6536\u96C6\u672A\u6210\u5E74\u4EBA\u7684\u4E2A\u4EBA\u4FE1\u606F\u3002\u9002\u9F84\u63D0\u793A\u4E3A 12+\u3002\u8BF7\u76D1\u62A4\u4EBA\u6307\u5BFC\u672A\u6210\u5E74\u4EBA\u4F7F\u7528\uFF0C\u5E76\u63A7\u5236\u6E38\u620F\u65F6\u95F4\u3002",
+      "",
+      "6. \u4F60\u7684\u6743\u5229",
+      "\u4F60\u53EF\u4EE5\u968F\u65F6\u5728\u5FAE\u4FE1\u91CC\u5220\u9664\u672C\u5C0F\u6E38\u620F\uFF0C\u624B\u673A\u91CC\u7684\u672C\u5730\u6570\u636E\u4F1A\u4E00\u5E76\u6E05\u9664\u3002\u4E0D\u518D\u4F7F\u7528\u672C\u6E38\u620F\uFF0C\u5C31\u4E0D\u4F1A\u518D\u4EA7\u751F\u65B0\u7684\u6E38\u620F\u6570\u636E\u3002",
+      "",
+      "7. \u653F\u7B56\u66F4\u65B0",
+      "\u5982\u679C\u4EE5\u540E\u9700\u8981\u65B0\u7684\u4E2A\u4EBA\u4FE1\u606F\uFF0C\u4F1A\u5148\u66F4\u65B0\u672C\u653F\u7B56\uFF0C\u5E76\u5728\u6E38\u620F\u5185\u91CD\u65B0\u8BF7\u4F60\u786E\u8BA4\u3002\u4F60\u70B9\u300C\u540C\u610F\u300D\u4E4B\u540E\uFF0C\u65B0\u653F\u7B56\u624D\u751F\u6548\u3002",
+      "",
+      "8. \u8054\u7CFB\u6211\u4EEC",
+      "\u8BF7\u70B9\u5FAE\u4FE1\u5C0F\u6E38\u620F\u53F3\u4E0A\u89D2\u80F6\u56CA\u6309\u94AE\u91CC\u7684\u300C\u2026\u300D\uFF0C\u9009\u62E9\u300C\u53CD\u9988\u4E0E\u6295\u8BC9\u300D\u8054\u7CFB\u5F00\u53D1\u8005\u3002\u6211\u4EEC\u4F1A\u5728 15 \u4E2A\u5DE5\u4F5C\u65E5\u5185\u56DE\u590D\u3002"
+    ].join("\n")
+  };
+}
+var PRIVACY_VER, UPDATED;
+var init_Legal = __esm({
+  "../../assets/scripts/Legal.ts"() {
+    init_SocialConfig();
+    PRIVACY_VER = 1;
+    UPDATED = "2026\u5E7410\u670826\u65E5";
+  }
+});
+
 // ../../assets/scripts/Recorder.ts
 var Recorder_exports = {};
 __export(Recorder_exports, {
@@ -9861,27 +10018,6 @@ var init_Recorder = __esm({
   }
 });
 
-// ../../assets/scripts/SocialConfig.ts
-var SocialConfig_exports = {};
-__export(SocialConfig_exports, {
-  SOCIAL_CONFIG: () => SOCIAL_CONFIG
-});
-var SOCIAL_CONFIG;
-var init_SocialConfig = __esm({
-  "../../assets/scripts/SocialConfig.ts"() {
-    SOCIAL_CONFIG = {
-      // 微信云开发环境 ID（云开发控制台 → 设置 → 环境 ID，形如 cloud1-xxxxxx）；留空 = 不启用云存档，只存本地
-      cloudEnv: "",
-      // 云存档集合名（需在云开发控制台「数据库」中创建，权限选「仅创建者可读写」）
-      cloudCollection: "saves",
-      // 主菜单显示游戏圈按钮
-      gameClub: true,
-      // 好友排行榜（需要构建后运行 node tools/wechat-postbuild.mjs 放入开放数据域）
-      friendRank: true
-    };
-  }
-});
-
 // ../../assets/scripts/Social.ts
 var Social_exports = {};
 __export(Social_exports, {
@@ -9896,7 +10032,7 @@ var init_Social = __esm({
     init_Analytics();
     init_Save();
     init_SocialConfig();
-    LOCAL_ONLY = ["music", "sfx", "vibrate", "lite", "liteChecked", "privacyOk"];
+    LOCAL_ONLY = ["music", "sfx", "vibrate", "lite", "liteChecked", "privacyOk", "privacyVer"];
     Social = class {
       static get isWx() {
         return !!wxApi();
@@ -10183,10 +10319,10 @@ var init_GameRoot = __esm({
     init_Backdrop();
     init_Battle();
     init_Defs();
+    init_Legal();
     init_Recorder();
     init_Save();
     init_Social();
-    init_SocialConfig();
     init_Sound();
     init_UiKit();
     ({ ccclass } = _decorator);
@@ -10286,6 +10422,10 @@ var init_GameRoot = __esm({
         this.winT = 0;
         // ------------------------------------------------------------------ 倒下动画
         this.dieT = 0;
+        this.legalPages = [""];
+        this.legalPage = 0;
+        this.legalKind = "terms";
+        this.legalFrom = "privacy";
         this.clubPos = new Vec3();
         this.activeChallenge = null;
         this.questMsg = "";
@@ -10310,7 +10450,7 @@ var init_GameRoot = __esm({
           if (this.state === "menu") this.refreshAll();
         };
         if (!Save.data.unlockSeen && Save.data.runs > 0) Save.data.unlockSeen = Save.data.runs;
-        if (Save.data.privacyOk) this.startCloud();
+        if (this.privacyAccepted()) this.startCloud();
         Analytics.track("launch", { scene: Analytics.launchScene(), is_new: Save.data.runs === 0 ? 1 : 0, runs: Save.data.runs, day_n: Analytics.dayN(), ver: GAME_VERSION });
         Recorder.onReady = () => {
           if (this.state === "result") this.refreshAll();
@@ -10401,7 +10541,7 @@ var init_GameRoot = __esm({
       startCloud() {
         Social.initCloud(() => {
           const st = this.state;
-          if (st === "menu" || st === "chars" || st === "shop" || st === "daily" || st === "privacy" || st === "splash" || st === "signin") {
+          if (st === "menu" || st === "chars" || st === "shop" || st === "daily" || st === "privacy" || st === "legal" || st === "splash" || st === "signin") {
             this.battle.reset(this.selectedChar());
             this.battle.setPlayerVisible(false);
           }
@@ -10516,6 +10656,7 @@ var init_GameRoot = __esm({
         this.buildRevive();
         this.buildSplash();
         this.buildPrivacy();
+        this.buildLegal();
         this.buildTutorial();
         this.ageNode = mkPanel(this.ui, 680, 420).node;
         this.ageNode.setPosition(0, this.vh * 0.05);
@@ -11146,7 +11287,7 @@ var init_GameRoot = __esm({
         this.toggleRow(p.node, -165, "icon_chain", "\u6027\u80FD\u6A21\u5F0F", "lite");
         mkLabel(s, "\u6027\u80FD\u6A21\u5F0F\uFF1A\u51CF\u5C11\u540C\u5C4F\u602A\u7269\u4E0E\u7279\u6548\uFF0C\u9002\u5408\u8F83\u65E7\u7684\u624B\u673A", 20, C_GREY, "center", 2).node.setPosition(0, this.vh * 0.14 - 265);
         const stats = mkLabel(s, "", 26, C_GREY, "center", 3);
-        stats.node.setPosition(0, -this.vh * 0.2);
+        stats.node.setPosition(0, -this.vh * 0.15);
         this.refreshers.push(() => {
           const d = Save.data;
           stats.string = `\u6E38\u620F\u6B21\u6570  ${d.runs}
@@ -11154,6 +11295,9 @@ var init_GameRoot = __esm({
 \u7D2F\u8BA1\u51FB\u8D25  ${d.totalKills}
 \u6700\u957F\u5B58\u6D3B  ${this.fmtTime(d.bestTime)}`;
         });
+        const docY = this.bottom + 188;
+        mkButton(s, "\u300A\u7528\u6237\u534F\u8BAE\u300B", 250, 72, () => this.openDoc("terms"), C_BTN_GREY, 24).node.setPosition(-140, docY);
+        mkButton(s, "\u300A\u9690\u79C1\u653F\u7B56\u300B", 250, 72, () => this.openDoc("privacy"), C_BTN_GREY, 24).node.setPosition(140, docY);
         mkButton(s, "\u8FD4\u56DE", 300, 88, () => this.setState("menu"), C_BTN_BLUE).node.setPosition(0, this.bottom + 80);
       }
       buildPause() {
@@ -11380,40 +11524,84 @@ var init_GameRoot = __esm({
       }
       afterSplash() {
         if (this.state !== "splash") return;
-        this.setState(Save.data.privacyOk ? "menu" : "privacy");
+        this.setState(this.privacyAccepted() ? "menu" : "privacy");
       }
-      // 首次启动：用户协议与隐私政策
+      // 首次启动：摘要 + 两个可点开的全文按钮。协议在游戏内展示，不跳外链。
       buildPrivacy() {
         const s = this.screen("privacy");
-        const p = mkPanel(s, 640, 620);
-        p.node.setPosition(0, this.vh * 0.04);
-        mkLabel(p.node, "\u7528\u6237\u534F\u8BAE\u4E0E\u9690\u79C1\u653F\u7B56", 34, C_GOLD2, "center", 3).node.setPosition(0, 250);
-        mkLabel(p.node, `\u6B22\u8FCE\u6765\u5230\u300A${GAME_NAME}\u300B\uFF01
-
-\u6211\u4EEC\u975E\u5E38\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\uFF1A
-\xB7 \u672C\u6E38\u620F\u4E0D\u6536\u96C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\uFF1B
-${SOCIAL_CONFIG.cloudEnv ? "\xB7 \u6E38\u620F\u8FDB\u5EA6\u4FDD\u5B58\u5728\u624B\u673A\u672C\u5730\uFF0C\u5E76\u5907\u4EFD\u5230\n  \u5FAE\u4FE1\u4E91\u5F00\u53D1\uFF0C\u7528\u4E8E\u6362\u673A\u540E\u6062\u590D\uFF1B" : "\xB7 \u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF1B"}
-\xB7 \u4E3A\u6539\u8FDB\u6E38\u620F\uFF0C\u4F1A\u901A\u8FC7\u5FAE\u4FE1\u5E73\u53F0\u7EDF\u8BA1
-  \u533F\u540D\u7684\u6E38\u620F\u884C\u4E3A\u6570\u636E\uFF1B
-\xB7 \u6E38\u620F\u4E2D\u7684\u5E7F\u544A\u7531\u5FAE\u4FE1\u5E73\u53F0\u63D0\u4F9B\uFF0C
-  \u76F8\u5173\u4FE1\u606F\u5904\u7406\u9075\u5FAA\u300A\u5FAE\u4FE1\u9690\u79C1\u4FDD\u62A4\u6307\u5F15\u300B\uFF1B
-\xB7 \u4F60\u53EF\u4EE5\u968F\u65F6\u5728\u5FAE\u4FE1\u4E2D\u5220\u9664\u672C\u5C0F\u6E38\u620F\u53CA\u5176\u6570\u636E\u3002
-
-\u70B9\u51FB\u201C\u540C\u610F\u201D\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F
-\u300A\u7528\u6237\u534F\u8BAE\u300B\u548C\u300A\u9690\u79C1\u653F\u7B56\u300B\u3002`, 22, C_WHITE2, "center", 2).node.setPosition(0, 10);
-        mkButton(p.node, "\u4E0D\u540C\u610F", 220, 80, () => {
+        mkLabel(s, "\u7528\u6237\u534F\u8BAE\u4E0E\u9690\u79C1\u653F\u7B56", 40, C_GOLD2, "center", 4).node.setPosition(0, this.top - 70);
+        const summary = mkLabel(s, privacySummary(GAME_NAME), 22, C_WHITE2, "center", 2);
+        const sut = summary.node.getComponent(UITransform);
+        sut.setAnchorPoint(0.5, 1);
+        summary.node.setPosition(0, this.top - 130);
+        const linkY = this.bottom + 250;
+        mkLabel(s, "\u70B9\u6B64\u9605\u8BFB\u5168\u6587", 22, C_GOLD2, "center", 2).node.setPosition(0, linkY + 70);
+        mkButton(s, "\u300A\u7528\u6237\u534F\u8BAE\u300B", 280, 84, () => this.openDoc("terms"), C_BTN_BLUE, 28).node.setPosition(-155, linkY);
+        mkButton(s, "\u300A\u9690\u79C1\u653F\u7B56\u300B", 280, 84, () => this.openDoc("privacy"), C_BTN_BLUE, 28).node.setPosition(155, linkY);
+        const by = this.bottom + 120;
+        mkButton(s, "\u4E0D\u540C\u610F", 260, 84, () => {
           Analytics.track("privacy", { agree: 0 });
           const w = mgApi();
           if (w && w.exitMiniProgram) w.exitMiniProgram({});
           else this.showToast("\u9700\u8981\u540C\u610F\u540E\u624D\u80FD\u5F00\u59CB\u6E38\u620F");
-        }, C_BTN_GREY, 28).node.setPosition(-130, -250);
-        mkButton(p.node, "\u540C\u610F", 220, 80, () => {
+        }, C_BTN_GREY, 28).node.setPosition(-150, by);
+        mkButton(s, "\u540C\u610F", 260, 84, () => {
           Save.data.privacyOk = true;
+          Save.data.privacyVer = PRIVACY_VER;
           Save.save();
           Analytics.track("privacy", { agree: 1 });
           this.startCloud();
           this.setState("menu");
-        }, C_BTN_GREEN, 30).node.setPosition(130, -250);
+        }, C_BTN_GREEN, 30).node.setPosition(150, by);
+      }
+      buildLegal() {
+        const s = this.screen("legal");
+        this.legalTitle = mkLabel(s, "", 40, C_GOLD2, "center", 4);
+        this.legalTitle.node.setPosition(0, this.top - 56);
+        this.legalBody = mkLabel(s, "", 22, C_WHITE2, "left", 2);
+        this.legalBody.node.getComponent(UITransform).setAnchorPoint(0, 1);
+        this.legalBody.node.setPosition(-300, this.top - 120);
+        const by = this.bottom + 64;
+        this.legalPageLabel = mkLabel(s, "", 22, C_GREY, "center", 2);
+        this.legalPageLabel.node.setPosition(0, by + 156);
+        mkButton(s, "\u4E0A\u4E00\u9875", 200, 72, () => this.turnLegal(-1), C_BTN_GREY, 26).node.setPosition(-160, by + 96);
+        mkButton(s, "\u4E0B\u4E00\u9875", 200, 72, () => this.turnLegal(1), C_BTN_GREY, 26).node.setPosition(160, by + 96);
+        mkButton(s, "\u8FD4\u56DE", 280, 76, () => this.setState(this.legalFrom), C_BTN_BLUE, 28).node.setPosition(0, by);
+      }
+      privacyAccepted() {
+        return Save.data.privacyOk && (Save.data.privacyVer || 0) >= PRIVACY_VER;
+      }
+      openDoc(kind) {
+        if (this.state !== "legal") this.legalFrom = this.state;
+        this.legalKind = kind;
+        this.legalPage = 0;
+        this.setState("legal");
+      }
+      legalRows() {
+        const line = 28;
+        const bodyTop = this.top - 120;
+        const footerTop = this.bottom + 250;
+        return Math.max(8, Math.min(22, Math.floor((bodyTop - footerTop) / line)));
+      }
+      applyLegal() {
+        const doc = this.legalKind === "terms" ? userTerms(GAME_NAME) : privacyPolicy(GAME_NAME);
+        this.legalTitle.string = doc.title;
+        this.legalPages = paginate(doc.body, 20, this.legalRows());
+        if (this.legalPage >= this.legalPages.length) this.legalPage = 0;
+        this.showLegalPage();
+      }
+      showLegalPage() {
+        this.legalBody.string = this.legalPages[this.legalPage] || "";
+        this.legalPageLabel.string = `\u7B2C ${this.legalPage + 1} / ${this.legalPages.length} \u9875`;
+      }
+      turnLegal(dir) {
+        const n = this.legalPage + dir;
+        if (n < 0 || n >= this.legalPages.length) {
+          this.showToast(n < 0 ? "\u5DF2\u7ECF\u662F\u7B2C\u4E00\u9875" : "\u5DF2\u7ECF\u662F\u6700\u540E\u4E00\u9875");
+          return;
+        }
+        this.legalPage = n;
+        this.showLegalPage();
       }
       // 看激励视频：看完发奖；没看完或失败给出提示
       watchAd(place, onReward, onFail) {
@@ -11444,7 +11632,8 @@ ${SOCIAL_CONFIG.cloudEnv ? "\xB7 \u6E38\u620F\u8FDB\u5EA6\u4FDD\u5B58\u5728\u624
         this.overlay.color = inRun || s === "result" ? C_DIM : new Color(0, 0, 0, s === "menu" ? 90 : 190);
         this.touchLayer.active = s === "play";
         if (s !== "play") this.onJoyEnd();
-        if (s === "menu" || s === "chars" || s === "shop" || s === "settings" || s === "achv" || s === "codex" || s === "signin" || s === "privacy" || s === "daily" || s === "rank") Sound.playBgm("bgm_menu");
+        if (s === "menu" || s === "chars" || s === "shop" || s === "settings" || s === "achv" || s === "codex" || s === "signin" || s === "privacy" || s === "legal" || s === "daily" || s === "rank") Sound.playBgm("bgm_menu");
+        if (s === "legal") this.applyLegal();
         if (s === "menu") this.onMenuEnter();
         else Social.hideClub();
         if (s === "codex") {
@@ -12324,7 +12513,7 @@ ${SOCIAL_CONFIG.cloudEnv ? "\xB7 \u6E38\u620F\u8FDB\u5EA6\u4FDD\u5B58\u5728\u624
           if (b.dead) this.startDying();
           else if (b.won) this.startVictory();
           else this.checkRewards();
-        } else if (this.state === "menu" || this.state === "chars" || this.state === "shop" || this.state === "settings" || this.state === "achv" || this.state === "codex" || this.state === "signin" || this.state === "privacy" || this.state === "splash" || this.state === "daily" || this.state === "rank") {
+        } else if (this.state === "menu" || this.state === "chars" || this.state === "shop" || this.state === "settings" || this.state === "achv" || this.state === "codex" || this.state === "signin" || this.state === "privacy" || this.state === "legal" || this.state === "splash" || this.state === "daily" || this.state === "rank") {
           b.idle(dt);
           if (this.state === "menu") this.updateMenuFx(dt);
         }
@@ -13700,6 +13889,50 @@ if (MODE === "C") {
     ok(g.state === "rank" && !!findPanelTextA("\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00"), "\u6392\u884C\u699C\u63D0\u793A\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00");
     findButton("\u8FD4\u56DE").emit("te");
     ok(!Social2.cloudEnabled && !Social2.clubSupported, "\u4E91\u5B58\u6863 / \u6E38\u620F\u5708\u4E0D\u542F\u7528");
+  }
+  section("\u7528\u6237\u534F\u8BAE\u4E0E\u9690\u79C1\u653F\u7B56");
+  Save2.data.privacyOk = true;
+  Save2.data.privacyVer = 0;
+  Save2.data.signShown = today;
+  g.setState("splash");
+  g.splashT = 3;
+  g.afterSplash();
+  ok(g.state === "privacy", "\u534F\u8BAE\u66F4\u65B0\u540E\uFF0C\u4EE5\u524D\u70B9\u8FC7\u540C\u610F\u7684\u73A9\u5BB6\u4F1A\u518D\u770B\u4E00\u6B21");
+  const agree = findButton("\u540C\u610F");
+  if (agree) agree.emit("te");
+  ok(g.state === "menu" && Save2.data.privacyVer >= 1, "\u540C\u610F\u540E\u8BB0\u4E0B\u534F\u8BAE\u7248\u672C\u5E76\u8FDB\u5165\u4E3B\u83DC\u5355");
+  g.setState("privacy");
+  const termsBtn = findButton("\u300A\u7528\u6237\u534F\u8BAE\u300B");
+  const policyBtn = findButton("\u300A\u9690\u79C1\u653F\u7B56\u300B");
+  ok(!!termsBtn && !!policyBtn, "\u9996\u6B21\u5F39\u7A97\u4E0A\u4E24\u4EFD\u534F\u8BAE\u662F\u53EF\u70B9\u6309\u94AE");
+  if (termsBtn) {
+    termsBtn.emit("te");
+    const terms = g.legalPages.join("\n");
+    ok(g.state === "legal" && terms.includes("\u534F\u8BAE\u8303\u56F4") && terms.includes("\u6CA1\u6709\u5145\u503C"), "\u70B9\u300A\u7528\u6237\u534F\u8BAE\u300B\u6253\u5F00\u6E38\u620F\u5185\u5168\u6587");
+    ok(g.legalPages.length >= 2 && !terms.includes("http"), "\u7528\u6237\u534F\u8BAE\u53EF\u7FFB\u9875\uFF0C\u4E14\u6CA1\u6709\u5916\u94FE");
+    const next = findButton("\u4E0B\u4E00\u9875");
+    if (next) next.emit("te");
+    ok(g.legalPage === 1 && g.legalBody.string.length > 20, "\u4E0B\u4E00\u9875\u6709\u6B63\u6587");
+    findButton("\u8FD4\u56DE").emit("te");
+    ok(g.state === "privacy", "\u8BFB\u5B8C\u56DE\u5230\u540C\u610F\u5F39\u7A97");
+  }
+  g.setState("privacy");
+  const policyBtn2 = findButton("\u300A\u9690\u79C1\u653F\u7B56\u300B");
+  if (policyBtn2) {
+    policyBtn2.emit("te");
+    const policy = g.legalPages.join("\n");
+    ok(g.state === "legal" && policy.includes("\u597D\u53CB\u6392\u884C") && policy.includes("\u53CD\u9988\u4E0E\u6295\u8BC9"), "\u9690\u79C1\u653F\u7B56\u5199\u660E\u597D\u53CB\u6392\u884C\u548C\u8054\u7CFB\u65B9\u5F0F");
+    findButton("\u8FD4\u56DE").emit("te");
+    ok(g.state === "privacy", "\u9690\u79C1\u653F\u7B56\u4E0D\u4F1A\u8DF3\u8D70");
+  }
+  g.setState("settings");
+  const fromSet = findButton("\u300A\u9690\u79C1\u653F\u7B56\u300B");
+  ok(!!fromSet && !!findButton("\u300A\u7528\u6237\u534F\u8BAE\u300B"), "\u8BBE\u7F6E\u9875\u53EF\u4EE5\u518D\u6B21\u6253\u5F00\u4E24\u4EFD\u534F\u8BAE");
+  if (fromSet) {
+    fromSet.emit("te");
+    ok(g.state === "legal" && g.legalTitle.string === "\u9690\u79C1\u653F\u7B56", "\u8BBE\u7F6E\u9875\u70B9\u5F00\u9690\u79C1\u653F\u7B56");
+    findButton("\u8FD4\u56DE").emit("te");
+    ok(g.state === "settings", "\u4ECE\u9690\u79C1\u653F\u7B56\u8FD4\u56DE\u8BBE\u7F6E");
   }
   section("\u5185\u5BB9\u5408\u89C4\uFF08\u663E\u793A\u6587\u5B57\u4E0D\u542B\u654F\u611F\u8BCD\uFF09");
   const texts = [];

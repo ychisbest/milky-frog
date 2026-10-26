@@ -10,10 +10,10 @@ import { Art } from './Art';
 import { Backdrop } from './Backdrop';
 import { Battle, blessingOptions, describe, Option } from './Battle';
 import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, CHARGE_DESC, EPIC_TIME, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
+import { paginate, PRIVACY_VER, privacyPolicy, privacySummary, userTerms } from './Legal';
 import { Recorder } from './Recorder';
 import { Save } from './Save';
 import { Challenge, Social } from './Social';
-import { SOCIAL_CONFIG } from './SocialConfig';
 import { Sound, vibrate } from './Sound';
 import { blockTouches, Button, mkButton, mkLabel, mkNode, mkPanel, mkRect, mkSprite } from './UiKit';
 
@@ -52,7 +52,7 @@ const AGE_TIP = [
 const HEALTH_TIP = '抵制不良游戏，拒绝盗版游戏。\n注意自我保护，谨防受骗上当。\n适度游戏益脑，沉迷游戏伤身。\n合理安排时间，享受健康生活。';
 const C_AD = new Color(150, 90, 20, 255);
 
-type State = 'splash' | 'privacy' | 'menu' | 'daily' | 'rank' | 'chars' | 'shop' | 'settings' | 'achv' | 'codex' | 'signin' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'victory' | 'dying' | 'result';
+type State = 'splash' | 'privacy' | 'legal' | 'menu' | 'daily' | 'rank' | 'chars' | 'shop' | 'settings' | 'achv' | 'codex' | 'signin' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'victory' | 'dying' | 'result';
 
 const C_WHITE = new Color(255, 255, 255, 255);
 const C_GOLD = new Color(255, 214, 90, 255);
@@ -200,7 +200,7 @@ export class GameRoot extends Component {
         Social.onChallenge = () => { if (this.state === 'menu') this.refreshAll(); };
         // 老玩家升级到渐进解锁版本：已开放的功能不再重复提示
         if (!Save.data.unlockSeen && Save.data.runs > 0) Save.data.unlockSeen = Save.data.runs;
-        if (Save.data.privacyOk) this.startCloud();
+        if (this.privacyAccepted()) this.startCloud();
         Analytics.track('launch', { scene: Analytics.launchScene(), is_new: Save.data.runs === 0 ? 1 : 0, runs: Save.data.runs, day_n: Analytics.dayN(), ver: GAME_VERSION });
         Recorder.onReady = () => { if (this.state === 'result') this.refreshAll(); };
         const cam = this.getComponent(Canvas)?.cameraComponent;
@@ -287,7 +287,7 @@ export class GameRoot extends Component {
     private startCloud() {
         Social.initCloud(() => {
             const st = this.state;
-            if (st === 'menu' || st === 'chars' || st === 'shop' || st === 'daily' || st === 'privacy' || st === 'splash' || st === 'signin') {
+            if (st === 'menu' || st === 'chars' || st === 'shop' || st === 'daily' || st === 'privacy' || st === 'legal' || st === 'splash' || st === 'signin') {
                 this.battle.reset(this.selectedChar());
                 this.battle.setPlayerVisible(false);
             }
@@ -409,6 +409,7 @@ export class GameRoot extends Component {
         this.buildRevive();
         this.buildSplash();
         this.buildPrivacy();
+        this.buildLegal();
 
         this.buildTutorial();
 
@@ -1089,11 +1090,14 @@ export class GameRoot extends Component {
         this.toggleRow(p.node, -165, 'icon_chain', '性能模式', 'lite');
         mkLabel(s, '性能模式：减少同屏怪物与特效，适合较旧的手机', 20, C_GREY, 'center', 2).node.setPosition(0, this.vh * 0.14 - 265);
         const stats = mkLabel(s, '', 26, C_GREY, 'center', 3);
-        stats.node.setPosition(0, -this.vh * 0.2);
+        stats.node.setPosition(0, -this.vh * 0.15);
         this.refreshers.push(() => {
             const d = Save.data;
             stats.string = `游戏次数  ${d.runs}\n胜利次数  ${d.wins}\n累计击败  ${d.totalKills}\n最长存活  ${this.fmtTime(d.bestTime)}`;
         });
+        const docY = this.bottom + 188;
+        mkButton(s, '《用户协议》', 250, 72, () => this.openDoc('terms'), C_BTN_GREY, 24).node.setPosition(-140, docY);
+        mkButton(s, '《隐私政策》', 250, 72, () => this.openDoc('privacy'), C_BTN_GREY, 24).node.setPosition(140, docY);
         mkButton(s, '返回', 300, 88, () => this.setState('menu'), C_BTN_BLUE).node.setPosition(0, this.bottom + 80);
     }
 
@@ -1308,29 +1312,100 @@ export class GameRoot extends Component {
 
     private afterSplash() {
         if (this.state !== 'splash') return;
-        this.setState(Save.data.privacyOk ? 'menu' : 'privacy');
+        this.setState(this.privacyAccepted() ? 'menu' : 'privacy');
     }
 
-    // 首次启动：用户协议与隐私政策
+    // 首次启动：摘要 + 两个可点开的全文按钮。协议在游戏内展示，不跳外链。
     private buildPrivacy() {
         const s = this.screen('privacy');
-        const p = mkPanel(s, 640, 620);
-        p.node.setPosition(0, this.vh * 0.04);
-        mkLabel(p.node, '用户协议与隐私政策', 34, C_GOLD, 'center', 3).node.setPosition(0, 250);
-        mkLabel(p.node, `欢迎来到《${GAME_NAME}》！\n\n我们非常重视你的个人信息保护：\n· 本游戏不收集你的个人信息；\n${SOCIAL_CONFIG.cloudEnv ? '· 游戏进度保存在手机本地，并备份到\n  微信云开发，用于换机后恢复；' : '· 游戏进度只保存在你的手机本地；'}\n· 为改进游戏，会通过微信平台统计\n  匿名的游戏行为数据；\n· 游戏中的广告由微信平台提供，\n  相关信息处理遵循《微信隐私保护指引》；\n· 你可以随时在微信中删除本小游戏及其数据。\n\n点击“同意”即表示你已阅读并同意\n《用户协议》和《隐私政策》。`, 22, C_WHITE, 'center', 2).node.setPosition(0, 10);
-        mkButton(p.node, '不同意', 220, 80, () => {
+        mkLabel(s, '用户协议与隐私政策', 40, C_GOLD, 'center', 4).node.setPosition(0, this.top - 70);
+        const summary = mkLabel(s, privacySummary(GAME_NAME), 22, C_WHITE, 'center', 2);
+        const sut = summary.node.getComponent(UITransform)!;
+        sut.setAnchorPoint(0.5, 1);
+        summary.node.setPosition(0, this.top - 130);
+        const linkY = this.bottom + 250;
+        mkLabel(s, '点此阅读全文', 22, C_GOLD, 'center', 2).node.setPosition(0, linkY + 70);
+        mkButton(s, '《用户协议》', 280, 84, () => this.openDoc('terms'), C_BTN_BLUE, 28).node.setPosition(-155, linkY);
+        mkButton(s, '《隐私政策》', 280, 84, () => this.openDoc('privacy'), C_BTN_BLUE, 28).node.setPosition(155, linkY);
+        const by = this.bottom + 120;
+        mkButton(s, '不同意', 260, 84, () => {
             Analytics.track('privacy', { agree: 0 });
             const w = mgApi();
             if (w && w.exitMiniProgram) w.exitMiniProgram({});
             else this.showToast('需要同意后才能开始游戏');
-        }, C_BTN_GREY, 28).node.setPosition(-130, -250);
-        mkButton(p.node, '同意', 220, 80, () => {
+        }, C_BTN_GREY, 28).node.setPosition(-150, by);
+        mkButton(s, '同意', 260, 84, () => {
             Save.data.privacyOk = true;
+            Save.data.privacyVer = PRIVACY_VER;
             Save.save();
             Analytics.track('privacy', { agree: 1 });
             this.startCloud();
             this.setState('menu');
-        }, C_BTN_GREEN, 30).node.setPosition(130, -250);
+        }, C_BTN_GREEN, 30).node.setPosition(150, by);
+    }
+
+    private legalTitle!: Label;
+    private legalBody!: Label;
+    private legalPageLabel!: Label;
+    private legalPages: string[] = [''];
+    private legalPage = 0;
+    private legalKind: 'terms' | 'privacy' = 'terms';
+    private legalFrom: State = 'privacy';
+
+    private buildLegal() {
+        const s = this.screen('legal');
+        this.legalTitle = mkLabel(s, '', 40, C_GOLD, 'center', 4);
+        this.legalTitle.node.setPosition(0, this.top - 56);
+        this.legalBody = mkLabel(s, '', 22, C_WHITE, 'left', 2);
+        this.legalBody.node.getComponent(UITransform)!.setAnchorPoint(0, 1);
+        this.legalBody.node.setPosition(-300, this.top - 120);
+        const by = this.bottom + 64;
+        this.legalPageLabel = mkLabel(s, '', 22, C_GREY, 'center', 2);
+        this.legalPageLabel.node.setPosition(0, by + 156);
+        mkButton(s, '上一页', 200, 72, () => this.turnLegal(-1), C_BTN_GREY, 26).node.setPosition(-160, by + 96);
+        mkButton(s, '下一页', 200, 72, () => this.turnLegal(1), C_BTN_GREY, 26).node.setPosition(160, by + 96);
+        mkButton(s, '返回', 280, 76, () => this.setState(this.legalFrom), C_BTN_BLUE, 28).node.setPosition(0, by);
+    }
+
+    private privacyAccepted() {
+        return Save.data.privacyOk && (Save.data.privacyVer || 0) >= PRIVACY_VER;
+    }
+
+    private openDoc(kind: 'terms' | 'privacy') {
+        if (this.state !== 'legal') this.legalFrom = this.state;
+        this.legalKind = kind;
+        this.legalPage = 0;
+        this.setState('legal');
+    }
+
+    private legalRows() {
+        const line = 28;
+        const bodyTop = this.top - 120;
+        const footerTop = this.bottom + 250;
+        return Math.max(8, Math.min(22, Math.floor((bodyTop - footerTop) / line)));
+    }
+
+    private applyLegal() {
+        const doc = this.legalKind === 'terms' ? userTerms(GAME_NAME) : privacyPolicy(GAME_NAME);
+        this.legalTitle.string = doc.title;
+        this.legalPages = paginate(doc.body, 20, this.legalRows());
+        if (this.legalPage >= this.legalPages.length) this.legalPage = 0;
+        this.showLegalPage();
+    }
+
+    private showLegalPage() {
+        this.legalBody.string = this.legalPages[this.legalPage] || '';
+        this.legalPageLabel.string = `第 ${this.legalPage + 1} / ${this.legalPages.length} 页`;
+    }
+
+    private turnLegal(dir: number) {
+        const n = this.legalPage + dir;
+        if (n < 0 || n >= this.legalPages.length) {
+            this.showToast(n < 0 ? '已经是第一页' : '已经是最后一页');
+            return;
+        }
+        this.legalPage = n;
+        this.showLegalPage();
     }
 
     // 看激励视频：看完发奖；没看完或失败给出提示
@@ -1365,7 +1440,8 @@ export class GameRoot extends Component {
         this.overlay.color = inRun || s === 'result' ? C_DIM : new Color(0, 0, 0, s === 'menu' ? 90 : 190);
         this.touchLayer.active = s === 'play';
         if (s !== 'play') this.onJoyEnd();
-        if (s === 'menu' || s === 'chars' || s === 'shop' || s === 'settings' || s === 'achv' || s === 'codex' || s === 'signin' || s === 'privacy' || s === 'daily' || s === 'rank') Sound.playBgm('bgm_menu');
+        if (s === 'menu' || s === 'chars' || s === 'shop' || s === 'settings' || s === 'achv' || s === 'codex' || s === 'signin' || s === 'privacy' || s === 'legal' || s === 'daily' || s === 'rank') Sound.playBgm('bgm_menu');
+        if (s === 'legal') this.applyLegal();
         if (s === 'menu') this.onMenuEnter();
         else Social.hideClub();
         if (s === 'codex') { Save.data.codexSeen = Save.data.codex.length; Save.save(); }
@@ -2232,7 +2308,7 @@ export class GameRoot extends Component {
             if (b.dead) this.startDying();
             else if (b.won) this.startVictory();
             else this.checkRewards();
-        } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'codex' || this.state === 'signin' || this.state === 'privacy' || this.state === 'splash' || this.state === 'daily' || this.state === 'rank') {
+        } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'codex' || this.state === 'signin' || this.state === 'privacy' || this.state === 'legal' || this.state === 'splash' || this.state === 'daily' || this.state === 'rank') {
             b.idle(dt);
             if (this.state === 'menu') this.updateMenuFx(dt);
         }

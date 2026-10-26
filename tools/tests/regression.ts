@@ -669,6 +669,51 @@ if (MODE === 'C') {
         ok(!Social.cloudEnabled && !Social.clubSupported, '云存档 / 游戏圈不启用');
     }
 
+    section('用户协议与隐私政策');
+    Save.data.privacyOk = true;
+    Save.data.privacyVer = 0;
+    Save.data.signShown = today;
+    g.setState('splash');
+    g.splashT = 3;
+    g.afterSplash();
+    ok(g.state === 'privacy', '协议更新后，以前点过同意的玩家会再看一次');
+    const agree = findButton('同意');
+    if (agree) agree.emit('te');
+    ok(g.state === 'menu' && Save.data.privacyVer >= 1, '同意后记下协议版本并进入主菜单');
+    g.setState('privacy');
+    const termsBtn = findButton('《用户协议》');
+    const policyBtn = findButton('《隐私政策》');
+    ok(!!termsBtn && !!policyBtn, '首次弹窗上两份协议是可点按钮');
+    if (termsBtn) {
+        termsBtn.emit('te');
+        const terms = g.legalPages.join('\n');
+        ok(g.state === 'legal' && terms.includes('协议范围') && terms.includes('没有充值'), '点《用户协议》打开游戏内全文');
+        ok(g.legalPages.length >= 2 && !terms.includes('http'), '用户协议可翻页，且没有外链');
+        const next = findButton('下一页');
+        if (next) next.emit('te');
+        ok(g.legalPage === 1 && g.legalBody.string.length > 20, '下一页有正文');
+        findButton('返回').emit('te');
+        ok(g.state === 'privacy', '读完回到同意弹窗');
+    }
+    g.setState('privacy');
+    const policyBtn2 = findButton('《隐私政策》');
+    if (policyBtn2) {
+        policyBtn2.emit('te');
+        const policy = g.legalPages.join('\n');
+        ok(g.state === 'legal' && policy.includes('好友排行') && policy.includes('反馈与投诉'), '隐私政策写明好友排行和联系方式');
+        findButton('返回').emit('te');
+        ok(g.state === 'privacy', '隐私政策不会跳走');
+    }
+    g.setState('settings');
+    const fromSet = findButton('《隐私政策》');
+    ok(!!fromSet && !!findButton('《用户协议》'), '设置页可以再次打开两份协议');
+    if (fromSet) {
+        fromSet.emit('te');
+        ok(g.state === 'legal' && g.legalTitle.string === '隐私政策', '设置页点开隐私政策');
+        findButton('返回').emit('te');
+        ok(g.state === 'settings', '从隐私政策返回设置');
+    }
+
     section('内容合规（显示文字不含敏感词）');
     const texts: string[] = [];
     for (const k in D.ENEMIES) texts.push(D.ENEMIES[k].name || '');

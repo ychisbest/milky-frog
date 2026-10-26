@@ -23,6 +23,7 @@ export interface SaveData {
     lossStreak: number;   // 连败次数（不屈意志）
     bonusDay: string;     // 最近一次领取每日首局双倍金币的日期
     privacyOk: boolean;   // 已同意用户协议与隐私政策
+    privacyVer: number;   // 同意时的协议版本，低于当前版本会再次弹出
     firstDay: string;     // 首次游玩日期（首日不弹插屏）
     runsSinceInter: number;
     stage: string;             // 当前选择的地图
@@ -52,7 +53,7 @@ function defaults(): SaveData {
         gold: 0, power: {}, chars: ['hunter', 'mage'], selected: 'hunter',
         music: true, sfx: true, vibrate: true, lite: false, liteChecked: false,
         bestTime: 0, bestKills: 0, bestLevel: 0, totalKills: 0, runs: 0, wins: 0,
-        achievements: [], mode: 'normal', endlessBest: 0, lossStreak: 0, bonusDay: '', privacyOk: false, firstDay: '', runsSinceInter: 0, stage: 'grass', stages: ['grass'], stageBest: {}, dailyDone: '', dailyBestDate: '', dailyBest: 0, tutDone: false, codex: [], codexSeen: 0, questDate: '', questProg: {}, questDone: [], signCount: 0, signDate: '', signShown: '', updatedAt: 0, addTipShown: false, unlockSeen: 0,
+        achievements: [], mode: 'normal', endlessBest: 0, lossStreak: 0, bonusDay: '', privacyOk: false, privacyVer: 0, firstDay: '', runsSinceInter: 0, stage: 'grass', stages: ['grass'], stageBest: {}, dailyDone: '', dailyBestDate: '', dailyBest: 0, tutDone: false, codex: [], codexSeen: 0, questDate: '', questProg: {}, questDone: [], signCount: 0, signDate: '', signShown: '', updatedAt: 0, addTipShown: false, unlockSeen: 0,
     };
 }
 

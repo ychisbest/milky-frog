@@ -17,7 +17,7 @@ export interface Challenge {
 }
 
 // 云存档中不覆盖的本机设置
-const LOCAL_ONLY: (keyof SaveData)[] = ['music', 'sfx', 'vibrate', 'lite', 'liteChecked', 'privacyOk'];
+const LOCAL_ONLY: (keyof SaveData)[] = ['music', 'sfx', 'vibrate', 'lite', 'liteChecked', 'privacyOk', 'privacyVer'];
 
 export class Social {
     static get isWx() { return !!wxApi(); }
