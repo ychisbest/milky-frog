@@ -40,6 +40,7 @@ __export(cc_exports, {
   Size: () => Size,
   Sprite: () => Sprite,
   SpriteFrame: () => SpriteFrame,
+  SubContextView: () => SubContextView,
   Texture2D: () => Texture2D,
   UITransform: () => UITransform,
   Vec2: () => Vec2,
@@ -56,7 +57,7 @@ __export(cc_exports, {
   view: () => view
 });
 import { createRequire } from "node:module";
-var Vec3, Vec2, Rect, Size, Color, Layers, nodeCount, Component, Node, UITransform, SpriteFrame, Sprite, Label, Canvas, ImageAsset, Texture2D, view, ResolutionPolicy, store, sys, game, Game, AudioClip, sfxLog, AudioSource, require2, resources, Input, inputHandlers, input, KeyCode, EventKeyboard, EventTouch, Director, director, _decorator;
+var Vec3, Vec2, Rect, Size, Color, Layers, nodeCount, Component, Node, UITransform, SpriteFrame, Sprite, Label, SubContextView, Canvas, ImageAsset, Texture2D, view, ResolutionPolicy, store, sys, game, Game, AudioClip, sfxLog, AudioSource, require2, resources, Input, inputHandlers, input, KeyCode, EventKeyboard, EventTouch, Director, director, _decorator;
 var init_cc = __esm({
   "../promo/cc.ts"() {
     Vec3 = class {
@@ -309,6 +310,13 @@ var init_cc = __esm({
         this._c = new Color(v.r, v.g, v.b, v.a);
       }
     };
+    SubContextView = class extends Component {
+      constructor() {
+        super(...arguments);
+        this.designResolutionSize = null;
+        this.fps = 60;
+      }
+    };
     Canvas = class extends Component {
       constructor() {
         super(...arguments);
@@ -498,7 +506,10 @@ function defaults() {
     questDone: [],
     signCount: 0,
     signDate: "",
-    signShown: ""
+    signShown: "",
+    updatedAt: 0,
+    addTipShown: false,
+    unlockSeen: 0
   };
 }
 var KEY, Save;
@@ -510,6 +521,11 @@ var init_Save = __esm({
       static {
         this.data = defaults();
       }
+      static {
+        // 每次存档后回调（云存档用来安排上传）
+        this.onSaved = () => {
+        };
+      }
       static load() {
         try {
           const raw = sys.localStorage.getItem(KEY);
@@ -520,10 +536,20 @@ var init_Save = __esm({
         }
       }
       static save() {
+        this.data.updatedAt = Date.now();
         try {
           sys.localStorage.setItem(KEY, JSON.stringify(this.data));
         } catch (e) {
           console.warn("[Save] save failed", e);
+        }
+        this.onSaved();
+      }
+      // 用另一份存档（云端）整体替换本地，缺失字段补默认值；保留原 updatedAt 不触发回传
+      static replace(d) {
+        this.data = Object.assign(defaults(), d);
+        try {
+          sys.localStorage.setItem(KEY, JSON.stringify(this.data));
+        } catch (e) {
         }
       }
       static rank(id) {
@@ -1740,18 +1766,82 @@ var init_Ads = __esm({
         if (this.bgmWasPlaying) Sound.resumeBgm();
         if (cb) cb(r);
       }
-      // 结算后调用：每 N 局一次插屏；新用户首日、本次结算已看过激励视频时不弹
+      // 结算后调用：每 N 局一次插屏；新用户首日、本次结算已看过激励视频时不弹。返回是否尝试弹出
       static afterRun(watchedReward) {
         const d = Save.data;
         d.runsSinceInter = (d.runsSinceInter || 0) + 1;
         Save.save();
-        if (!this.inter || watchedReward) return;
-        if (d.firstDay === (/* @__PURE__ */ new Date()).toDateString()) return;
-        if (d.runsSinceInter < AD_CONFIG.interstitialEvery) return;
+        if (!this.inter || watchedReward) return false;
+        if (d.firstDay === (/* @__PURE__ */ new Date()).toDateString()) return false;
+        if (d.runsSinceInter < AD_CONFIG.interstitialEvery) return false;
         d.runsSinceInter = 0;
         Save.save();
         this.inter.show().catch(() => {
         });
+        return true;
+      }
+    };
+  }
+});
+
+// ../../assets/scripts/Analytics.ts
+var Analytics_exports = {};
+__export(Analytics_exports, {
+  Analytics: () => Analytics
+});
+var Analytics;
+var init_Analytics = __esm({
+  "../../assets/scripts/Analytics.ts"() {
+    init_Ads();
+    init_Save();
+    Analytics = class {
+      static {
+        // true 时在控制台打印每条埋点，便于在预览中核对
+        this.debug = false;
+      }
+      static {
+        // 最近上报的事件（测试与调试用，最多保留 50 条）
+        this.log = [];
+      }
+      static track(id, data = {}) {
+        this.log.push({ id, data });
+        if (this.log.length > 50) this.log.shift();
+        if (this.debug) console.log("[Analytics]", id, JSON.stringify(data));
+        const a = mgApi();
+        if (!a) return;
+        try {
+          if (a.reportEvent) a.reportEvent(id, data);
+          else if (a.reportAnalytics) a.reportAnalytics(id, data);
+        } catch (e) {
+        }
+      }
+      // 热启动（从后台回到游戏，例如点开别人分享的卡片）也记录场景值；冷启动由 launch 事件记录
+      static init() {
+        const a = mgApi();
+        if (!a || !a.onShow) return;
+        try {
+          a.onShow((res) => this.track("app_show", { scene: res && typeof res.scene === "number" ? res.scene : 0, runs: Save.data.runs }));
+        } catch (e) {
+        }
+      }
+      // 距首次游玩的天数（0 = 首日），用于看次留 / 七留
+      static dayN() {
+        const f = Save.data.firstDay;
+        if (!f) return 0;
+        const t0 = new Date(f).getTime();
+        if (isNaN(t0)) return 0;
+        const today2 = new Date((/* @__PURE__ */ new Date()).toDateString()).getTime();
+        return Math.max(0, Math.round((today2 - t0) / 864e5));
+      }
+      // 启动场景值（1007 单聊分享卡片 / 1008 群聊 / 1154 朋友圈 / 1001 下拉 / 1005 搜索 / 1089 我的小程序 等）
+      static launchScene() {
+        try {
+          const a = mgApi();
+          const o = a && a.getLaunchOptionsSync ? a.getLaunchOptionsSync() : null;
+          return o && typeof o.scene === "number" ? o.scene : 0;
+        } catch (e) {
+          return 0;
+        }
       }
     };
   }
@@ -9771,6 +9861,305 @@ var init_Recorder = __esm({
   }
 });
 
+// ../../assets/scripts/SocialConfig.ts
+var SocialConfig_exports = {};
+__export(SocialConfig_exports, {
+  SOCIAL_CONFIG: () => SOCIAL_CONFIG
+});
+var SOCIAL_CONFIG;
+var init_SocialConfig = __esm({
+  "../../assets/scripts/SocialConfig.ts"() {
+    SOCIAL_CONFIG = {
+      // 微信云开发环境 ID（云开发控制台 → 设置 → 环境 ID，形如 cloud1-xxxxxx）；留空 = 不启用云存档，只存本地
+      cloudEnv: "",
+      // 云存档集合名（需在云开发控制台「数据库」中创建，权限选「仅创建者可读写」）
+      cloudCollection: "saves",
+      // 主菜单显示游戏圈按钮
+      gameClub: true,
+      // 好友排行榜（需要构建后运行 node tools/wechat-postbuild.mjs 放入开放数据域）
+      friendRank: true
+    };
+  }
+});
+
+// ../../assets/scripts/Social.ts
+var Social_exports = {};
+__export(Social_exports, {
+  Social: () => Social
+});
+function wxApi() {
+  return globalThis.wx || null;
+}
+var LOCAL_ONLY, Social;
+var init_Social = __esm({
+  "../../assets/scripts/Social.ts"() {
+    init_Analytics();
+    init_Save();
+    init_SocialConfig();
+    LOCAL_ONLY = ["music", "sfx", "vibrate", "lite", "liteChecked", "privacyOk"];
+    Social = class {
+      static get isWx() {
+        return !!wxApi();
+      }
+      // 本地日期 YYYYMMDD（每日挑战按本地日期生成，分享与排行榜用它对齐）
+      static dateKey(d = /* @__PURE__ */ new Date()) {
+        return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      }
+      static {
+        // ------------------------------------------------------------------ 版本更新
+        this.updater = null;
+      }
+      static {
+        this.updatePrompted = false;
+      }
+      // 新版本在后台下载完成后，等玩家回到主菜单再提示重启（不打断战斗）
+      static initUpdate() {
+        const w = wxApi();
+        if (!w || !w.getUpdateManager) return;
+        try {
+          const um = w.getUpdateManager();
+          um.onUpdateReady(() => {
+            this.updater = um;
+            Analytics.track("update", { action: "ready" });
+          });
+          if (um.onUpdateFailed) um.onUpdateFailed(() => Analytics.track("update", { action: "failed" }));
+        } catch (e) {
+        }
+      }
+      // 回到主菜单时调用；返回是否弹出了提示
+      static promptUpdate(beforeRestart) {
+        const w = wxApi();
+        if (!this.updater || this.updatePrompted || !w || !w.showModal) return false;
+        this.updatePrompted = true;
+        const um = this.updater;
+        w.showModal({
+          title: "\u53D1\u73B0\u65B0\u7248\u672C",
+          content: "\u65B0\u7248\u672C\u5DF2\u7ECF\u51C6\u5907\u597D\uFF0C\u91CD\u542F\u5373\u53EF\u4F53\u9A8C\uFF08\u6E38\u620F\u8FDB\u5EA6\u5DF2\u4FDD\u5B58\uFF09",
+          confirmText: "\u7ACB\u5373\u91CD\u542F",
+          cancelText: "\u7A0D\u540E",
+          success: (r) => {
+            Analytics.track("update", { action: r && r.confirm ? "apply" : "later" });
+            if (r && r.confirm) {
+              beforeRestart();
+              um.applyUpdate();
+            }
+          }
+        });
+        return true;
+      }
+      static {
+        // ------------------------------------------------------------------ 带参分享
+        this.pending = null;
+      }
+      static {
+        this.onChallenge = () => {
+        };
+      }
+      static shareQuery(c) {
+        return `ch=1&t=${Math.floor(c.time)}&k=${Math.floor(c.kills)}&w=${c.won ? 1 : 0}&d=${c.daily}`;
+      }
+      static parseQuery(q) {
+        if (!q || String(q.ch) !== "1") return null;
+        const num = (v, max) => {
+          const n = parseInt(v, 10);
+          return isFinite(n) ? Math.max(0, Math.min(max, n)) : 0;
+        };
+        const daily = /^\d{8}$/.test(String(q.d || "")) ? String(q.d) : "";
+        return { time: num(q.t, 99 * 60), kills: num(q.k, 999999), won: num(q.w, 1), daily };
+      }
+      // 冷启动读启动参数，热启动（点开好友卡片回到游戏）读 onShow 参数
+      static initLaunch() {
+        const w = wxApi();
+        if (!w) return;
+        try {
+          const o = w.getLaunchOptionsSync ? w.getLaunchOptionsSync() : null;
+          this.pending = this.parseQuery(o && o.query);
+          if (this.pending) Analytics.track("challenge_open", { daily: this.pending.daily ? 1 : 0, warm: 0 });
+          if (w.onShow) w.onShow((res) => {
+            const c = this.parseQuery(res && res.query);
+            if (!c) return;
+            this.pending = c;
+            Analytics.track("challenge_open", { daily: c.daily ? 1 : 0, warm: 1 });
+            this.onChallenge();
+          });
+        } catch (e) {
+        }
+      }
+      // 卡片里的每日挑战是否就是今天的（每日挑战按日期生成，隔天的挑战已不存在）
+      static challengeIsToday(c) {
+        return !!c.daily && c.daily === this.dateKey();
+      }
+      static {
+        // ------------------------------------------------------------------ 游戏圈
+        this.club = null;
+      }
+      // rect：屏幕像素坐标（左上角原点）
+      static showClub(left, top, size) {
+        const w = wxApi();
+        if (!SOCIAL_CONFIG.gameClub || !w || !w.createGameClubButton) return;
+        try {
+          if (!this.club) {
+            this.club = w.createGameClubButton({ type: "image", icon: "white", style: { left, top, width: size, height: size } });
+            if (this.club.onTap) this.club.onTap(() => Analytics.track("club_tap", { runs: Save.data.runs }));
+          } else {
+            this.club.style.left = left;
+            this.club.style.top = top;
+          }
+          this.club.show();
+        } catch (e) {
+          this.club = null;
+        }
+      }
+      static hideClub() {
+        try {
+          if (this.club) this.club.hide();
+        } catch (e) {
+        }
+      }
+      static get clubSupported() {
+        const w = wxApi();
+        return SOCIAL_CONFIG.gameClub && !!w && !!w.createGameClubButton;
+      }
+      // ------------------------------------------------------------------ 好友排行（开放数据域）
+      static get rankSupported() {
+        const w = wxApi();
+        return SOCIAL_CONFIG.friendRank && !!w && !!w.setUserCloudStorage && !!w.getOpenDataContext;
+      }
+      // 上报到好友可见的云端：最长存活（best）与今日每日挑战（daily，带日期，开放数据域只显示当天）
+      static reportScores() {
+        const w = wxApi();
+        if (!SOCIAL_CONFIG.friendRank || !w || !w.setUserCloudStorage) return;
+        const d = Save.data;
+        const now = Math.floor(Date.now() / 1e3);
+        const kv = [{ key: "best", value: JSON.stringify({ wxgame: { score: d.bestTime, update_time: now }, kills: d.bestKills, wins: d.wins }) }];
+        if (d.dailyBestDate === (/* @__PURE__ */ new Date()).toDateString()) {
+          kv.push({ key: "daily", value: JSON.stringify({ wxgame: { score: d.dailyBest, update_time: now }, date: this.dateKey() }) });
+        }
+        try {
+          w.setUserCloudStorage({ KVDataList: kv, fail: () => {
+          } });
+        } catch (e) {
+        }
+      }
+      // 通知开放数据域绘制排行榜。kind：best 最长存活 / daily 今日挑战；scale：屏幕像素 → 画布像素
+      static showRank(kind, scale) {
+        const w = wxApi();
+        if (!this.rankSupported) return;
+        try {
+          w.getOpenDataContext().postMessage({ type: "rank", kind, date: this.dateKey(), scale });
+        } catch (e) {
+        }
+      }
+      static {
+        // ------------------------------------------------------------------ 云存档（微信云开发）
+        this.col = null;
+      }
+      static {
+        this.docId = "";
+      }
+      static {
+        this.cloudReady = false;
+      }
+      static {
+        this.pushing = false;
+      }
+      static {
+        this.dirty = false;
+      }
+      static {
+        this.timer = null;
+      }
+      static get cloudEnabled() {
+        return !!SOCIAL_CONFIG.cloudEnv && !!wxApi() && !!wxApi().cloud;
+      }
+      // 两份存档取哪份：局数多的优先（局数只增不减），局数相同取更新时间晚的
+      static preferRemote(remote, local) {
+        const rr = remote.runs || 0, lr = local.runs || 0;
+        if (rr !== lr) return rr > lr;
+        return (remote.updatedAt || 0) > (local.updatedAt || 0);
+      }
+      // 同意隐私政策后调用。拉取云端存档，云端更新则覆盖本地并回调；拉取成功前不上传，避免新设备的空存档覆盖云端
+      static initCloud(onPulled) {
+        if (!this.cloudEnabled || this.col) return;
+        const w = wxApi();
+        try {
+          w.cloud.init({ env: SOCIAL_CONFIG.cloudEnv, traceUser: false });
+          this.col = w.cloud.database().collection(SOCIAL_CONFIG.cloudCollection);
+        } catch (e) {
+          this.col = null;
+          return;
+        }
+        Save.onSaved = () => this.schedulePush();
+        this.col.limit(1).get().then((res) => {
+          const doc = res && res.data && res.data[0];
+          let pulled = false;
+          if (doc) {
+            this.docId = doc._id;
+            let remote = null;
+            try {
+              remote = JSON.parse(doc.save);
+            } catch (e) {
+              remote = null;
+            }
+            if (remote && this.preferRemote(remote, Save.data)) {
+              const keep = {};
+              for (const k of LOCAL_ONLY) keep[k] = Save.data[k];
+              Save.replace(Object.assign(remote, keep));
+              pulled = true;
+            }
+          }
+          this.cloudReady = true;
+          Analytics.track("cloud_sync", { action: pulled ? "pull" : doc ? "keep" : "new", runs: Save.data.runs });
+          if (pulled) onPulled();
+          else this.push();
+        }).catch(() => {
+          this.col = null;
+          Save.onSaved = () => {
+          };
+          Analytics.track("cloud_sync", { action: "error", runs: Save.data.runs });
+        });
+      }
+      // 存档变更后 3 秒内合并上传一次
+      static schedulePush() {
+        if (!this.cloudReady) return;
+        if (this.timer) return;
+        this.timer = setTimeout(() => {
+          this.timer = null;
+          this.push();
+        }, 3e3);
+      }
+      // 立即上传（切后台、重启更新前调用）
+      static flushCloud() {
+        if (this.timer) {
+          clearTimeout(this.timer);
+          this.timer = null;
+        }
+        if (this.cloudReady) this.push();
+      }
+      static push() {
+        if (!this.col || !this.cloudReady) return;
+        if (this.pushing) {
+          this.dirty = true;
+          return;
+        }
+        this.pushing = true;
+        const data = { save: JSON.stringify(Save.data), runs: Save.data.runs, updatedAt: Save.data.updatedAt || 0 };
+        const done = () => {
+          this.pushing = false;
+          if (this.dirty) {
+            this.dirty = false;
+            this.push();
+          }
+        };
+        const p = this.docId ? this.col.doc(this.docId).update({ data }) : this.col.add({ data }).then((r) => {
+          this.docId = r._id;
+        });
+        p.then(done, done);
+      }
+    };
+  }
+});
+
 // ../../assets/scripts/GameRoot.ts
 var GameRoot_exports = {};
 __export(GameRoot_exports, {
@@ -9782,19 +10171,22 @@ __export(GameRoot_exports, {
   GAME_VERSION: () => GAME_VERSION,
   GameRoot: () => GameRoot
 });
-var ccclass, DESIGN_W, DESIGN_H, GAME_NAME, GAME_SUBTITLE, AGE_RATING, GAME_VERSION, FROG_LINES, AGE_TIP, HEALTH_TIP, C_AD, C_WHITE2, C_GOLD2, C_RED, C_GREY, C_GREEN, C_DIM, C_BORDER2, C_BTN_GREEN, C_BTN_BLUE, C_BTN_GREY, tmpV3, GameRoot;
+var ccclass, DESIGN_W, DESIGN_H, GAME_NAME, GAME_SUBTITLE, AGE_RATING, GAME_VERSION, UNLOCKS, FROG_LINES, AGE_TIP, HEALTH_TIP, C_AD, C_WHITE2, C_GOLD2, C_RED, C_GREY, C_GREEN, C_DIM, C_BORDER2, C_BTN_GREEN, C_BTN_BLUE, C_BTN_GREY, tmpV3, GameRoot;
 var init_GameRoot = __esm({
   "../../assets/scripts/GameRoot.ts"() {
     init_cc();
     init_env();
     init_AdConfig();
     init_Ads();
+    init_Analytics();
     init_Art();
     init_Backdrop();
     init_Battle();
     init_Defs();
     init_Recorder();
     init_Save();
+    init_Social();
+    init_SocialConfig();
     init_Sound();
     init_UiKit();
     ({ ccclass } = _decorator);
@@ -9804,6 +10196,14 @@ var init_GameRoot = __esm({
     GAME_SUBTITLE = "MILKY  FROG  SURVIVORS";
     AGE_RATING = "12+";
     GAME_VERSION = "v1.0.0";
+    UNLOCKS = [
+      { id: "shop", name: "\u6C38\u4E45\u5F3A\u5316", runs: 1 },
+      { id: "achv", name: "\u6210\u5C31", runs: 1 },
+      { id: "codex", name: "\u56FE\u9274", runs: 1 },
+      { id: "signin", name: "\u7B7E\u5230", runs: 1 },
+      { id: "rank", name: "\u597D\u53CB\u6392\u884C", runs: 1 },
+      { id: "daily", name: "\u6BCF\u65E5\u6311\u6218", runs: 2 }
+    ];
     FROG_LINES = ["\u5471!", "\u5272\u8349\u53BB!", "\u5471\u5471\u5471~", "\u5976\u86D9\u51FA\u51FB!", "\u4ECA\u5929\u4E5F\u8981\u52AA\u529B\u5272\u8349", "\u7EA2\u6708? \u4E0D\u6015!", "\u518D\u6765\u4E00\u5C40\u5471", "\u522B\u6233\u4E86, \u75D2!"];
     AGE_TIP = [
       "1. \u672C\u6E38\u620F\u662F\u4E00\u6B3E\u4F11\u95F2\u52A8\u4F5C\u7C7B\u6E38\u620F\uFF0C\u9002\u7528\u4E8E\u5E74\u6EE1 12 \u5468\u5C81\u53CA\u4EE5\u4E0A\u7684\u7528\u6237\uFF0C",
@@ -9886,10 +10286,14 @@ var init_GameRoot = __esm({
         this.winT = 0;
         // ------------------------------------------------------------------ 倒下动画
         this.dieT = 0;
+        this.clubPos = new Vec3();
+        this.activeChallenge = null;
         this.questMsg = "";
         // ------------------------------------------------------------------ 图鉴
         this.codexTab = "weapon";
         this.codexSel = null;
+        this.rankKind = "best";
+        this.rankBack = "menu";
       }
       onLoad() {
         view.setDesignResolutionSize(DESIGN_W, DESIGN_H, ResolutionPolicy.FIXED_WIDTH);
@@ -9899,6 +10303,15 @@ var init_GameRoot = __esm({
         Sound.init(this.node);
         Ads.init();
         Recorder.init();
+        Analytics.init();
+        Social.initUpdate();
+        Social.initLaunch();
+        Social.onChallenge = () => {
+          if (this.state === "menu") this.refreshAll();
+        };
+        if (!Save.data.unlockSeen && Save.data.runs > 0) Save.data.unlockSeen = Save.data.runs;
+        if (Save.data.privacyOk) this.startCloud();
+        Analytics.track("launch", { scene: Analytics.launchScene(), is_new: Save.data.runs === 0 ? 1 : 0, runs: Save.data.runs, day_n: Analytics.dayN(), ver: GAME_VERSION });
         Recorder.onReady = () => {
           if (this.state === "result") this.refreshAll();
         };
@@ -9951,9 +10364,12 @@ var init_GameRoot = __esm({
           if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) {
         }
-        const title = b.won ? `\u6211\u7684\u5976\u86D9\u5728\u300A${GAME_NAME}\u300B\u91CC\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08\uFF01\u4F60\u4E5F\u6765\u8BD5\u8BD5\uFF1F` : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F`;
+        const daily = this.dailyRun ? Social.dateKey() : "";
+        const title = daily ? `\u4ECA\u5929\u7684\u6BCF\u65E5\u6311\u6218\u6211\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u540C\u4E00\u5173\u5361\uFF0C\u6562\u6765\u6BD4\u6BD4\u5417\uFF1F` : b.won ? `\u6211\u7684\u5976\u86D9\u5728\u300A${GAME_NAME}\u300B\u91CC\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08\uFF01\u4F60\u4E5F\u6765\u8BD5\u8BD5\uFF1F` : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F`;
+        const query = Social.shareQuery({ time: b.time, kills: b.kills, won: b.won ? 1 : 0, daily });
+        Analytics.track("share", { from: daily ? "daily" : "result", won: b.won ? 1 : 0 });
         try {
-          w.shareAppMessage({ title, imageUrl });
+          w.shareAppMessage({ title, imageUrl, query });
         } catch (e) {
         }
       }
@@ -9962,7 +10378,12 @@ var init_GameRoot = __esm({
         if (!w) return;
         try {
           if (w.showShareMenu) w.showShareMenu({ withShareTicket: true, menus: ["shareAppMessage", "shareTimeline"] });
-          const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}\uFF1A\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(Save.data.bestTime)}\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F` : `${GAME_NAME}\uFF1A\u80D6\u5976\u86D9\u5272\u8349\uFF0C\u5728\u7EA2\u6708\u4E0B\u575A\u6301 15 \u5206\u949F\uFF01` });
+          const msg = () => {
+            Analytics.track("share", { from: "menu", won: 0 });
+            const d = Save.data;
+            const query = d.bestTime ? Social.shareQuery({ time: d.bestTime, kills: d.bestKills, won: d.wins > 0 ? 1 : 0, daily: "" }) : "";
+            return { title: d.bestTime ? `${GAME_NAME}\uFF1A\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(d.bestTime)}\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F` : `${GAME_NAME}\uFF1A\u80D6\u5976\u86D9\u5272\u8349\uFF0C\u5728\u7EA2\u6708\u4E0B\u575A\u6301 15 \u5206\u949F\uFF01`, query };
+          };
           if (w.onShareAppMessage) w.onShareAppMessage(msg);
           if (w.onShareTimeline) w.onShareTimeline(msg);
         } catch (e) {
@@ -9970,7 +10391,49 @@ var init_GameRoot = __esm({
       }
       // 切到后台自动暂停
       onHide() {
+        const st = this.state;
+        const inRun = st === "play" || st === "levelup" || st === "chest" || st === "pause" || st === "revive" || st === "dying" || st === "victory";
+        Analytics.track("app_hide", { state: st, run_no: Save.data.runs + (inRun ? 1 : 0), run_sec: inRun ? Math.floor(this.battle.time) : 0 });
         if (this.state === "play") this.setState("pause");
+        Social.flushCloud();
+      }
+      // 云存档：同意隐私政策后启动；云端进度更新时覆盖本地并刷新界面
+      startCloud() {
+        Social.initCloud(() => {
+          const st = this.state;
+          if (st === "menu" || st === "chars" || st === "shop" || st === "daily" || st === "privacy" || st === "splash" || st === "signin") {
+            this.battle.reset(this.selectedChar());
+            this.battle.setPlayerVisible(false);
+          }
+          this.refreshAll();
+          this.showToast("\u5DF2\u4ECE\u4E91\u7AEF\u6062\u590D\u6E38\u620F\u8FDB\u5EA6");
+        });
+      }
+      // 新手渐进解锁
+      locked(id) {
+        const u = UNLOCKS.find((x) => x.id === id);
+        return !!u && Save.data.runs < u.runs;
+      }
+      // 主菜单入口按钮：未解锁时点击提示还差几局
+      gated(id, fn) {
+        return () => {
+          const u = UNLOCKS.find((x) => x.id === id);
+          if (u && Save.data.runs < u.runs) {
+            this.showToast(`\u518D\u73A9 ${u.runs - Save.data.runs} \u5C40\u5373\u53EF\u5F00\u653E\u300C${u.name}\u300D`);
+            return;
+          }
+          fn();
+        };
+      }
+      // 未解锁的按钮变暗并加锁
+      gateLook(btn, id) {
+        const lock = mkSprite(btn.node, "icon_lock", 2);
+        lock.node.setPosition(0, 0);
+        this.refreshers.push(() => {
+          const l = this.locked(id);
+          lock.node.active = l;
+          btn.label.node.active = !l;
+        });
       }
       selectedChar() {
         return CHARACTERS.find((c) => c.id === Save.data.selected) || CHARACTERS[0];
@@ -10045,6 +10508,7 @@ var init_GameRoot = __esm({
         this.buildResult();
         this.buildAchievements();
         this.buildDaily();
+        this.buildRank();
         this.buildCodex();
         this.buildVictory();
         this.buildDying();
@@ -10218,6 +10682,7 @@ var init_GameRoot = __esm({
       tutNext() {
         this.tutStep++;
         this.tutT = 0;
+        Analytics.track("tut_step", { step: this.tutStep, sec: Math.floor(this.battle.time) });
         if (this.tutStep === 4) this.battle.pendingBlessings++;
         if (this.tutStep >= GameRoot.TUT_TEXT.length) this.tutFinish();
       }
@@ -10350,31 +10815,78 @@ var init_GameRoot = __esm({
         best.node.setPosition(0, this.bottom + 46);
         mkLabel(s, GAME_VERSION, 16, new Color(120, 110, 140, 255), "left", 2).node.setPosition(-this.vw / 2 + 12, this.bottom + 14);
         mkButton(s, "\u5F00\u59CB\u6E38\u620F", 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
-        const sbtn = mkButton(s, "\u7B7E\u5230", 120, 60, () => this.setState("signin"), new Color(150, 60, 30, 255), 26);
+        const sbtn = mkButton(s, "\u7B7E\u5230", 120, 60, this.gated("signin", () => this.setState("signin")), new Color(150, 60, 30, 255), 26);
+        this.gateLook(sbtn, "signin");
         sbtn.node.setPosition(this.vw / 2 - 80, this.top - 110);
         const sdot = mkRect(sbtn.node, 16, 16, new Color(240, 60, 60, 255), "dot");
         sdot.node.setPosition(52, 22);
         this.refreshers.push(() => {
-          sdot.node.active = this.signDue();
+          sdot.node.active = this.signDue() && !this.locked("signin");
         });
-        const dbtn = mkButton(s, "\u6BCF\u65E5\u6311\u6218", 212, 84, () => this.setState("daily"), new Color(150, 60, 30, 255), 32);
+        const dbtn = mkButton(s, "\u6BCF\u65E5\u6311\u6218", 212, 84, this.gated("daily", () => this.setState("daily")), new Color(150, 60, 30, 255), 32);
+        this.gateLook(dbtn, "daily");
         dbtn.node.setPosition(-114, btnTop - 104);
         const ddot = mkRect(dbtn.node, 18, 18, new Color(240, 60, 60, 255), "dot");
         ddot.node.setPosition(94, 30);
         this.refreshers.push(() => {
-          ddot.node.active = Save.data.dailyDone !== this.today;
+          ddot.node.active = Save.data.dailyDone !== this.today && !this.locked("daily");
         });
         mkButton(s, "\u9009\u62E9\u89D2\u8272", 212, 84, () => this.setState("chars"), C_BTN_BLUE, 32).node.setPosition(114, btnTop - 104);
-        mkButton(s, "\u6C38\u4E45\u5F3A\u5316", 440, 84, () => this.setState("shop"), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 200);
-        mkButton(s, "\u6210\u5C31", 140, 80, () => this.setState("achv"), C_BTN_BLUE, 30).node.setPosition(-150, btnTop - 296);
-        const cb = mkButton(s, "\u56FE\u9274", 140, 80, () => this.setState("codex"), C_BTN_BLUE, 30);
-        cb.node.setPosition(0, btnTop - 296);
+        const shopBtn = mkButton(s, "\u6C38\u4E45\u5F3A\u5316", 440, 84, this.gated("shop", () => this.setState("shop")), C_BTN_BLUE, 34);
+        shopBtn.node.setPosition(0, btnTop - 200);
+        this.gateLook(shopBtn, "shop");
+        const ab = mkButton(s, "\u6210\u5C31", 126, 80, this.gated("achv", () => this.setState("achv")), C_BTN_BLUE, 28);
+        ab.node.setPosition(-201, btnTop - 296);
+        this.gateLook(ab, "achv");
+        const cb = mkButton(s, "\u56FE\u9274", 126, 80, this.gated("codex", () => this.setState("codex")), C_BTN_BLUE, 28);
+        cb.node.setPosition(-67, btnTop - 296);
+        this.gateLook(cb, "codex");
+        const rb = mkButton(s, "\u6392\u884C", 126, 80, this.gated("rank", () => this.openRank("menu")), C_BTN_BLUE, 28);
+        rb.node.setPosition(67, btnTop - 296);
+        this.gateLook(rb, "rank");
         const dot = mkRect(cb.node, 18, 18, new Color(240, 60, 60, 255), "dot");
         dot.node.setPosition(58, 28);
         this.refreshers.push(() => {
-          dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0);
+          dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0) && !this.locked("codex");
         });
-        mkButton(s, "\u8BBE\u7F6E", 140, 80, () => this.setState("settings"), C_BTN_GREY, 30).node.setPosition(150, btnTop - 296);
+        mkButton(s, "\u8BBE\u7F6E", 126, 80, () => this.setState("settings"), C_BTN_GREY, 28).node.setPosition(201, btnTop - 296);
+        this.clubPos.set(-this.vw / 2 + 56, top - 122, 0);
+        const clubLabel = mkLabel(s, "\u6E38\u620F\u5708", 18, C_WHITE2, "center", 2);
+        clubLabel.node.setPosition(this.clubPos.x, this.clubPos.y - 38);
+        clubLabel.node.active = Social.clubSupported;
+        const chal = mkPanel(s, 600, 250, new Color(20, 40, 70, 248), new Color(120, 220, 255, 255));
+        chal.node.setPosition(0, horizon + 40);
+        blockTouches(chal.node);
+        mkLabel(chal.node, "\u597D\u53CB\u7684\u6311\u6218", 32, new Color(120, 220, 255, 255), "center", 3).node.setPosition(0, 85);
+        const chalText = mkLabel(chal.node, "", 23, C_WHITE2, "center", 2);
+        chalText.node.setPosition(0, 22);
+        mkButton(chal.node, "\u7A0D\u540E", 200, 72, () => {
+          Social.pending = null;
+          this.refreshAll();
+        }, C_BTN_GREY, 26).node.setPosition(-120, -78);
+        mkButton(chal.node, "\u63A5\u53D7\u6311\u6218", 240, 72, () => this.acceptChallenge(), C_BTN_GREEN, 28).node.setPosition(120, -78);
+        this.refreshers.push(() => {
+          const c = Social.pending;
+          chal.node.active = !!c && this.state === "menu";
+          if (!c) return;
+          const daily2 = Social.challengeIsToday(c);
+          chalText.string = `\u597D\u53CB\u5728${daily2 ? "\u4ECA\u5929\u7684\u6BCF\u65E5\u6311\u6218" : "\u5976\u86D9\u5272\u8349"}\u4E2D\u575A\u6301\u4E86 ${this.fmtTime(c.time)}
+\u51FB\u8D25 ${c.kills} \u53EA\u602A\u7269${c.won ? "\uFF0C\u6210\u529F\u901A\u5173" : ""}
+\u4F60\u80FD\u8D85\u8FC7\u5417\uFF1F` + (c.daily && !daily2 ? "\uFF08\u90A3\u5929\u7684\u6BCF\u65E5\u6311\u6218\u5DF2\u7ED3\u675F\uFF0C\u6539\u4E3A\u666E\u901A\u5C40\uFF09" : "");
+        });
+        const add = mkPanel(s, 420, 150, new Color(255, 250, 235, 250), new Color(60, 40, 20, 255));
+        add.node.setPosition(this.vw / 2 - 230, this.vh / 2 - this.safeTop - 70);
+        mkLabel(add.node, "\u25B2", 30, new Color(60, 40, 20, 255), "center", 0).node.setPosition(150, 92);
+        mkLabel(add.node, "\u70B9\u53F3\u4E0A\u89D2\u300C\xB7\xB7\xB7\u300D\u9009\u62E9\n\u300C\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F\u300D\n\u4E0B\u6B21\u5728\u5FAE\u4FE1\u9996\u9875\u4E0B\u62C9\u5C31\u80FD\u627E\u5230\u5976\u86D9", 21, new Color(60, 40, 20, 255), "center", 0).node.setPosition(0, 6);
+        add.node.on(Node.EventType.TOUCH_END, () => {
+          Save.data.addTipShown = true;
+          Save.save();
+          Analytics.track("add_tip", { wins: Save.data.wins });
+          this.refreshAll();
+        });
+        this.refreshers.push(() => {
+          add.node.active = this.state === "menu" && Social.isWx && Save.data.wins > 0 && !Save.data.addTipShown && !Social.pending;
+        });
         this.refreshers.push(() => {
           const c = this.selectedChar();
           this.menuHero.spriteFrame = Art.f(c.sprite + "_0");
@@ -10467,6 +10979,7 @@ var init_GameRoot = __esm({
               }
               d.gold -= c.cost;
               d.chars.push(c.id);
+              Analytics.track("char_unlock", { char: c.id, cost: c.cost, runs: d.runs });
               Sound.play("chest");
               this.showToast(`\u89E3\u9501 ${c.name}!`);
             }
@@ -10566,6 +11079,7 @@ var init_GameRoot = __esm({
             Save.data.gold -= c;
             Save.data.power[p.id] = r + 1;
             Save.save();
+            Analytics.track("shop_buy", { item: p.id, level: r + 1, cost: c, runs: Save.data.runs });
             Sound.play("coin");
             this.refreshAll();
           });
@@ -10680,7 +11194,7 @@ var init_GameRoot = __esm({
           music.label.string = "\u97F3\u4E50\uFF1A" + (Save.data.music ? "\u5F00" : "\u5173");
           sfx.label.string = "\u97F3\u6548\uFF1A" + (Save.data.sfx ? "\u5F00" : "\u5173");
         });
-        mkButton(s, "\u653E\u5F03\u672C\u5C40", 420, 88, () => this.endRun(false), new Color(120, 30, 40, 255), 30).node.setPosition(0, y0 - 240);
+        mkButton(s, "\u653E\u5F03\u672C\u5C40", 420, 88, () => this.endRun(false, true), new Color(120, 30, 40, 255), 30).node.setPosition(0, y0 - 240);
       }
       buildLevelUp() {
         const s = this.screen("levelup");
@@ -10761,11 +11275,11 @@ var init_GameRoot = __esm({
         this.resultList.setPosition(0, this.top - 520);
         const by = this.bottom + 80;
         mkButton(s, "\u4E3B\u83DC\u5355", 260, 88, () => {
-          Ads.afterRun(this.adWatchedThisResult);
+          this.leaveResult("menu");
           this.toMenu();
         }, C_BTN_GREY).node.setPosition(-150, by);
         mkButton(s, "\u518D\u6765\u4E00\u5C40", 260, 88, () => {
-          Ads.afterRun(this.adWatchedThisResult);
+          this.leaveResult("replay");
           this.replay();
         }, C_BTN_GREEN).node.setPosition(150, by);
         this.goldAdBtn = mkButton(s, "", 380, 80, () => this.watchAd("gold", () => {
@@ -10797,6 +11311,11 @@ var init_GameRoot = __esm({
         });
       }
       // 死亡复活（每局一次，看广告满血复活）
+      // 离开结算页：插屏广告 + 记录玩家是再来一局还是回主菜单
+      leaveResult(next) {
+        const inter = Ads.afterRun(this.adWatchedThisResult);
+        Analytics.track("result_next", { next, run_no: Save.data.runs, inter: inter ? 1 : 0 });
+      }
       buildRevive() {
         const s = this.screen("revive");
         mkLabel(s, "\u4F60\u5012\u4E0B\u4E86\u2026", 64, C_RED, "center", 5).node.setPosition(0, this.vh * 0.2);
@@ -10873,7 +11392,9 @@ var init_GameRoot = __esm({
 
 \u6211\u4EEC\u975E\u5E38\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\uFF1A
 \xB7 \u672C\u6E38\u620F\u4E0D\u6536\u96C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\uFF1B
-\xB7 \u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF1B
+${SOCIAL_CONFIG.cloudEnv ? "\xB7 \u6E38\u620F\u8FDB\u5EA6\u4FDD\u5B58\u5728\u624B\u673A\u672C\u5730\uFF0C\u5E76\u5907\u4EFD\u5230\n  \u5FAE\u4FE1\u4E91\u5F00\u53D1\uFF0C\u7528\u4E8E\u6362\u673A\u540E\u6062\u590D\uFF1B" : "\xB7 \u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF1B"}
+\xB7 \u4E3A\u6539\u8FDB\u6E38\u620F\uFF0C\u4F1A\u901A\u8FC7\u5FAE\u4FE1\u5E73\u53F0\u7EDF\u8BA1
+  \u533F\u540D\u7684\u6E38\u620F\u884C\u4E3A\u6570\u636E\uFF1B
 \xB7 \u6E38\u620F\u4E2D\u7684\u5E7F\u544A\u7531\u5FAE\u4FE1\u5E73\u53F0\u63D0\u4F9B\uFF0C
   \u76F8\u5173\u4FE1\u606F\u5904\u7406\u9075\u5FAA\u300A\u5FAE\u4FE1\u9690\u79C1\u4FDD\u62A4\u6307\u5F15\u300B\uFF1B
 \xB7 \u4F60\u53EF\u4EE5\u968F\u65F6\u5728\u5FAE\u4FE1\u4E2D\u5220\u9664\u672C\u5C0F\u6E38\u620F\u53CA\u5176\u6570\u636E\u3002
@@ -10881,6 +11402,7 @@ var init_GameRoot = __esm({
 \u70B9\u51FB\u201C\u540C\u610F\u201D\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F
 \u300A\u7528\u6237\u534F\u8BAE\u300B\u548C\u300A\u9690\u79C1\u653F\u7B56\u300B\u3002`, 22, C_WHITE2, "center", 2).node.setPosition(0, 10);
         mkButton(p.node, "\u4E0D\u540C\u610F", 220, 80, () => {
+          Analytics.track("privacy", { agree: 0 });
           const w = mgApi();
           if (w && w.exitMiniProgram) w.exitMiniProgram({});
           else this.showToast("\u9700\u8981\u540C\u610F\u540E\u624D\u80FD\u5F00\u59CB\u6E38\u620F");
@@ -10888,12 +11410,15 @@ var init_GameRoot = __esm({
         mkButton(p.node, "\u540C\u610F", 220, 80, () => {
           Save.data.privacyOk = true;
           Save.save();
+          Analytics.track("privacy", { agree: 1 });
+          this.startCloud();
           this.setState("menu");
         }, C_BTN_GREEN, 30).node.setPosition(130, -250);
       }
       // 看激励视频：看完发奖；没看完或失败给出提示
       watchAd(place, onReward, onFail) {
         Ads.showReward(place, (r) => {
+          Analytics.track("ad_reward", { place, result: r.ok ? "ok" : r.reason || "error", run_no: Save.data.runs });
           if (r.ok) {
             this.adWatchedThisResult = true;
             onReward();
@@ -10919,7 +11444,9 @@ var init_GameRoot = __esm({
         this.overlay.color = inRun || s === "result" ? C_DIM : new Color(0, 0, 0, s === "menu" ? 90 : 190);
         this.touchLayer.active = s === "play";
         if (s !== "play") this.onJoyEnd();
-        if (s === "menu" || s === "chars" || s === "shop" || s === "settings" || s === "achv" || s === "codex" || s === "signin" || s === "privacy" || s === "daily") Sound.playBgm("bgm_menu");
+        if (s === "menu" || s === "chars" || s === "shop" || s === "settings" || s === "achv" || s === "codex" || s === "signin" || s === "privacy" || s === "daily" || s === "rank") Sound.playBgm("bgm_menu");
+        if (s === "menu") this.onMenuEnter();
+        else Social.hideClub();
         if (s === "codex") {
           Save.data.codexSeen = Save.data.codex.length;
           Save.save();
@@ -10936,6 +11463,41 @@ var init_GameRoot = __esm({
         if (prev === "pause" && s === "play") Recorder.resume();
         if (prev === "pause" && s === "play") Sound.resumeBgm();
         this.refreshAll();
+      }
+      // 回到主菜单：版本更新提示、新开放功能提示、游戏圈按钮
+      onMenuEnter() {
+        Social.promptUpdate(() => {
+          Save.save();
+          Social.flushCloud();
+        });
+        const d = Save.data;
+        const fresh = UNLOCKS.filter((u) => u.runs > (d.unlockSeen || 0) && u.runs <= d.runs);
+        if (d.runs > (d.unlockSeen || 0)) {
+          d.unlockSeen = d.runs;
+          Save.save();
+        }
+        if (fresh.length) {
+          this.showToast(`\u65B0\u529F\u80FD\u5F00\u653E\uFF1A${fresh.map((u) => u.name).join("\u3001")}`);
+          Analytics.track("unlock", { runs: d.runs, n: fresh.length });
+        }
+        if (Social.clubSupported) {
+          const info = globalThis.wx.getSystemInfoSync();
+          const k = info.windowWidth / this.vw;
+          const size = 44;
+          Social.showClub((this.clubPos.x + this.vw / 2) * k - size / 2, (this.vh / 2 - this.clubPos.y) * k - size / 2, size);
+        }
+      }
+      // 接受好友挑战：同一天的每日挑战直接进入同一关卡，否则开普通局；新玩家先走新手局
+      acceptChallenge() {
+        const c = Social.pending;
+        if (!c) return;
+        Social.pending = null;
+        this.activeChallenge = c;
+        const daily = Social.challengeIsToday(c) && Save.data.runs > 0;
+        Analytics.track("challenge_accept", { daily: daily ? 1 : 0, runs: Save.data.runs });
+        if (daily) this.startDaily();
+        else this.startGame();
+        this.banner(`\u597D\u53CB\u6311\u6218 \xB7 \u76EE\u6807 ${this.fmtTime(c.time)}`, new Color(120, 220, 255, 255));
       }
       refreshAll() {
         for (const f of this.refreshers) f();
@@ -10985,6 +11547,7 @@ var init_GameRoot = __esm({
         Sound.playBgm("bgm_battle");
         Recorder.start();
         this.setState("play");
+        this.trackRun("run_start", {});
         this.banner(`\u6BCF\u65E5\u6311\u6218 \xB7 ${ds.mod.name}`, new Color(255, 170, 80, 255));
       }
       replay() {
@@ -11007,11 +11570,19 @@ var init_GameRoot = __esm({
         Recorder.start();
         this.setState("play");
         this.tutStart();
+        this.trackRun("run_start", {});
         const st = this.battle.streak;
         this.banner(this.endlessMode ? "\u65E0\u5C3D\u4E4B\u591C \xB7 \u80FD\u6491\u591A\u4E45?" : this.nightmareMode ? `\u5669\u68A6\u96BE\u5EA6 \xB7 ${this.currentStage.name}` : st > 0 ? `\u4E0D\u5C48\u610F\u5FD7 \xB7 \u4F24\u5BB3\u4E0E\u751F\u547D +${st * 5}%` : `${this.currentStage.name} \xB7 \u751F\u5B58\u4E0B\u53BB!`, new Color(255, 230, 120, 255));
       }
-      // 结算：发放金币、记录最佳成绩
-      endRun(win) {
+      // 开局 / 结算埋点的公共字段（run_no：开局时为即将进行的第几局，结算时为刚结束的这一局）
+      trackRun(id, extra) {
+        const b = this.battle;
+        const mode = this.dailyRun ? "daily" : b.endless ? "endless" : b.nightmare ? "nightmare" : "normal";
+        const runNo = Save.data.runs + (id === "run_start" ? 1 : 0);
+        Analytics.track(id, { run_no: runNo, char: b.char.id, stage: b.stage.id, mode, day_n: Analytics.dayN(), ...extra });
+      }
+      // 结算：发放金币、记录最佳成绩（quit：从暂停菜单主动放弃）
+      endRun(win, quit = false) {
         Recorder.stop();
         if (this.tutStep >= 0) this.tutFinish();
         this.tutNode.active = false;
@@ -11075,6 +11646,18 @@ var init_GameRoot = __esm({
         for (const a of got) achGold += a.gold;
         d.gold += achGold;
         Save.save();
+        this.trackRun("run_end", {
+          result: win ? "win" : quit ? "quit" : "lose",
+          time_sec: Math.floor(b.time),
+          level: b.level,
+          kills: b.kills,
+          boss_kills: b.bossKills.length,
+          evolved: b.weapons.filter((w) => w.evolved).length,
+          revived: this.adRevived ? 1 : 0,
+          gold: total + achGold,
+          achv: got.length
+        });
+        Social.reportScores();
         this.resultTitle.string = this.dailyRun ? win ? "\u6311\u6218\u6210\u529F!" : "\u6311\u6218\u5931\u8D25" : win ? "\u80DC\u5229!" : b.endless ? "\u65E0\u5C3D\u4E4B\u591C\u7ED3\u675F" : "\u4F60\u5012\u4E0B\u4E86";
         this.resultTitle.color = win ? C_GOLD2 : C_RED;
         this.resultStats.string = `\u5B58\u6D3B\u65F6\u95F4  ${this.fmtTime(b.time)}
@@ -11084,6 +11667,13 @@ var init_GameRoot = __esm({
 \u672C\u5C40\u83B7\u5F97  ${total + achGold} \u91D1\u5E01` + (got.length ? `
 \u65B0\u6210\u5C31\uFF1A${got.map((a) => a.name).join("\u3001")}  (+${achGold})` : "");
         this.resultHint.string = this.nearMiss(win, daily);
+        const ch = this.activeChallenge;
+        if (ch) {
+          const beat = b.time > ch.time || win && !ch.won;
+          this.resultHint.string = (beat ? `\u4F60\u8D85\u8FC7\u4E86\u597D\u53CB\u7684 ${this.fmtTime(ch.time)}\uFF01\u5206\u4EAB\u7ED9\u597D\u53CB\u770B\u770B\u5427` : `\u79BB\u597D\u53CB\u7684 ${this.fmtTime(ch.time)} \u8FD8\u5DEE ${this.fmtTime(ch.time - b.time)}`) + (this.resultHint.string ? "\n" + this.resultHint.string : "");
+          Analytics.track("challenge_result", { beat: beat ? 1 : 0, daily: ch.daily ? 1 : 0, time_sec: Math.floor(b.time) });
+          this.activeChallenge = null;
+        }
         const statLines = this.resultStats.string.split("\n").length, hintLines = this.resultHint.string ? this.resultHint.string.split("\n").length : 0;
         const statTop = this.top - 200;
         this.resultStats.node.setPosition(0, statTop - statLines * 34 / 2);
@@ -11227,6 +11817,7 @@ var init_GameRoot = __esm({
         d.signCount++;
         d.signDate = this.today;
         Save.save();
+        Analytics.track("sign_in", { day: day + 1, mul, day_n: Analytics.dayN() });
         Sound.play(day === 6 ? "achieve" : "coin");
         this.showToast(`\u7B7E\u5230\u6210\u529F +${g2} \u91D1\u5E01` + (mul > 1 ? "\uFF08\u53CC\u500D\uFF09" : ""));
         this.refreshAll();
@@ -11424,8 +12015,9 @@ var init_GameRoot = __esm({
           });
         });
         const by = this.bottom + 80;
-        mkButton(s, "\u8FD4\u56DE", 260, 88, () => this.setState("menu"), C_BTN_GREY).node.setPosition(-150, by);
-        mkButton(s, "\u5F00\u59CB\u6311\u6218", 260, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(150, by);
+        mkButton(s, "\u8FD4\u56DE", 200, 88, () => this.setState("menu"), C_BTN_GREY).node.setPosition(-230, by);
+        mkButton(s, "\u597D\u53CB\u6392\u884C", 200, 88, () => this.openRank("daily"), C_BTN_BLUE, 30).node.setPosition(0, by);
+        mkButton(s, "\u5F00\u59CB\u6311\u6218", 220, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(225, by);
         this.refreshers.push(() => {
           if (this.state !== "daily") return;
           const ds = dailySetup(this.today);
@@ -11448,6 +12040,54 @@ var init_GameRoot = __esm({
           const best = d.dailyBestDate === this.today ? d.dailyBest : 0;
           status.string = d.dailyDone === this.today ? "\u4ECA\u65E5\u5DF2\u5B8C\u6210\uFF01\u660E\u5929\u518D\u6765\u5471" : best ? `\u4ECA\u65E5\u6700\u4F73 ${this.fmtTime(best)} \xB7 \u8FD8\u6CA1\u5B8C\u6210` : "\u4ECA\u65E5\u5C1A\u672A\u6311\u6218";
         });
+      }
+      openRank(from) {
+        this.rankBack = from;
+        this.rankKind = from === "daily" ? "daily" : "best";
+        Analytics.track("rank_open", { from, kind: this.rankKind });
+        this.setState("rank");
+        this.drawRank();
+      }
+      drawRank() {
+        const w = globalThis.wx;
+        if (!Social.rankSupported) return;
+        Social.reportScores();
+        const info = w.getSystemInfoSync();
+        Social.showRank(this.rankKind, this.vw / info.windowWidth);
+      }
+      // 好友排行：开放数据域把排行画在共享画布上，SubContextView 显示到这里
+      buildRank() {
+        const s = this.screen("rank");
+        this.header(s, "\u597D\u53CB\u6392\u884C", false);
+        const tabs = [["best", "\u6700\u957F\u5B58\u6D3B"], ["daily", "\u4ECA\u65E5\u6311\u6218"]];
+        const tabBtns = [];
+        tabs.forEach(([k, name], i) => {
+          const b = mkButton(s, name, 250, 72, () => {
+            this.rankKind = k;
+            this.refreshAll();
+            this.drawRank();
+          }, C_BTN_BLUE, 28);
+          b.node.setPosition(i === 0 ? -135 : 135, this.top - 130);
+          tabBtns.push(b);
+        });
+        const areaTop = this.top - 186, areaBottom = this.bottom + 140;
+        const aw = 640, ah = Math.max(300, areaTop - areaBottom);
+        const area = mkPanel(s, aw + 8, ah + 8);
+        area.node.setPosition(0, (areaTop + areaBottom) / 2);
+        if (Social.rankSupported) {
+          const view2 = mkNode("subctx", area.node);
+          view2.addComponent(UITransform).setContentSize(aw, ah);
+          const sub = view2.addComponent(SubContextView);
+          sub.designResolutionSize = new Size(aw, ah);
+          sub.fps = 30;
+        } else {
+          mkLabel(area.node, "\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00\u5373\u53EF\u67E5\u770B\u597D\u53CB\u6392\u884C", 26, C_GREY, "center", 2);
+        }
+        this.refreshers.push(() => {
+          tabs.forEach(([k], i) => tabBtns[i].node.setScale(this.rankKind === k ? 1.06 : 0.94, this.rankKind === k ? 1.06 : 0.94, 1));
+        });
+        mkLabel(s, "\u53EA\u663E\u793A\u540C\u6837\u5728\u73A9\u300A\u5976\u86D9\u5272\u8349\u300B\u7684\u5FAE\u4FE1\u597D\u53CB", 20, C_GREY, "center", 2).node.setPosition(0, this.bottom + 136 - 24);
+        mkButton(s, "\u8FD4\u56DE", 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
       }
       buildAchievements() {
         const s = this.screen("achv");
@@ -11684,7 +12324,7 @@ var init_GameRoot = __esm({
           if (b.dead) this.startDying();
           else if (b.won) this.startVictory();
           else this.checkRewards();
-        } else if (this.state === "menu" || this.state === "chars" || this.state === "shop" || this.state === "settings" || this.state === "achv" || this.state === "codex" || this.state === "signin" || this.state === "privacy" || this.state === "splash" || this.state === "daily") {
+        } else if (this.state === "menu" || this.state === "chars" || this.state === "shop" || this.state === "settings" || this.state === "achv" || this.state === "codex" || this.state === "signin" || this.state === "privacy" || this.state === "splash" || this.state === "daily" || this.state === "rank") {
           b.idle(dt);
           if (this.state === "menu") this.updateMenuFx(dt);
         }
@@ -11844,6 +12484,57 @@ if (MODE === "B") {
     },
     shareAppMessage: (o) => {
       G.__share = o;
+    },
+    getLaunchOptionsSync: () => ({ scene: 1007, query: {} }),
+    reportEvent: (id, data) => {
+      (G.__events = G.__events || []).push({ id, data });
+    },
+    getSystemInfoSync: () => ({ windowWidth: 360, windowHeight: 780 }),
+    getUpdateManager: () => ({ onUpdateReady(cb) {
+      G.__updReady = cb;
+    }, onUpdateFailed() {
+    }, applyUpdate() {
+      G.__applied = true;
+    } }),
+    showModal: (o) => {
+      G.__modal = o;
+    },
+    createGameClubButton: (o) => {
+      G.__club = { opts: o, shown: false, style: { ...o.style }, show() {
+        this.shown = true;
+      }, hide() {
+        this.shown = false;
+      }, onTap() {
+      } };
+      return G.__club;
+    },
+    setUserCloudStorage: (o) => {
+      G.__kv = o.KVDataList;
+    },
+    getOpenDataContext: () => ({ postMessage: (m) => {
+      G.__odc = m;
+    } }),
+    cloud: {
+      init(o) {
+        G.__cloudEnv = o.env;
+      },
+      database: () => ({ collection: () => {
+        const col = {
+          limit: () => col,
+          get: () => Promise.resolve({ data: G.__cloudDoc ? [G.__cloudDoc] : [] }),
+          add: (o) => {
+            G.__cloudDoc = { _id: "doc1", ...o.data };
+            G.__cloudWrites = (G.__cloudWrites || 0) + 1;
+            return Promise.resolve({ _id: "doc1" });
+          },
+          doc: () => ({ update: (o) => {
+            Object.assign(G.__cloudDoc, o.data);
+            G.__cloudWrites = (G.__cloudWrites || 0) + 1;
+            return Promise.resolve();
+          } })
+        };
+        return col;
+      } })
     }
   };
 }
@@ -11871,6 +12562,9 @@ var { Save: Save2 } = await Promise.resolve().then(() => (init_Save(), Save_expo
 var D = await Promise.resolve().then(() => (init_Defs(), Defs_exports));
 var { GameRoot: GameRoot2 } = await Promise.resolve().then(() => (init_GameRoot(), GameRoot_exports));
 var { Recorder: Recorder2 } = await Promise.resolve().then(() => (init_Recorder(), Recorder_exports));
+var { Analytics: Analytics2 } = await Promise.resolve().then(() => (init_Analytics(), Analytics_exports));
+var { Social: Social2 } = await Promise.resolve().then(() => (init_Social(), Social_exports));
+var { SOCIAL_CONFIG: SOCIAL_CONFIG2 } = await Promise.resolve().then(() => (init_SocialConfig(), SocialConfig_exports));
 var pass = 0;
 var fail = 0;
 var ok = (c, m) => {
@@ -11929,6 +12623,18 @@ var play = (frames, god = true) => {
 var until = (state, max = 600) => {
   for (let i = 0; i < max && g.state !== state; i++) g.update(1 / 60);
   return g.state === state;
+};
+var findPanelTextA = (t) => {
+  const walk = (n) => {
+    for (const c of n.children) {
+      if (!c.active) continue;
+      if ((c.comps || []).some((x) => typeof x.string === "string" && x.string.includes(t))) return c;
+      const r = walk(c);
+      if (r) return r;
+    }
+    return null;
+  };
+  return walk(g.screens[g.state]);
 };
 var findButton = (text) => {
   const scr = g.screens[g.state];
@@ -12104,7 +12810,7 @@ if (MODE === "C") {
   play(60 * 30);
   ok(Save2.data.codex.includes("w:whip") && Save2.data.codex.includes("m:rat"), "\u83B7\u5F97\u6B66\u5668 / \u51FB\u8D25\u602A\u7269\u4F1A\u6536\u5F55\u56FE\u9274");
   const qs = D.dailyQuests(today);
-  ok(qs.length === 3 && new Set(qs.map((q) => q.stat)).size === 3, "\u6BCF\u65E5\u4EFB\u52A1\uFF1A3 \u4E2A\u4E0D\u540C\u7C7B\u578B");
+  ok(qs.length === 3 && new Set(qs.map((q2) => q2.stat)).size === 3, "\u6BCF\u65E5\u4EFB\u52A1\uFF1A3 \u4E2A\u4E0D\u540C\u7C7B\u578B");
   Save2.data.questDate = today;
   Save2.data.questProg = { runs: 1 };
   Save2.data.questDone = [];
@@ -12118,7 +12824,7 @@ if (MODE === "C") {
   B().bossKills = ["slimeking", "bonelord", "vampire"];
   clearCards();
   g.endRun(false);
-  ok(qs.every((q) => Save2.data.questDone.includes(q.id)) && Save2.data.questDone.includes("bonus"), "\u4EFB\u52A1\u5B8C\u6210\u5E76\u9886\u53D6\u5168\u52E4\u5956\u52B1");
+  ok(qs.every((q2) => Save2.data.questDone.includes(q2.id)) && Save2.data.questDone.includes("bonus"), "\u4EFB\u52A1\u5B8C\u6210\u5E76\u9886\u53D6\u5168\u52E4\u5956\u52B1");
   base();
   Save2.data.signDate = "";
   Save2.data.signShown = "";
@@ -12802,6 +13508,199 @@ if (MODE === "C") {
   ok(Math.abs(B().stats.finder - 0.75) < 1e-6, "\u5BFB\u5B9D\u7F57\u76D8\u6EE1\u7EA7 +75%");
   clearCards();
   g.endRun(false);
+  section("\u6570\u636E\u57CB\u70B9");
+  const evs = (id) => Analytics2.log.filter((e) => e.id === id);
+  const isFlat = (d) => Object.keys(d).every((k) => /^[a-z][a-z0-9_]*$/.test(k) && (typeof d[k] === "number" || typeof d[k] === "string"));
+  Analytics2.log.length = 0;
+  base();
+  const runs0 = Save2.data.runs;
+  start();
+  play(60);
+  const rs = evs("run_start").pop();
+  ok(!!rs && rs.data.run_no === runs0 + 1 && rs.data.mode === "normal" && rs.data.char === "hunter" && rs.data.stage === "grass", "\u5F00\u5C40\u4E0A\u62A5 run_start\uFF08\u5C40\u6570 / \u6A21\u5F0F / \u89D2\u8272 / \u5730\u56FE\uFF09");
+  g.setState("pause");
+  g.endRun(false, true);
+  const re = evs("run_end").pop();
+  ok(!!re && re.data.result === "quit" && re.data.run_no === runs0 + 1 && typeof re.data.time_sec === "number", "\u6682\u505C\u653E\u5F03\u4E0A\u62A5 run_end\uFF0Cresult = quit");
+  start();
+  play(30);
+  B().won = true;
+  until("result");
+  ok(evs("run_end").pop().data.result === "win", "\u80DC\u5229\u4E0A\u62A5 result = win");
+  g.leaveResult("replay");
+  ok(evs("result_next").pop().data.next === "replay", "\u79BB\u5F00\u7ED3\u7B97\u9875\u4E0A\u62A5 result_next");
+  clearCards();
+  g.endRun(false);
+  g.startDaily();
+  step(1);
+  ok(evs("run_start").pop().data.mode === "daily", "\u6BCF\u65E5\u6311\u6218\u5F00\u5C40 mode = daily");
+  clearCards();
+  g.endRun(false);
+  g.setState("play");
+  g.onHide();
+  ok(evs("app_hide").pop().data.state === "play", "\u5207\u540E\u53F0\u4E0A\u62A5 app_hide \u4E0E\u5F53\u65F6\u754C\u9762");
+  ok(Analytics2.log.every((e) => /^[a-z][a-z0-9_]*$/.test(e.id) && isFlat(e.data)), "\u4E8B\u4EF6 ID \u4E0E\u5B57\u6BB5\u540D\u5747\u4E3A\u5C0F\u5199\u4E0B\u5212\u7EBF\u3001\u5B57\u6BB5\u503C\u53EA\u6709\u5B57\u7B26\u4E32 / \u6570\u5B57");
+  if (MODE === "B") {
+    ok((G.__events || []).some((e) => e.id === "launch" && e.data.scene === 1007), "\u5FAE\u4FE1\u73AF\u5883\uFF1Awx.reportEvent \u6536\u5230 launch\uFF0C\u573A\u666F\u503C 1007");
+    ok((G.__events || []).some((e) => e.id === "run_end"), "\u5FAE\u4FE1\u73AF\u5883\uFF1Awx.reportEvent \u6536\u5230 run_end");
+    g.watchAd("gold", () => {
+    });
+    await wait();
+    ok(evs("ad_reward").some((e) => e.data.place === "gold" && e.data.result === "ok"), "\u770B\u5B8C\u6FC0\u52B1\u89C6\u9891\u4E0A\u62A5 ad_reward");
+  }
+  section("\u5E26\u53C2\u6570\u5206\u4EAB / \u597D\u53CB\u6311\u6218");
+  const q = Social2.parseQuery({ ch: "1", t: "412", k: "1500", w: "0", d: Social2.dateKey() });
+  ok(q.time === 412 && q.kills === 1500 && Social2.challengeIsToday(q), "\u89E3\u6790\u5206\u4EAB\u53C2\u6570\uFF08\u6218\u7EE9 + \u4ECA\u65E5\u6311\u6218\u65E5\u671F\uFF09");
+  ok(Social2.parseQuery({ t: "5" }) === null && Social2.parseQuery({ ch: "1", t: "-9", d: "x" }).time === 0 && Social2.parseQuery({ ch: "1", d: "x" }).daily === "", "\u975E\u6311\u6218\u5361\u7247 / \u975E\u6CD5\u53C2\u6570\u88AB\u5FFD\u7565\u6216\u94B3\u5236");
+  const sq = Social2.shareQuery({ time: 61.7, kills: 9, won: 1, daily: "" });
+  ok(sq === "ch=1&t=61&k=9&w=1&d=", `\u751F\u6210\u5206\u4EAB\u53C2\u6570\uFF08${sq}\uFF09`);
+  base();
+  g.toMenu();
+  Social2.pending = { time: 300, kills: 800, won: 0, daily: Social2.dateKey() };
+  g.refreshAll();
+  const chalBtn = findButton("\u63A5\u53D7\u6311\u6218");
+  ok(!!chalBtn, "\u4E3B\u83DC\u5355\u663E\u793A\u597D\u53CB\u6311\u6218\u9762\u677F");
+  chalBtn.emit("te");
+  step(1);
+  clearCards();
+  ok(g.dailyRun && g.state === "play" && Social2.pending === null, "\u63A5\u53D7\u4ECA\u65E5\u6BCF\u65E5\u6311\u6218\uFF1A\u76F4\u63A5\u8FDB\u5165\u540C\u4E00\u6BCF\u65E5\u6311\u6218");
+  B().time = 320;
+  g.endRun(false);
+  ok(g.resultHint.string.includes("\u8D85\u8FC7\u4E86\u597D\u53CB"), "\u7ED3\u7B97\u663E\u793A\u662F\u5426\u8D85\u8FC7\u597D\u53CB\u6210\u7EE9");
+  base();
+  Save2.data.runs = 0;
+  Save2.data.tutDone = false;
+  g.toMenu();
+  Social2.pending = { time: 300, kills: 800, won: 0, daily: Social2.dateKey() };
+  g.acceptChallenge();
+  step(1);
+  ok(!g.dailyRun && g.tutStep === 0, "\u65B0\u73A9\u5BB6\u63A5\u53D7\u6311\u6218\uFF1A\u5148\u8FDB\u5165\u5E26\u65B0\u624B\u5F15\u5BFC\u7684\u666E\u901A\u5C40");
+  clearCards();
+  g.endRun(false);
+  base();
+  g.toMenu();
+  Social2.pending = { time: 300, kills: 800, won: 0, daily: "20200101" };
+  g.refreshAll();
+  g.acceptChallenge();
+  step(1);
+  ok(!g.dailyRun, "\u8FC7\u671F\u7684\u6BCF\u65E5\u6311\u6218\u5361\u7247\u6539\u4E3A\u666E\u901A\u5C40");
+  clearCards();
+  g.endRun(false);
+  g.toMenu();
+  section("\u65B0\u624B\u6E10\u8FDB\u89E3\u9501");
+  base();
+  Save2.data.runs = 0;
+  Save2.data.unlockSeen = 0;
+  g.toMenu();
+  ok(g.locked("shop") && g.locked("daily") && !g.locked("none"), "\u9996\u5C40\u524D\uFF1A\u6C38\u4E45\u5F3A\u5316 / \u6BCF\u65E5\u6311\u6218\u672A\u5F00\u653E");
+  findButton("\u8BBE\u7F6E") && g.gated("shop", () => g.setState("shop"))();
+  ok(g.state === "menu" && g.toast.string.includes("\u518D\u73A9 1 \u5C40"), "\u70B9\u51FB\u672A\u5F00\u653E\u7684\u5165\u53E3\u63D0\u793A\u8FD8\u5DEE\u51E0\u5C40");
+  Save2.data.runs = 1;
+  g.toMenu();
+  ok(!g.locked("shop") && g.locked("daily") && g.toast.string.includes("\u6C38\u4E45\u5F3A\u5316"), "\u5B8C\u6210 1 \u5C40\uFF1A\u5F00\u653E\u6C38\u4E45\u5F3A\u5316\u7B49\u5E76\u63D0\u793A");
+  Save2.data.runs = 2;
+  g.toMenu();
+  ok(!g.locked("daily") && g.toast.string.includes("\u6BCF\u65E5\u6311\u6218") && Save2.data.unlockSeen === 2, "\u5B8C\u6210 2 \u5C40\uFF1A\u5F00\u653E\u6BCF\u65E5\u6311\u6218");
+  const t0 = g.toast.string;
+  g.toast.string = "";
+  g.toMenu();
+  ok(g.toast.string === "", "\u5DF2\u63D0\u793A\u8FC7\u7684\u529F\u80FD\u4E0D\u518D\u91CD\u590D\u63D0\u793A");
+  g.toast.string = t0;
+  if (MODE === "B") {
+    section("\u7248\u672C\u66F4\u65B0");
+    base();
+    start();
+    G.__updReady();
+    ok(!G.__modal, "\u6218\u6597\u4E2D\u4E0B\u8F7D\u597D\u65B0\u7248\u672C\uFF1A\u4E0D\u6253\u65AD");
+    g.endRun(false);
+    g.toMenu();
+    ok(G.__modal && G.__modal.title === "\u53D1\u73B0\u65B0\u7248\u672C", "\u56DE\u5230\u4E3B\u83DC\u5355\u63D0\u793A\u91CD\u542F");
+    G.__modal.success({ confirm: true });
+    ok(G.__applied, "\u786E\u8BA4\u540E applyUpdate");
+    G.__modal = null;
+    g.setState("chars");
+    g.toMenu();
+    ok(!G.__modal, "\u53EA\u63D0\u793A\u4E00\u6B21");
+    section("\u6E38\u620F\u5708 / \u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F");
+    base();
+    g.toMenu();
+    ok(G.__club && G.__club.shown && G.__club.opts.type === "image", "\u4E3B\u83DC\u5355\u663E\u793A\u6E38\u620F\u5708\u6309\u94AE");
+    const cs = G.__club.style;
+    ok(cs.left >= 0 && cs.left < 80 && cs.top > 0 && cs.top < 200, `\u6E38\u620F\u5708\u6309\u94AE\u4F4D\u4E8E\u5DE6\u4E0A\u89D2\uFF08${Math.round(cs.left)}, ${Math.round(cs.top)}\uFF09`);
+    g.setState("chars");
+    ok(!G.__club.shown, "\u79BB\u5F00\u4E3B\u83DC\u5355\u9690\u85CF\u6E38\u620F\u5708\u6309\u94AE");
+    Save2.data.wins = 1;
+    Save2.data.addTipShown = false;
+    g.toMenu();
+    const findPanelText = (t) => {
+      const walk = (n) => {
+        for (const c of n.children) {
+          if (!c.active) continue;
+          if ((c.comps || []).some((x) => typeof x.string === "string" && x.string.includes(t))) return c;
+          const r = walk(c);
+          if (r) return r;
+        }
+        return null;
+      };
+      return walk(g.screens.menu);
+    };
+    const tip = findPanelText("\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F");
+    ok(!!tip, "\u9996\u80DC\u540E\u4E3B\u83DC\u5355\u63D0\u793A\u300C\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F\u300D");
+    tip.parent.emit("te");
+    ok(Save2.data.addTipShown && !findPanelText("\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F"), "\u70B9\u51FB\u540E\u5173\u95ED\u4E14\u4E0D\u518D\u63D0\u793A");
+    Save2.data.wins = 0;
+    section("\u597D\u53CB\u6392\u884C");
+    base();
+    start();
+    play(30);
+    g.endRun(false);
+    const kvBest = (G.__kv || []).find((x) => x.key === "best");
+    ok(kvBest && JSON.parse(kvBest.value).wxgame.score === Save2.data.bestTime, "\u7ED3\u7B97\u4E0A\u62A5 best\uFF08\u6700\u957F\u5B58\u6D3B\uFF09\u5230\u597D\u53CB\u4E91\u5B58\u50A8");
+    g.startDaily();
+    step(1);
+    clearCards();
+    B().time = 200;
+    g.endRun(false);
+    const kvDaily = (G.__kv || []).find((x) => x.key === "daily");
+    ok(kvDaily && JSON.parse(kvDaily.value).date === Social2.dateKey(), "\u6BCF\u65E5\u6311\u6218\u540E\u4E0A\u62A5 daily\uFF08\u5E26\u65E5\u671F\uFF09");
+    g.toMenu();
+    g.openRank("daily");
+    ok(g.state === "rank" && G.__odc && G.__odc.type === "rank" && G.__odc.kind === "daily" && G.__odc.scale === 2, "\u4ECE\u6BCF\u65E5\u6311\u6218\u6253\u5F00\uFF1A\u5F00\u653E\u6570\u636E\u57DF\u7ED8\u5236\u4ECA\u65E5\u6311\u6218\u699C");
+    findButton("\u6700\u957F\u5B58\u6D3B").emit("te");
+    ok(G.__odc.kind === "best", "\u5207\u6362\u5230\u6700\u957F\u5B58\u6D3B\u699C");
+    findButton("\u8FD4\u56DE").emit("te");
+    ok(g.state === "daily", "\u8FD4\u56DE\u5230\u6253\u5F00\u6392\u884C\u524D\u7684\u754C\u9762");
+    section("\u4E91\u5B58\u6863");
+    ok(Social2.preferRemote({ runs: 10, updatedAt: 1 }, { ...Save2.data, runs: 3, updatedAt: 999 }) && !Social2.preferRemote({ runs: 0, updatedAt: 9e15 }, { ...Save2.data, runs: 3 }), "\u5408\u5E76\u89C4\u5219\uFF1A\u5C40\u6570\u591A\u7684\u4F18\u5148\uFF0C\u65B0\u8BBE\u5907\u7A7A\u5B58\u6863\u4E0D\u4F1A\u8986\u76D6\u4E91\u7AEF");
+    SOCIAL_CONFIG2.cloudEnv = "cloud-test";
+    const localGold = Save2.data.gold;
+    G.__cloudDoc = { _id: "doc1", save: JSON.stringify({ ...Save2.data, runs: Save2.data.runs + 50, gold: 123456, music: !Save2.data.music, updatedAt: 1 }) };
+    const music0 = Save2.data.music;
+    g.toMenu();
+    g.startCloud();
+    await wait();
+    ok(G.__cloudEnv === "cloud-test" && Save2.data.gold === 123456 && g.toast.string.includes("\u4E91\u7AEF\u6062\u590D"), "\u4E91\u7AEF\u8FDB\u5EA6\u66F4\u591A\uFF1A\u62C9\u53D6\u8986\u76D6\u672C\u5730\u5E76\u63D0\u793A");
+    ok(Save2.data.music === music0, "\u672C\u673A\u8BBE\u7F6E\uFF08\u97F3\u4E50\u7B49\uFF09\u4E0D\u88AB\u4E91\u7AEF\u8986\u76D6");
+    G.__cloudWrites = 0;
+    Save2.data.gold += 1;
+    Save2.save();
+    g.onHide();
+    await wait();
+    ok(G.__cloudWrites === 1 && JSON.parse(G.__cloudDoc.save).gold === 123457, "\u5B58\u6863\u53D8\u66F4\u540E\u4E0A\u4F20\uFF08\u5207\u540E\u53F0\u7ACB\u5373\u4E0A\u4F20\uFF09");
+    Save2.data.gold = localGold;
+    Save2.save();
+    g.onHide();
+    await wait();
+    SOCIAL_CONFIG2.cloudEnv = "";
+  } else {
+    section("\u975E\u5FAE\u4FE1\u73AF\u5883");
+    base();
+    g.toMenu();
+    g.openRank("menu");
+    ok(g.state === "rank" && !!findPanelTextA("\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00"), "\u6392\u884C\u699C\u63D0\u793A\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00");
+    findButton("\u8FD4\u56DE").emit("te");
+    ok(!Social2.cloudEnabled && !Social2.clubSupported, "\u4E91\u5B58\u6863 / \u6E38\u620F\u5708\u4E0D\u542F\u7528");
+  }
   section("\u5185\u5BB9\u5408\u89C4\uFF08\u663E\u793A\u6587\u5B57\u4E0D\u542B\u654F\u611F\u8BCD\uFF09");
   const texts = [];
   for (const k in D.ENEMIES) texts.push(D.ENEMIES[k].name || "");

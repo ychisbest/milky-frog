@@ -90,16 +90,17 @@ export class Ads {
         if (cb) cb(r);
     }
 
-    // 结算后调用：每 N 局一次插屏；新用户首日、本次结算已看过激励视频时不弹
-    static afterRun(watchedReward: boolean) {
+    // 结算后调用：每 N 局一次插屏；新用户首日、本次结算已看过激励视频时不弹。返回是否尝试弹出
+    static afterRun(watchedReward: boolean): boolean {
         const d = Save.data;
         d.runsSinceInter = (d.runsSinceInter || 0) + 1;
         Save.save();
-        if (!this.inter || watchedReward) return;
-        if (d.firstDay === new Date().toDateString()) return;
-        if (d.runsSinceInter < AD_CONFIG.interstitialEvery) return;
+        if (!this.inter || watchedReward) return false;
+        if (d.firstDay === new Date().toDateString()) return false;
+        if (d.runsSinceInter < AD_CONFIG.interstitialEvery) return false;
         d.runsSinceInter = 0;
         Save.save();
         this.inter.show().catch(() => { /* 忽略 */ });
+        return true;
     }
 }

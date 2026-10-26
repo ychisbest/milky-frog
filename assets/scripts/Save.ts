@@ -40,6 +40,9 @@ export interface SaveData {
     signCount: number;         // 累计签到天数
     signDate: string;          // 最近签到日期
     signShown: string;         // 最近一次自动弹出签到的日期（每天只自动弹一次）
+    updatedAt: number;         // 最近一次存档时间（毫秒，云存档合并用）
+    addTipShown: boolean;      // 已提示过「添加到我的小程序」
+    unlockSeen: number;        // 已提示过的新手渐进解锁进度（局数）
 }
 
 const KEY = 'night_survivors_save_v1';
@@ -49,12 +52,14 @@ function defaults(): SaveData {
         gold: 0, power: {}, chars: ['hunter', 'mage'], selected: 'hunter',
         music: true, sfx: true, vibrate: true, lite: false, liteChecked: false,
         bestTime: 0, bestKills: 0, bestLevel: 0, totalKills: 0, runs: 0, wins: 0,
-        achievements: [], mode: 'normal', endlessBest: 0, lossStreak: 0, bonusDay: '', privacyOk: false, firstDay: '', runsSinceInter: 0, stage: 'grass', stages: ['grass'], stageBest: {}, dailyDone: '', dailyBestDate: '', dailyBest: 0, tutDone: false, codex: [], codexSeen: 0, questDate: '', questProg: {}, questDone: [], signCount: 0, signDate: '', signShown: '',
+        achievements: [], mode: 'normal', endlessBest: 0, lossStreak: 0, bonusDay: '', privacyOk: false, firstDay: '', runsSinceInter: 0, stage: 'grass', stages: ['grass'], stageBest: {}, dailyDone: '', dailyBestDate: '', dailyBest: 0, tutDone: false, codex: [], codexSeen: 0, questDate: '', questProg: {}, questDone: [], signCount: 0, signDate: '', signShown: '', updatedAt: 0, addTipShown: false, unlockSeen: 0,
     };
 }
 
 export class Save {
     static data: SaveData = defaults();
+    // 每次存档后回调（云存档用来安排上传）
+    static onSaved: () => void = () => {};
 
     static load() {
         try {
@@ -67,11 +72,19 @@ export class Save {
     }
 
     static save() {
+        this.data.updatedAt = Date.now();
         try {
             sys.localStorage.setItem(KEY, JSON.stringify(this.data));
         } catch (e) {
             console.warn('[Save] save failed', e);
         }
+        this.onSaved();
+    }
+
+    // 用另一份存档（云端）整体替换本地，缺失字段补默认值；保留原 updatedAt 不触发回传
+    static replace(d: Partial<SaveData>) {
+        this.data = Object.assign(defaults(), d);
+        try { sys.localStorage.setItem(KEY, JSON.stringify(this.data)); } catch (e) { /* 忽略 */ }
     }
 
     static rank(id: string) {

@@ -1,16 +1,19 @@
 import {
     _decorator, Canvas, Color, Component, director, Director, EventKeyboard, EventTouch, game, Game, Input, input,
-    KeyCode, Label, Node, ResolutionPolicy, Sprite, sys, UITransform, Vec3, view,
+    KeyCode, Label, Node, ResolutionPolicy, Size, Sprite, SubContextView, sys, UITransform, Vec3, view,
 } from 'cc';
 import { EDITOR } from 'cc/env';
 import { AD_CONFIG } from './AdConfig';
 import { Ads, mgApi, RewardResult } from './Ads';
+import { Analytics } from './Analytics';
 import { Art } from './Art';
 import { Backdrop } from './Backdrop';
 import { Battle, blessingOptions, describe, Option } from './Battle';
 import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, CHARGE_DESC, EPIC_TIME, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
 import { Recorder } from './Recorder';
 import { Save } from './Save';
+import { Challenge, Social } from './Social';
+import { SOCIAL_CONFIG } from './SocialConfig';
 import { Sound, vibrate } from './Sound';
 import { blockTouches, Button, mkButton, mkLabel, mkNode, mkPanel, mkRect, mkSprite } from './UiKit';
 
@@ -25,6 +28,15 @@ export const GAME_NAME = '奶蛙割草';
 export const GAME_SUBTITLE = 'MILKY  FROG  SURVIVORS';
 export const AGE_RATING = '12+';
 export const GAME_VERSION = 'v1.0.0';
+// 新手渐进解锁：完成 N 局后开放（只影响主菜单入口，不影响局内数值）
+const UNLOCKS: { id: string; name: string; runs: number }[] = [
+    { id: 'shop', name: '永久强化', runs: 1 },
+    { id: 'achv', name: '成就', runs: 1 },
+    { id: 'codex', name: '图鉴', runs: 1 },
+    { id: 'signin', name: '签到', runs: 1 },
+    { id: 'rank', name: '好友排行', runs: 1 },
+    { id: 'daily', name: '每日挑战', runs: 2 },
+];
 // 点击主界面奶蛙时随机说的话
 const FROG_LINES = ['呱!', '割草去!', '呱呱呱~', '奶蛙出击!', '今天也要努力割草', '红月? 不怕!', '再来一局呱', '别戳了, 痒!'];
 const AGE_TIP = [
@@ -40,7 +52,7 @@ const AGE_TIP = [
 const HEALTH_TIP = '抵制不良游戏，拒绝盗版游戏。\n注意自我保护，谨防受骗上当。\n适度游戏益脑，沉迷游戏伤身。\n合理安排时间，享受健康生活。';
 const C_AD = new Color(150, 90, 20, 255);
 
-type State = 'splash' | 'privacy' | 'menu' | 'daily' | 'chars' | 'shop' | 'settings' | 'achv' | 'codex' | 'signin' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'victory' | 'dying' | 'result';
+type State = 'splash' | 'privacy' | 'menu' | 'daily' | 'rank' | 'chars' | 'shop' | 'settings' | 'achv' | 'codex' | 'signin' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'victory' | 'dying' | 'result';
 
 const C_WHITE = new Color(255, 255, 255, 255);
 const C_GOLD = new Color(255, 214, 90, 255);
@@ -182,6 +194,14 @@ export class GameRoot extends Component {
         Sound.init(this.node);
         Ads.init();
         Recorder.init();
+        Analytics.init();
+        Social.initUpdate();
+        Social.initLaunch();
+        Social.onChallenge = () => { if (this.state === 'menu') this.refreshAll(); };
+        // 老玩家升级到渐进解锁版本：已开放的功能不再重复提示
+        if (!Save.data.unlockSeen && Save.data.runs > 0) Save.data.unlockSeen = Save.data.runs;
+        if (Save.data.privacyOk) this.startCloud();
+        Analytics.track('launch', { scene: Analytics.launchScene(), is_new: Save.data.runs === 0 ? 1 : 0, runs: Save.data.runs, day_n: Analytics.dayN(), ver: GAME_VERSION });
         Recorder.onReady = () => { if (this.state === 'result') this.refreshAll(); };
         const cam = this.getComponent(Canvas)?.cameraComponent;
         if (cam) cam.clearColor = new Color(18, 22, 18, 255);
@@ -230,8 +250,12 @@ export class GameRoot extends Component {
             const cv = (globalThis as any).canvas;
             if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) { /* 截图失败则使用默认分享图 */ }
-        const title = b.won ? `我的奶蛙在《${GAME_NAME}》里击败了暗夜魔术师！你也来试试？` : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
-        try { w.shareAppMessage({ title, imageUrl }); } catch (e) { /* 忽略 */ }
+        const daily = this.dailyRun ? Social.dateKey() : '';
+        const title = daily ? `今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，同一关卡，敢来比比吗？` : b.won ? `我的奶蛙在《${GAME_NAME}》里击败了暗夜魔术师！你也来试试？` : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
+        // 卡片携带战绩：好友点开后显示挑战横幅（不发放任何奖励）
+        const query = Social.shareQuery({ time: b.time, kills: b.kills, won: b.won ? 1 : 0, daily });
+        Analytics.track('share', { from: daily ? 'daily' : 'result', won: b.won ? 1 : 0 });
+        try { w.shareAppMessage({ title, imageUrl, query }); } catch (e) { /* 忽略 */ }
     }
 
     private setupShare() {
@@ -239,7 +263,12 @@ export class GameRoot extends Component {
         if (!w) return;
         try {
             if (w.showShareMenu) w.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-            const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(Save.data.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在红月下坚持 15 分钟！` });
+            const msg = () => {
+                Analytics.track('share', { from: 'menu', won: 0 });
+                const d = Save.data;
+                const query = d.bestTime ? Social.shareQuery({ time: d.bestTime, kills: d.bestKills, won: d.wins > 0 ? 1 : 0, daily: '' }) : '';
+                return { title: d.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(d.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在红月下坚持 15 分钟！`, query };
+            };
             if (w.onShareAppMessage) w.onShareAppMessage(msg);
             if (w.onShareTimeline) w.onShareTimeline(msg);
         } catch (e) { /* 忽略 */ }
@@ -247,7 +276,50 @@ export class GameRoot extends Component {
 
     // 切到后台自动暂停
     private onHide() {
+        const st = this.state;
+        const inRun = st === 'play' || st === 'levelup' || st === 'chest' || st === 'pause' || st === 'revive' || st === 'dying' || st === 'victory';
+        Analytics.track('app_hide', { state: st, run_no: Save.data.runs + (inRun ? 1 : 0), run_sec: inRun ? Math.floor(this.battle.time) : 0 });
         if (this.state === 'play') this.setState('pause');
+        Social.flushCloud();
+    }
+
+    // 云存档：同意隐私政策后启动；云端进度更新时覆盖本地并刷新界面
+    private startCloud() {
+        Social.initCloud(() => {
+            const st = this.state;
+            if (st === 'menu' || st === 'chars' || st === 'shop' || st === 'daily' || st === 'privacy' || st === 'splash' || st === 'signin') {
+                this.battle.reset(this.selectedChar());
+                this.battle.setPlayerVisible(false);
+            }
+            this.refreshAll();
+            this.showToast('已从云端恢复游戏进度');
+        });
+    }
+
+    // 新手渐进解锁
+    private locked(id: string) {
+        const u = UNLOCKS.find(x => x.id === id);
+        return !!u && Save.data.runs < u.runs;
+    }
+
+    // 主菜单入口按钮：未解锁时点击提示还差几局
+    private gated(id: string, fn: () => void) {
+        return () => {
+            const u = UNLOCKS.find(x => x.id === id);
+            if (u && Save.data.runs < u.runs) { this.showToast(`再玩 ${u.runs - Save.data.runs} 局即可开放「${u.name}」`); return; }
+            fn();
+        };
+    }
+
+    // 未解锁的按钮变暗并加锁
+    private gateLook(btn: Button, id: string) {
+        const lock = mkSprite(btn.node, 'icon_lock', 2);
+        lock.node.setPosition(0, 0);
+        this.refreshers.push(() => {
+            const l = this.locked(id);
+            lock.node.active = l;
+            btn.label.node.active = !l;
+        });
     }
 
     private selectedChar(): CharDef {
@@ -329,6 +401,7 @@ export class GameRoot extends Component {
         this.buildResult();
         this.buildAchievements();
         this.buildDaily();
+        this.buildRank();
         this.buildCodex();
         this.buildVictory();
         this.buildDying();
@@ -558,6 +631,7 @@ export class GameRoot extends Component {
     private tutNext() {
         this.tutStep++;
         this.tutT = 0;
+        Analytics.track('tut_step', { step: this.tutStep, sec: Math.floor(this.battle.time) });
         // 首局的开局命运卡牌推迟到第一次升级之后再给（先学移动，再学选卡）
         if (this.tutStep === 4) this.battle.pendingBlessings++;
         if (this.tutStep >= GameRoot.TUT_TEXT.length) this.tutFinish();
@@ -701,27 +775,73 @@ export class GameRoot extends Component {
 
         mkButton(s, '开始游戏', 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
         // 签到入口（右上角适龄标识下方），未签到时亮红点
-        const sbtn = mkButton(s, '签到', 120, 60, () => this.setState('signin'), new Color(150, 60, 30, 255), 26);
+        const sbtn = mkButton(s, '签到', 120, 60, this.gated('signin', () => this.setState('signin')), new Color(150, 60, 30, 255), 26);
+        this.gateLook(sbtn, 'signin');
         sbtn.node.setPosition(this.vw / 2 - 80, this.top - 110);
         const sdot = mkRect(sbtn.node, 16, 16, new Color(240, 60, 60, 255), 'dot');
         sdot.node.setPosition(52, 22);
-        this.refreshers.push(() => { sdot.node.active = this.signDue(); });
-        const dbtn = mkButton(s, '每日挑战', 212, 84, () => this.setState('daily'), new Color(150, 60, 30, 255), 32);
+        this.refreshers.push(() => { sdot.node.active = this.signDue() && !this.locked('signin'); });
+        const dbtn = mkButton(s, '每日挑战', 212, 84, this.gated('daily', () => this.setState('daily')), new Color(150, 60, 30, 255), 32);
+        this.gateLook(dbtn, 'daily');
         dbtn.node.setPosition(-114, btnTop - 104);
         // 今日挑战未完成时显示红点
         const ddot = mkRect(dbtn.node, 18, 18, new Color(240, 60, 60, 255), 'dot');
         ddot.node.setPosition(94, 30);
-        this.refreshers.push(() => { ddot.node.active = Save.data.dailyDone !== this.today; });
+        this.refreshers.push(() => { ddot.node.active = Save.data.dailyDone !== this.today && !this.locked('daily'); });
         mkButton(s, '选择角色', 212, 84, () => this.setState('chars'), C_BTN_BLUE, 32).node.setPosition(114, btnTop - 104);
-        mkButton(s, '永久强化', 440, 84, () => this.setState('shop'), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 200);
-        mkButton(s, '成就', 140, 80, () => this.setState('achv'), C_BTN_BLUE, 30).node.setPosition(-150, btnTop - 296);
-        const cb = mkButton(s, '图鉴', 140, 80, () => this.setState('codex'), C_BTN_BLUE, 30);
-        cb.node.setPosition(0, btnTop - 296);
+        const shopBtn = mkButton(s, '永久强化', 440, 84, this.gated('shop', () => this.setState('shop')), C_BTN_BLUE, 34);
+        shopBtn.node.setPosition(0, btnTop - 200);
+        this.gateLook(shopBtn, 'shop');
+        const ab = mkButton(s, '成就', 126, 80, this.gated('achv', () => this.setState('achv')), C_BTN_BLUE, 28);
+        ab.node.setPosition(-201, btnTop - 296);
+        this.gateLook(ab, 'achv');
+        const cb = mkButton(s, '图鉴', 126, 80, this.gated('codex', () => this.setState('codex')), C_BTN_BLUE, 28);
+        cb.node.setPosition(-67, btnTop - 296);
+        this.gateLook(cb, 'codex');
+        const rb = mkButton(s, '排行', 126, 80, this.gated('rank', () => this.openRank('menu')), C_BTN_BLUE, 28);
+        rb.node.setPosition(67, btnTop - 296);
+        this.gateLook(rb, 'rank');
         // 有新收录时在图鉴按钮上显示红点
         const dot = mkRect(cb.node, 18, 18, new Color(240, 60, 60, 255), 'dot');
         dot.node.setPosition(58, 28);
-        this.refreshers.push(() => { dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0); });
-        mkButton(s, '设置', 140, 80, () => this.setState('settings'), C_BTN_GREY, 30).node.setPosition(150, btnTop - 296);
+        this.refreshers.push(() => { dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0) && !this.locked('codex'); });
+        mkButton(s, '设置', 126, 80, () => this.setState('settings'), C_BTN_GREY, 28).node.setPosition(201, btnTop - 296);
+
+        // 游戏圈（微信原生按钮，叠在画布之上，只在主菜单显示）
+        this.clubPos.set(-this.vw / 2 + 56, top - 122, 0);
+        const clubLabel = mkLabel(s, '游戏圈', 18, C_WHITE, 'center', 2);
+        clubLabel.node.setPosition(this.clubPos.x, this.clubPos.y - 38);
+        clubLabel.node.active = Social.clubSupported;
+
+        // 好友挑战（点开好友分享的卡片进入）
+        const chal = mkPanel(s, 600, 250, new Color(20, 40, 70, 248), new Color(120, 220, 255, 255));
+        chal.node.setPosition(0, horizon + 40);
+        blockTouches(chal.node);
+        mkLabel(chal.node, '好友的挑战', 32, new Color(120, 220, 255, 255), 'center', 3).node.setPosition(0, 85);
+        const chalText = mkLabel(chal.node, '', 23, C_WHITE, 'center', 2);
+        chalText.node.setPosition(0, 22);
+        mkButton(chal.node, '稍后', 200, 72, () => { Social.pending = null; this.refreshAll(); }, C_BTN_GREY, 26).node.setPosition(-120, -78);
+        mkButton(chal.node, '接受挑战', 240, 72, () => this.acceptChallenge(), C_BTN_GREEN, 28).node.setPosition(120, -78);
+        this.refreshers.push(() => {
+            const c = Social.pending;
+            chal.node.active = !!c && this.state === 'menu';
+            if (!c) return;
+            const daily = Social.challengeIsToday(c);
+            chalText.string = `好友在${daily ? '今天的每日挑战' : '奶蛙割草'}中坚持了 ${this.fmtTime(c.time)}\n击败 ${c.kills} 只怪物${c.won ? '，成功通关' : ''}\n你能超过吗？` + (c.daily && !daily ? '（那天的每日挑战已结束，改为普通局）' : '');
+        });
+
+        // 首胜后提示一次「添加到我的小程序」（指向右上角胶囊）
+        const add = mkPanel(s, 420, 150, new Color(255, 250, 235, 250), new Color(60, 40, 20, 255));
+        add.node.setPosition(this.vw / 2 - 230, this.vh / 2 - this.safeTop - 70);
+        mkLabel(add.node, '▲', 30, new Color(60, 40, 20, 255), 'center', 0).node.setPosition(150, 92);
+        mkLabel(add.node, '点右上角「···」选择\n「添加到我的小程序」\n下次在微信首页下拉就能找到奶蛙', 21, new Color(60, 40, 20, 255), 'center', 0).node.setPosition(0, 6);
+        add.node.on(Node.EventType.TOUCH_END, () => {
+            Save.data.addTipShown = true;
+            Save.save();
+            Analytics.track('add_tip', { wins: Save.data.wins });
+            this.refreshAll();
+        });
+        this.refreshers.push(() => { add.node.active = this.state === 'menu' && Social.isWx && Save.data.wins > 0 && !Save.data.addTipShown && !Social.pending; });
 
         // 适龄提示面板（最后创建，位于最上层）
 
@@ -812,6 +932,7 @@ export class GameRoot extends Component {
                     if (d.gold < c.cost) { this.showToast('金币不足'); return; }
                     d.gold -= c.cost;
                     d.chars.push(c.id);
+                    Analytics.track('char_unlock', { char: c.id, cost: c.cost, runs: d.runs });
                     Sound.play('chest');
                     this.showToast(`解锁 ${c.name}!`);
                 }
@@ -903,6 +1024,7 @@ export class GameRoot extends Component {
                 Save.data.gold -= c;
                 Save.data.power[p.id] = r + 1;
                 Save.save();
+                Analytics.track('shop_buy', { item: p.id, level: r + 1, cost: c, runs: Save.data.runs });
                 Sound.play('coin');
                 this.refreshAll();
             });
@@ -1004,7 +1126,7 @@ export class GameRoot extends Component {
             music.label.string = '音乐：' + (Save.data.music ? '开' : '关');
             sfx.label.string = '音效：' + (Save.data.sfx ? '开' : '关');
         });
-        mkButton(s, '放弃本局', 420, 88, () => this.endRun(false), new Color(120, 30, 40, 255), 30).node.setPosition(0, y0 - 240);
+        mkButton(s, '放弃本局', 420, 88, () => this.endRun(false, true), new Color(120, 30, 40, 255), 30).node.setPosition(0, y0 - 240);
     }
 
     private buildLevelUp() {
@@ -1085,8 +1207,8 @@ export class GameRoot extends Component {
         this.resultHint.node.setPosition(0, this.top - 430);
         this.resultList.setPosition(0, this.top - 520);
         const by = this.bottom + 80;
-        mkButton(s, '主菜单', 260, 88, () => { Ads.afterRun(this.adWatchedThisResult); this.toMenu(); }, C_BTN_GREY).node.setPosition(-150, by);
-        mkButton(s, '再来一局', 260, 88, () => { Ads.afterRun(this.adWatchedThisResult); this.replay(); }, C_BTN_GREEN).node.setPosition(150, by);
+        mkButton(s, '主菜单', 260, 88, () => { this.leaveResult('menu'); this.toMenu(); }, C_BTN_GREY).node.setPosition(-150, by);
+        mkButton(s, '再来一局', 260, 88, () => { this.leaveResult('replay'); this.replay(); }, C_BTN_GREEN).node.setPosition(150, by);
         this.goldAdBtn = mkButton(s, '', 380, 80, () => this.watchAd('gold', () => {
             this.adGoldUsed = true;
             Save.data.gold += this.lastRunGold;
@@ -1116,6 +1238,12 @@ export class GameRoot extends Component {
     }
 
     // 死亡复活（每局一次，看广告满血复活）
+    // 离开结算页：插屏广告 + 记录玩家是再来一局还是回主菜单
+    private leaveResult(next: 'menu' | 'replay') {
+        const inter = Ads.afterRun(this.adWatchedThisResult);
+        Analytics.track('result_next', { next, run_no: Save.data.runs, inter: inter ? 1 : 0 });
+    }
+
     private buildRevive() {
         const s = this.screen('revive');
         mkLabel(s, '你倒下了…', 64, C_RED, 'center', 5).node.setPosition(0, this.vh * 0.2);
@@ -1189,8 +1317,9 @@ export class GameRoot extends Component {
         const p = mkPanel(s, 640, 620);
         p.node.setPosition(0, this.vh * 0.04);
         mkLabel(p.node, '用户协议与隐私政策', 34, C_GOLD, 'center', 3).node.setPosition(0, 250);
-        mkLabel(p.node, `欢迎来到《${GAME_NAME}》！\n\n我们非常重视你的个人信息保护：\n· 本游戏不收集你的个人信息；\n· 游戏进度只保存在你的手机本地；\n· 游戏中的广告由微信平台提供，\n  相关信息处理遵循《微信隐私保护指引》；\n· 你可以随时在微信中删除本小游戏及其数据。\n\n点击“同意”即表示你已阅读并同意\n《用户协议》和《隐私政策》。`, 22, C_WHITE, 'center', 2).node.setPosition(0, 10);
+        mkLabel(p.node, `欢迎来到《${GAME_NAME}》！\n\n我们非常重视你的个人信息保护：\n· 本游戏不收集你的个人信息；\n${SOCIAL_CONFIG.cloudEnv ? '· 游戏进度保存在手机本地，并备份到\n  微信云开发，用于换机后恢复；' : '· 游戏进度只保存在你的手机本地；'}\n· 为改进游戏，会通过微信平台统计\n  匿名的游戏行为数据；\n· 游戏中的广告由微信平台提供，\n  相关信息处理遵循《微信隐私保护指引》；\n· 你可以随时在微信中删除本小游戏及其数据。\n\n点击“同意”即表示你已阅读并同意\n《用户协议》和《隐私政策》。`, 22, C_WHITE, 'center', 2).node.setPosition(0, 10);
         mkButton(p.node, '不同意', 220, 80, () => {
+            Analytics.track('privacy', { agree: 0 });
             const w = mgApi();
             if (w && w.exitMiniProgram) w.exitMiniProgram({});
             else this.showToast('需要同意后才能开始游戏');
@@ -1198,6 +1327,8 @@ export class GameRoot extends Component {
         mkButton(p.node, '同意', 220, 80, () => {
             Save.data.privacyOk = true;
             Save.save();
+            Analytics.track('privacy', { agree: 1 });
+            this.startCloud();
             this.setState('menu');
         }, C_BTN_GREEN, 30).node.setPosition(130, -250);
     }
@@ -1205,6 +1336,7 @@ export class GameRoot extends Component {
     // 看激励视频：看完发奖；没看完或失败给出提示
     private watchAd(place: string, onReward: () => void, onFail?: () => void) {
         Ads.showReward(place, (r: RewardResult) => {
+            Analytics.track('ad_reward', { place, result: r.ok ? 'ok' : r.reason || 'error', run_no: Save.data.runs });
             if (r.ok) {
                 this.adWatchedThisResult = true;
                 onReward();
@@ -1233,7 +1365,9 @@ export class GameRoot extends Component {
         this.overlay.color = inRun || s === 'result' ? C_DIM : new Color(0, 0, 0, s === 'menu' ? 90 : 190);
         this.touchLayer.active = s === 'play';
         if (s !== 'play') this.onJoyEnd();
-        if (s === 'menu' || s === 'chars' || s === 'shop' || s === 'settings' || s === 'achv' || s === 'codex' || s === 'signin' || s === 'privacy' || s === 'daily') Sound.playBgm('bgm_menu');
+        if (s === 'menu' || s === 'chars' || s === 'shop' || s === 'settings' || s === 'achv' || s === 'codex' || s === 'signin' || s === 'privacy' || s === 'daily' || s === 'rank') Sound.playBgm('bgm_menu');
+        if (s === 'menu') this.onMenuEnter();
+        else Social.hideClub();
         if (s === 'codex') { Save.data.codexSeen = Save.data.codex.length; Save.save(); }
         if (s === 'revive') { this.reviveT = 8; Sound.pauseBgm(); }
         if (prev === 'revive' && s === 'play') Sound.resumeBgm();
@@ -1241,6 +1375,39 @@ export class GameRoot extends Component {
         if (prev === 'pause' && s === 'play') Recorder.resume();
         if (prev === 'pause' && s === 'play') Sound.resumeBgm();
         this.refreshAll();
+    }
+
+    // 回到主菜单：版本更新提示、新开放功能提示、游戏圈按钮
+    private onMenuEnter() {
+        Social.promptUpdate(() => { Save.save(); Social.flushCloud(); });
+        const d = Save.data;
+        const fresh = UNLOCKS.filter(u => u.runs > (d.unlockSeen || 0) && u.runs <= d.runs);
+        if (d.runs > (d.unlockSeen || 0)) { d.unlockSeen = d.runs; Save.save(); }
+        if (fresh.length) {
+            this.showToast(`新功能开放：${fresh.map(u => u.name).join('、')}`);
+            Analytics.track('unlock', { runs: d.runs, n: fresh.length });
+        }
+        if (Social.clubSupported) {
+            const info = (globalThis as any).wx.getSystemInfoSync();
+            const k = info.windowWidth / this.vw;
+            const size = 44;
+            Social.showClub((this.clubPos.x + this.vw / 2) * k - size / 2, (this.vh / 2 - this.clubPos.y) * k - size / 2, size);
+        }
+    }
+
+    private clubPos = new Vec3();
+    private activeChallenge: Challenge | null = null;
+
+    // 接受好友挑战：同一天的每日挑战直接进入同一关卡，否则开普通局；新玩家先走新手局
+    private acceptChallenge() {
+        const c = Social.pending;
+        if (!c) return;
+        Social.pending = null;
+        this.activeChallenge = c;
+        const daily = Social.challengeIsToday(c) && Save.data.runs > 0;
+        Analytics.track('challenge_accept', { daily: daily ? 1 : 0, runs: Save.data.runs });
+        if (daily) this.startDaily(); else this.startGame();
+        this.banner(`好友挑战 · 目标 ${this.fmtTime(c.time)}`, new Color(120, 220, 255, 255));
     }
 
     private refreshAll() {
@@ -1286,6 +1453,7 @@ export class GameRoot extends Component {
         Sound.playBgm('bgm_battle');
         Recorder.start();
         this.setState('play');
+        this.trackRun('run_start', {});
         this.banner(`每日挑战 · ${ds.mod.name}`, new Color(255, 170, 80, 255));
     }
 
@@ -1310,12 +1478,21 @@ export class GameRoot extends Component {
         Recorder.start();
         this.setState('play');
         this.tutStart();
+        this.trackRun('run_start', {});
         const st = this.battle.streak;
         this.banner(this.endlessMode ? '无尽之夜 · 能撑多久?' : this.nightmareMode ? `噩梦难度 · ${this.currentStage.name}` : st > 0 ? `不屈意志 · 伤害与生命 +${st * 5}%` : `${this.currentStage.name} · 生存下去!`, new Color(255, 230, 120, 255));
     }
 
-    // 结算：发放金币、记录最佳成绩
-    private endRun(win: boolean) {
+    // 开局 / 结算埋点的公共字段（run_no：开局时为即将进行的第几局，结算时为刚结束的这一局）
+    private trackRun(id: string, extra: Record<string, string | number>) {
+        const b = this.battle;
+        const mode = this.dailyRun ? 'daily' : b.endless ? 'endless' : b.nightmare ? 'nightmare' : 'normal';
+        const runNo = Save.data.runs + (id === 'run_start' ? 1 : 0);
+        Analytics.track(id, { run_no: runNo, char: b.char.id, stage: b.stage.id, mode, day_n: Analytics.dayN(), ...extra });
+    }
+
+    // 结算：发放金币、记录最佳成绩（quit：从暂停菜单主动放弃）
+    private endRun(win: boolean, quit = false) {
         Recorder.stop();
         if (this.tutStep >= 0) this.tutFinish();
         this.tutNode.active = false;
@@ -1376,11 +1553,24 @@ export class GameRoot extends Component {
         for (const a of got) achGold += a.gold;
         d.gold += achGold;
         Save.save();
+        this.trackRun('run_end', {
+            result: win ? 'win' : quit ? 'quit' : 'lose', time_sec: Math.floor(b.time), level: b.level, kills: b.kills,
+            boss_kills: b.bossKills.length, evolved: b.weapons.filter(w => w.evolved).length, revived: this.adRevived ? 1 : 0,
+            gold: total + achGold, achv: got.length,
+        });
+        Social.reportScores();
 
         this.resultTitle.string = this.dailyRun ? (win ? '挑战成功!' : '挑战失败') : win ? '胜利!' : b.endless ? '无尽之夜结束' : '你倒下了';
         this.resultTitle.color = win ? C_GOLD : C_RED;
         this.resultStats.string = `存活时间  ${this.fmtTime(b.time)}\n等级  ${b.level}     击败  ${b.kills}     最高连击  ${b.maxCombo}\n拾取金币  ${b.gold}    时间奖励  ${bonus}\n大招 ${b.ultCasts} 次    神兵 ${b.epicsUsed} 把    试炼 ${b.trialsWon} 次\n本局获得  ${total + achGold} 金币` + (got.length ? `\n新成就：${got.map(a => a.name).join('、')}  (+${achGold})` : '');
         this.resultHint.string = this.nearMiss(win, daily);
+        const ch = this.activeChallenge;
+        if (ch) {
+            const beat = b.time > ch.time || (win && !ch.won);
+            this.resultHint.string = (beat ? `你超过了好友的 ${this.fmtTime(ch.time)}！分享给好友看看吧` : `离好友的 ${this.fmtTime(ch.time)} 还差 ${this.fmtTime(ch.time - b.time)}`) + (this.resultHint.string ? '\n' + this.resultHint.string : '');
+            Analytics.track('challenge_result', { beat: beat ? 1 : 0, daily: ch.daily ? 1 : 0, time_sec: Math.floor(b.time) });
+            this.activeChallenge = null;
+        }
         // 按行数依次排版：统计 → 提示 → 武器伤害列表
         const statLines = this.resultStats.string.split('\n').length, hintLines = this.resultHint.string ? this.resultHint.string.split('\n').length : 0;
         const statTop = this.top - 200;
@@ -1526,6 +1716,7 @@ export class GameRoot extends Component {
         d.signCount++;
         d.signDate = this.today;
         Save.save();
+        Analytics.track('sign_in', { day: day + 1, mul, day_n: Analytics.dayN() });
         Sound.play(day === 6 ? 'achieve' : 'coin');
         this.showToast(`签到成功 +${g} 金币` + (mul > 1 ? '（双倍）' : ''));
         this.refreshAll();
@@ -1723,8 +1914,9 @@ export class GameRoot extends Component {
             });
         });
         const by = this.bottom + 80;
-        mkButton(s, '返回', 260, 88, () => this.setState('menu'), C_BTN_GREY).node.setPosition(-150, by);
-        mkButton(s, '开始挑战', 260, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(150, by);
+        mkButton(s, '返回', 200, 88, () => this.setState('menu'), C_BTN_GREY).node.setPosition(-230, by);
+        mkButton(s, '好友排行', 200, 88, () => this.openRank('daily'), C_BTN_BLUE, 30).node.setPosition(0, by);
+        mkButton(s, '开始挑战', 220, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(225, by);
         this.refreshers.push(() => {
             if (this.state !== 'daily') return;
             const ds = dailySetup(this.today);
@@ -1747,6 +1939,56 @@ export class GameRoot extends Component {
             const best = d.dailyBestDate === this.today ? d.dailyBest : 0;
             status.string = d.dailyDone === this.today ? '今日已完成！明天再来呱' : best ? `今日最佳 ${this.fmtTime(best)} · 还没完成` : '今日尚未挑战';
         });
+    }
+
+    private rankKind: 'best' | 'daily' = 'best';
+    private rankBack: State = 'menu';
+
+    private openRank(from: State) {
+        this.rankBack = from;
+        this.rankKind = from === 'daily' ? 'daily' : 'best';
+        Analytics.track('rank_open', { from, kind: this.rankKind });
+        this.setState('rank');
+        this.drawRank();
+    }
+
+    private drawRank() {
+        const w = (globalThis as any).wx;
+        if (!Social.rankSupported) return;
+        Social.reportScores();
+        const info = w.getSystemInfoSync();
+        Social.showRank(this.rankKind, this.vw / info.windowWidth);
+    }
+
+    // 好友排行：开放数据域把排行画在共享画布上，SubContextView 显示到这里
+    private buildRank() {
+        const s = this.screen('rank');
+        this.header(s, '好友排行', false);
+        const tabs: [('best' | 'daily'), string][] = [['best', '最长存活'], ['daily', '今日挑战']];
+        const tabBtns: Button[] = [];
+        tabs.forEach(([k, name], i) => {
+            const b = mkButton(s, name, 250, 72, () => { this.rankKind = k; this.refreshAll(); this.drawRank(); }, C_BTN_BLUE, 28);
+            b.node.setPosition(i === 0 ? -135 : 135, this.top - 130);
+            tabBtns.push(b);
+        });
+        const areaTop = this.top - 186, areaBottom = this.bottom + 140;
+        const aw = 640, ah = Math.max(300, areaTop - areaBottom);
+        const area = mkPanel(s, aw + 8, ah + 8);
+        area.node.setPosition(0, (areaTop + areaBottom) / 2);
+        if (Social.rankSupported) {
+            const view = mkNode('subctx', area.node);
+            view.addComponent(UITransform).setContentSize(aw, ah);
+            const sub = view.addComponent(SubContextView);
+            sub.designResolutionSize = new Size(aw, ah);
+            sub.fps = 30;
+        } else {
+            mkLabel(area.node, '在微信中打开即可查看好友排行', 26, C_GREY, 'center', 2);
+        }
+        this.refreshers.push(() => {
+            tabs.forEach(([k], i) => tabBtns[i].node.setScale(this.rankKind === k ? 1.06 : 0.94, this.rankKind === k ? 1.06 : 0.94, 1));
+        });
+        mkLabel(s, '只显示同样在玩《奶蛙割草》的微信好友', 20, C_GREY, 'center', 2).node.setPosition(0, this.bottom + 136 - 24);
+        mkButton(s, '返回', 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
     }
 
     private buildAchievements() {
@@ -1990,7 +2232,7 @@ export class GameRoot extends Component {
             if (b.dead) this.startDying();
             else if (b.won) this.startVictory();
             else this.checkRewards();
-        } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'codex' || this.state === 'signin' || this.state === 'privacy' || this.state === 'splash' || this.state === 'daily') {
+        } else if (this.state === 'menu' || this.state === 'chars' || this.state === 'shop' || this.state === 'settings' || this.state === 'achv' || this.state === 'codex' || this.state === 'signin' || this.state === 'privacy' || this.state === 'splash' || this.state === 'daily' || this.state === 'rank') {
             b.idle(dt);
             if (this.state === 'menu') this.updateMenuFx(dt);
         }

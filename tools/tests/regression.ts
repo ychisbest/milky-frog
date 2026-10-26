@@ -7,6 +7,26 @@ if (MODE === 'B') {
     G.wx = {
         createRewardedVideoAd: () => { let close: any; return { onLoad() {}, onError() {}, onClose(cb: any) { close = cb; }, load: () => Promise.resolve(), show: () => { setTimeout(() => close({ isEnded: true }), 0); return Promise.resolve(); } }; },
         shareAppMessage: (o: any) => { G.__share = o; },
+        getLaunchOptionsSync: () => ({ scene: 1007, query: {} }),
+        reportEvent: (id: string, data: any) => { (G.__events = G.__events || []).push({ id, data }); },
+        getSystemInfoSync: () => ({ windowWidth: 360, windowHeight: 780 }),
+        getUpdateManager: () => ({ onUpdateReady(cb: any) { G.__updReady = cb; }, onUpdateFailed() {}, applyUpdate() { G.__applied = true; } }),
+        showModal: (o: any) => { G.__modal = o; },
+        createGameClubButton: (o: any) => { G.__club = { opts: o, shown: false, style: { ...o.style }, show() { this.shown = true; }, hide() { this.shown = false; }, onTap() {} }; return G.__club; },
+        setUserCloudStorage: (o: any) => { G.__kv = o.KVDataList; },
+        getOpenDataContext: () => ({ postMessage: (m: any) => { G.__odc = m; } }),
+        cloud: {
+            init(o: any) { G.__cloudEnv = o.env; },
+            database: () => ({ collection: () => {
+                const col: any = {
+                    limit: () => col,
+                    get: () => Promise.resolve({ data: G.__cloudDoc ? [G.__cloudDoc] : [] }),
+                    add: (o: any) => { G.__cloudDoc = { _id: 'doc1', ...o.data }; G.__cloudWrites = (G.__cloudWrites || 0) + 1; return Promise.resolve({ _id: 'doc1' }); },
+                    doc: () => ({ update: (o: any) => { Object.assign(G.__cloudDoc, o.data); G.__cloudWrites = (G.__cloudWrites || 0) + 1; return Promise.resolve(); } }),
+                };
+                return col;
+            } }),
+        },
     };
 }
 if (MODE === 'C') {
@@ -22,6 +42,9 @@ const { Save } = await import('../../assets/scripts/Save');
 const D = await import('../../assets/scripts/Defs');
 const { GameRoot } = await import('../../assets/scripts/GameRoot');
 const { Recorder } = await import('../../assets/scripts/Recorder');
+const { Analytics } = await import('../../assets/scripts/Analytics');
+const { Social } = await import('../../assets/scripts/Social');
+const { SOCIAL_CONFIG } = await import('../../assets/scripts/SocialConfig');
 
 let pass = 0, fail = 0;
 const ok = (c: boolean, m: string) => { if (c) pass++; else fail++; console.log((c ? '  ✔ ' : '  ✘ FAIL ') + m); };
@@ -52,6 +75,7 @@ const play = (frames: number, god = true) => {
     }
 };
 const until = (state: string, max = 600) => { for (let i = 0; i < max && g.state !== state; i++) g.update(1 / 60); return g.state === state; };
+const findPanelTextA = (t: string) => { const walk = (n: any): any => { for (const c of n.children) { if (!c.active) continue; if ((c.comps || []).some((x: any) => typeof x.string === 'string' && x.string.includes(t))) return c; const r = walk(c); if (r) return r; } return null; }; return walk(g.screens[g.state]); };
 const findButton = (text: string) => {
     const scr = g.screens[g.state];
     const walk = (n: any): any => {
@@ -516,6 +540,134 @@ if (MODE === 'C') {
     ok(Math.abs(hm - B().hp - 10) < 0.01, `苔藓护甲：高血量时减伤 50%（${(hm - B().hp).toFixed(1)}）`);
     ok(Math.abs(B().stats.finder - 0.75) < 1e-6, '寻宝罗盘满级 +75%');
     clearCards(); g.endRun(false);
+
+    section('数据埋点');
+    const evs = (id: string) => Analytics.log.filter(e => e.id === id);
+    const isFlat = (d: any) => Object.keys(d).every(k => /^[a-z][a-z0-9_]*$/.test(k) && (typeof d[k] === 'number' || typeof d[k] === 'string'));
+    Analytics.log.length = 0;
+    base(); const runs0 = Save.data.runs; start(); play(60);
+    const rs = evs('run_start').pop();
+    ok(!!rs && rs.data.run_no === runs0 + 1 && rs.data.mode === 'normal' && rs.data.char === 'hunter' && rs.data.stage === 'grass', '开局上报 run_start（局数 / 模式 / 角色 / 地图）');
+    g.setState('pause'); g.endRun(false, true);
+    const re = evs('run_end').pop();
+    ok(!!re && re.data.result === 'quit' && re.data.run_no === runs0 + 1 && typeof re.data.time_sec === 'number', '暂停放弃上报 run_end，result = quit');
+    start(); play(30); B().won = true; until('result');
+    ok(evs('run_end').pop()!.data.result === 'win', '胜利上报 result = win');
+    g.leaveResult('replay');
+    ok(evs('result_next').pop()!.data.next === 'replay', '离开结算页上报 result_next');
+    clearCards(); g.endRun(false);
+    g.startDaily(); step(1);
+    ok(evs('run_start').pop()!.data.mode === 'daily', '每日挑战开局 mode = daily');
+    clearCards(); g.endRun(false);
+    g.setState('play'); g.onHide();
+    ok(evs('app_hide').pop()!.data.state === 'play', '切后台上报 app_hide 与当时界面');
+    ok(Analytics.log.every(e => /^[a-z][a-z0-9_]*$/.test(e.id) && isFlat(e.data)), '事件 ID 与字段名均为小写下划线、字段值只有字符串 / 数字');
+    if (MODE === 'B') {
+        ok((G.__events || []).some((e: any) => e.id === 'launch' && e.data.scene === 1007), '微信环境：wx.reportEvent 收到 launch，场景值 1007');
+        ok((G.__events || []).some((e: any) => e.id === 'run_end'), '微信环境：wx.reportEvent 收到 run_end');
+        g.watchAd('gold', () => {}); await wait();
+        ok(evs('ad_reward').some(e => e.data.place === 'gold' && e.data.result === 'ok'), '看完激励视频上报 ad_reward');
+    }
+
+    section('带参数分享 / 好友挑战');
+    const q = Social.parseQuery({ ch: '1', t: '412', k: '1500', w: '0', d: Social.dateKey() })!;
+    ok(q.time === 412 && q.kills === 1500 && Social.challengeIsToday(q), '解析分享参数（战绩 + 今日挑战日期）');
+    ok(Social.parseQuery({ t: '5' }) === null && Social.parseQuery({ ch: '1', t: '-9', d: 'x' })!.time === 0 && Social.parseQuery({ ch: '1', d: 'x' })!.daily === '', '非挑战卡片 / 非法参数被忽略或钳制');
+    const sq = Social.shareQuery({ time: 61.7, kills: 9, won: 1, daily: '' });
+    ok(sq === "ch=1&t=61&k=9&w=1&d=", `生成分享参数（${sq}）`);
+    base(); g.toMenu();
+    Social.pending = { time: 300, kills: 800, won: 0, daily: Social.dateKey() }; g.refreshAll();
+    const chalBtn = findButton('接受挑战');
+    ok(!!chalBtn, '主菜单显示好友挑战面板');
+    chalBtn.emit('te'); step(1); clearCards();
+    ok(g.dailyRun && g.state === 'play' && Social.pending === null, '接受今日每日挑战：直接进入同一每日挑战');
+    B().time = 320; g.endRun(false);
+    ok(g.resultHint.string.includes('超过了好友'), '结算显示是否超过好友成绩');
+    base(); Save.data.runs = 0; Save.data.tutDone = false; g.toMenu();
+    Social.pending = { time: 300, kills: 800, won: 0, daily: Social.dateKey() };
+    g.acceptChallenge(); step(1);
+    ok(!g.dailyRun && g.tutStep === 0, '新玩家接受挑战：先进入带新手引导的普通局');
+    clearCards(); g.endRun(false);
+    base(); g.toMenu();
+    Social.pending = { time: 300, kills: 800, won: 0, daily: '20200101' }; g.refreshAll();
+    g.acceptChallenge(); step(1);
+    ok(!g.dailyRun, '过期的每日挑战卡片改为普通局');
+    clearCards(); g.endRun(false); g.toMenu();
+
+    section('新手渐进解锁');
+    base(); Save.data.runs = 0; Save.data.unlockSeen = 0; g.toMenu();
+    ok(g.locked('shop') && g.locked('daily') && !g.locked('none'), '首局前：永久强化 / 每日挑战未开放');
+    findButton('设置') && g.gated('shop', () => g.setState('shop'))();
+    ok(g.state === 'menu' && g.toast.string.includes('再玩 1 局'), '点击未开放的入口提示还差几局');
+    Save.data.runs = 1; g.toMenu();
+    ok(!g.locked('shop') && g.locked('daily') && g.toast.string.includes('永久强化'), '完成 1 局：开放永久强化等并提示');
+    Save.data.runs = 2; g.toMenu();
+    ok(!g.locked('daily') && g.toast.string.includes('每日挑战') && Save.data.unlockSeen === 2, '完成 2 局：开放每日挑战');
+    const t0 = g.toast.string; g.toast.string = ''; g.toMenu();
+    ok(g.toast.string === '', '已提示过的功能不再重复提示');
+    g.toast.string = t0;
+
+    if (MODE === 'B') {
+        section('版本更新');
+        base(); start();
+        G.__updReady();
+        ok(!G.__modal, '战斗中下载好新版本：不打断');
+        g.endRun(false); g.toMenu();
+        ok(G.__modal && G.__modal.title === '发现新版本', '回到主菜单提示重启');
+        G.__modal.success({ confirm: true });
+        ok(G.__applied, '确认后 applyUpdate');
+        G.__modal = null; g.setState('chars'); g.toMenu();
+        ok(!G.__modal, '只提示一次');
+
+        section('游戏圈 / 添加到我的小程序');
+        base(); g.toMenu();
+        ok(G.__club && G.__club.shown && G.__club.opts.type === 'image', '主菜单显示游戏圈按钮');
+        const cs = G.__club.style;
+        ok(cs.left >= 0 && cs.left < 80 && cs.top > 0 && cs.top < 200, `游戏圈按钮位于左上角（${Math.round(cs.left)}, ${Math.round(cs.top)}）`);
+        g.setState('chars');
+        ok(!G.__club.shown, '离开主菜单隐藏游戏圈按钮');
+        Save.data.wins = 1; Save.data.addTipShown = false; g.toMenu();
+        const findPanelText = (t: string) => { const walk = (n: any): any => { for (const c of n.children) { if (!c.active) continue; if ((c.comps || []).some((x: any) => typeof x.string === 'string' && x.string.includes(t))) return c; const r = walk(c); if (r) return r; } return null; }; return walk(g.screens.menu); };
+        const tip = findPanelText('添加到我的小程序');
+        ok(!!tip, '首胜后主菜单提示「添加到我的小程序」');
+        tip.parent.emit('te');
+        ok(Save.data.addTipShown && !findPanelText('添加到我的小程序'), '点击后关闭且不再提示');
+        Save.data.wins = 0;
+
+        section('好友排行');
+        base(); start(); play(30); g.endRun(false);
+        const kvBest = (G.__kv || []).find((x: any) => x.key === 'best');
+        ok(kvBest && JSON.parse(kvBest.value).wxgame.score === Save.data.bestTime, '结算上报 best（最长存活）到好友云存储');
+        g.startDaily(); step(1); clearCards(); B().time = 200; g.endRun(false);
+        const kvDaily = (G.__kv || []).find((x: any) => x.key === 'daily');
+        ok(kvDaily && JSON.parse(kvDaily.value).date === Social.dateKey(), '每日挑战后上报 daily（带日期）');
+        g.toMenu(); g.openRank('daily');
+        ok(g.state === 'rank' && G.__odc && G.__odc.type === 'rank' && G.__odc.kind === 'daily' && G.__odc.scale === 2, '从每日挑战打开：开放数据域绘制今日挑战榜');
+        findButton('最长存活').emit('te');
+        ok(G.__odc.kind === 'best', '切换到最长存活榜');
+        findButton('返回').emit('te');
+        ok(g.state === 'daily', '返回到打开排行前的界面');
+
+        section('云存档');
+        ok(Social.preferRemote({ runs: 10, updatedAt: 1 }, { ...Save.data, runs: 3, updatedAt: 999 }) && !Social.preferRemote({ runs: 0, updatedAt: 9e15 }, { ...Save.data, runs: 3 }), '合并规则：局数多的优先，新设备空存档不会覆盖云端');
+        SOCIAL_CONFIG.cloudEnv = 'cloud-test';
+        const localGold = Save.data.gold;
+        G.__cloudDoc = { _id: 'doc1', save: JSON.stringify({ ...Save.data, runs: Save.data.runs + 50, gold: 123456, music: !Save.data.music, updatedAt: 1 }) };
+        const music0 = Save.data.music;
+        g.toMenu(); g.startCloud(); await wait();
+        ok(G.__cloudEnv === 'cloud-test' && Save.data.gold === 123456 && g.toast.string.includes('云端恢复'), '云端进度更多：拉取覆盖本地并提示');
+        ok(Save.data.music === music0, '本机设置（音乐等）不被云端覆盖');
+        G.__cloudWrites = 0; Save.data.gold += 1; Save.save(); g.onHide(); await wait();
+        ok(G.__cloudWrites === 1 && JSON.parse(G.__cloudDoc.save).gold === 123457, '存档变更后上传（切后台立即上传）');
+        Save.data.gold = localGold; Save.save(); g.onHide(); await wait();
+        SOCIAL_CONFIG.cloudEnv = '';
+    } else {
+        section('非微信环境');
+        base(); g.toMenu(); g.openRank('menu');
+        ok(g.state === 'rank' && !!findPanelTextA('在微信中打开'), '排行榜提示在微信中打开');
+        findButton('返回').emit('te');
+        ok(!Social.cloudEnabled && !Social.clubSupported, '云存档 / 游戏圈不启用');
+    }
 
     section('内容合规（显示文字不含敏感词）');
     const texts: string[] = [];

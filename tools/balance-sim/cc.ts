@@ -29,6 +29,7 @@ export class SpriteFrame { rect = new Rect(); reset(i:any){ this.rect = i.rect; 
 export class Sprite extends Component { static requires = true; static SizeMode = {RAW:2, CUSTOM:0}; static Type = {TILED:2}; sizeMode=0; type=0; trim=true; private _c = new Color(); get color(){ return this._c; } set color(v:any){ this._c = new Color(v.r, v.g, v.b, v.a); } private _sf: any = null;
   get spriteFrame(){ return this._sf; } set spriteFrame(v:any){ if(!v) throw new Error('null spriteFrame'); this._sf = v; } }
 export class Label extends Component { static requires = true; static CacheMode={CHAR:2}; static HorizontalAlign={LEFT:0,CENTER:1,RIGHT:2}; static VerticalAlign={CENTER:1}; string=''; fontSize=0; lineHeight=0; isBold=false; private _c = new Color(); get color(){ return this._c; } set color(v:any){ this._c = new Color(v.r, v.g, v.b, v.a); } cacheMode=0; enableOutline=false; outlineColor=new Color(); outlineWidth=0; horizontalAlign=0; verticalAlign=0; }
+export class SubContextView extends Component { designResolutionSize: any = null; fps = 60; }
 export class Canvas extends Component { cameraComponent = { clearColor: null as any }; }
 export class ImageAsset { constructor(public src:any){} }
 export class Texture2D { static PixelFormat={RGBA8888:35}; static Filter={NEAREST:1,NONE:0}; static WrapMode={CLAMP_TO_EDGE:1}; image:any; setFilters(){} setMipFilter(){} setWrapMode(){} addRef(){} }

@@ -22,3 +22,6 @@ node_modules/
 # WebStorm
 #//////////////////////////
 .idea/
+
+# 微信小游戏代码上传私钥
+tools/package-private-keys/
