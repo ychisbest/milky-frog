@@ -1445,6 +1445,7 @@ export class GameRoot extends Component {
         if (s === 'menu') this.onMenuEnter();
         else Social.hideClub();
         if (s === 'codex') { Save.data.codexSeen = Save.data.codex.length; Save.save(); }
+        if (s === 'rank') this.ensureRankView();
         if (s === 'revive') { this.reviveT = 8; Sound.pauseBgm(); }
         if (prev === 'revive' && s === 'play') Sound.resumeBgm();
         if (s === 'pause') { Sound.pauseBgm(); Recorder.pause(); }
@@ -2019,6 +2020,8 @@ export class GameRoot extends Component {
 
     private rankKind: 'best' | 'daily' = 'best';
     private rankBack: State = 'menu';
+    // 排行画布。SubContextView 推迟到打开排行时再挂，避免启动时调用 wx.getOpenDataContext()
+    private rankView: Node | null = null;
 
     private openRank(from: State) {
         this.rankBack = from;
@@ -2054,10 +2057,9 @@ export class GameRoot extends Component {
         if (Social.rankSupported) {
             const view = mkNode('subctx', area.node);
             view.addComponent(UITransform).setContentSize(aw, ah);
-            const sub = view.addComponent(SubContextView);
-            sub.designResolutionSize = new Size(aw, ah);
-            sub.fps = 30;
+            this.rankView = view;
         } else {
+            this.rankView = null;
             mkLabel(area.node, '在微信中打开即可查看好友排行', 26, C_GREY, 'center', 2);
         }
         this.refreshers.push(() => {
@@ -2065,6 +2067,17 @@ export class GameRoot extends Component {
         });
         mkLabel(s, '只显示同样在玩《奶蛙割草》的微信好友', 20, C_GREY, 'center', 2).node.setPosition(0, this.bottom + 136 - 24);
         mkButton(s, '返回', 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
+    }
+
+    // 打开排行榜时才挂上。SubContextView.onLoad 会立刻 wx.getOpenDataContext()，
+    // 若在 buildUI 里挂，一进游戏就会报 getOpenDataContext:fail。
+    private ensureRankView() {
+        const view = this.rankView;
+        if (!view || !view.isValid || view.getComponent(SubContextView)) return;
+        const ui = view.getComponent(UITransform);
+        const sub = view.addComponent(SubContextView);
+        sub.designResolutionSize = new Size(ui ? ui.width : 640, ui ? ui.height : 300);
+        sub.fps = 30;
     }
 
     private buildAchievements() {

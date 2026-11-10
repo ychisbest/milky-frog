@@ -29,5 +29,6 @@ sed -i 's/"projectname":"[^"]*"/"projectname":"奶蛙割草"/' build/wechatgame/
 sed -i 's/^let useLogo = true;/let useLogo = false;/' build/wechatgame/first-screen.js
 grep -q "^let useLogo = false;" build/wechatgame/first-screen.js || { echo "❌ 未能关闭 first-screen.js 中的 logo"; exit 1; }
 rm -f build/wechatgame/logo.png build/wechatgame/slogan.png
+node tools/wechat-postbuild.mjs
 echo "✅ 构建完成：build/wechatgame（$(du -sh build/wechatgame | cut -f1)，主包上限 4MB）"
 grep -o '"appid":"[^"]*"' build/wechatgame/project.config.json

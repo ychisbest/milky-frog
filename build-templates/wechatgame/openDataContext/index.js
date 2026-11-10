@@ -114,13 +114,18 @@ wx.onMessage(msg => {
     kind = msg.kind === 'daily' ? 'daily' : 'best';
     date = String(msg.date || '');
     scale = msg.scale > 0 ? msg.scale : 1;
+    // 头像只在打开排行时取。写在顶层的话，开放数据域随游戏启动就会请求，未授权时一进游戏就报错
+    if (!selfAvatar) {
+        try {
+            wx.getUserInfo({
+                openIdList: ['selfOpenId'],
+                success: res => { const me = res.data && res.data[0]; if (me) { selfAvatar = me.avatarUrl || ''; draw(); } },
+                fail: () => { /* 未授权时不打断排行榜 */ },
+            });
+        } catch (e) { /* 忽略 */ }
+    }
     load();
 });
-
-// 自己的头像：用于高亮自己那一行
-try {
-    wx.getUserInfo({ openIdList: ['selfOpenId'], success: res => { const me = res.data && res.data[0]; if (me) { selfAvatar = me.avatarUrl || ''; draw(); } } });
-} catch (e) { /* 忽略 */ }
 
 // 拖动滚动（触摸坐标是屏幕像素，换算到画布像素）
 wx.onTouchStart(e => { const t = e.touches && e.touches[0]; touchY = t ? t.clientY : null; });

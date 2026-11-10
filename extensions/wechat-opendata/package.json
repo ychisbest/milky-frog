@@ -1,0 +1,10 @@
+{
+  "name": "wechat-opendata",
+  "version": "1.0.0",
+  "package_version": 2,
+  "description": "微信小游戏构建结束后登记开放数据域，避免启动时 getOpenDataContext 报错",
+  "author": "NaiWaGeCao",
+  "contributions": {
+    "builder": "./builder.js"
+  }
+}
