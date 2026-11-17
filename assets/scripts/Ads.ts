@@ -15,6 +15,8 @@ export function mgApi(): any {
 export class Ads {
     private static units = new Map<string, any>();
     private static fails = new Map<string, number>();
+    private static retryAt = new Map<string, number>();
+    private static activeUnit = '';
     private static inter: any = null;
     private static pending: ((r: RewardResult) => void) | null = null;
     private static busy = false;
@@ -32,9 +34,14 @@ export class Ads {
                 try {
                     const ad = a.createRewardedVideoAd({ adUnitId: id });
                     ad.onLoad(() => this.fails.set(id, 0));
-                    ad.onError(() => this.fails.set(id, (this.fails.get(id) || 0) + 1));
+                    ad.onError(() => { this.fails.set(id, (this.fails.get(id) || 0) + 1); this.retryAt.set(id, Date.now() + 60000); });
                     // 微信基础库 2.1.0 以下 res 为 undefined，视为看完
-                    ad.onClose((res: any) => this.finish({ ok: !res || res.isEnded !== false, reason: res && res.isEnded === false ? 'skipped' : undefined }));
+                    ad.onClose((res: any) => {
+                        if (!this.busy || this.activeUnit !== id) return;
+                        const ok = res === undefined || (res != null && res.isEnded === true);
+                        this.fails.set(id, 0);
+                        this.finish({ ok, reason: ok ? undefined : 'skipped' });
+                    });
                     this.units.set(id, ad);
                 } catch (e) { /* 创建失败：该广告位视为不可用 */ }
             });
@@ -56,11 +63,11 @@ export class Ads {
         return AD_CONFIG.rewardedByPlace[place] || AD_CONFIG.rewarded;
     }
 
-    // 某个位置当前能否展示激励视频（未配置 / 非小游戏环境 / 连续拉取失败 3 次 → 不可用）
+    // 某个位置当前能否展示激励视频（未配置 / 非小游戏环境 / 连续拉取失败 3 次 → 冷却 60 秒后允许重试）
     static canReward(place: string) {
         if (AD_CONFIG.debugFake) return true;
         const id = this.unitFor(place);
-        return !!id && this.units.has(id) && (this.fails.get(id) || 0) < 3;
+        return !!id && this.units.has(id) && ((this.fails.get(id) || 0) < 3 || Date.now() >= (this.retryAt.get(id) || 0));
     }
 
     static showReward(place: string, cb: (r: RewardResult) => void) {
@@ -69,14 +76,16 @@ export class Ads {
         const ad = this.units.get(this.unitFor(place));
         if (!ad) { cb({ ok: false, reason: 'error' }); return; }
         this.busy = true;
+        this.activeUnit = this.unitFor(place);
         this.pending = cb;
         this.bgmWasPlaying = Sound.bgmPlaying();
         Sound.pauseBgm();
-        ad.show().catch(() => {
+        Promise.resolve().then(() => ad.show()).catch(() => {
             // 未加载好：先拉取再展示
-            ad.load().then(() => ad.show()).catch(() => {
+            Promise.resolve().then(() => ad.load()).then(() => ad.show()).catch(() => {
                 const id = this.unitFor(place);
                 this.fails.set(id, (this.fails.get(id) || 0) + 1);
+                this.retryAt.set(id, Date.now() + 60000);
                 this.finish({ ok: false, reason: 'error' });
             });
         });
@@ -85,6 +94,7 @@ export class Ads {
     private static finish(r: RewardResult) {
         const cb = this.pending;
         this.pending = null;
+        this.activeUnit = '';
         this.busy = false;
         if (this.bgmWasPlaying) Sound.resumeBgm();
         if (cb) cb(r);

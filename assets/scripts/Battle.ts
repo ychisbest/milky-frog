@@ -88,6 +88,7 @@ class Fx {
 class Pickup {
     node!: Node;
     sp!: Sprite;
+    glow: Sprite | null = null;
     kind = '';
     value = 0;
     x = 0;
@@ -590,18 +591,18 @@ export class Battle {
         this.holes = [];
         this.giantT = this.bootsT = this.bankT = this.decoyT = 0;
         if (this.decoySp) this.decoySp.node.active = false;
-        this.altarT = 100;
+        this.altarT = 55;
         for (const t of this.tornados) t.sp.node.destroy();
         this.tornados = [];
-        this.windT = 25;
+        this.windT = 20;
         this.windOn = 0;
         this.ultBuffT = 0;
         this.phoenixUsed = false;
-        this.dropT = 150;
-        this.showerT = 240 + Math.random() * 60;
+        this.dropT = 80;
+        this.showerT = 125 + Math.random() * 30;
         this.showerOn = 0;
-        this.mimicT = 300 + Math.random() * 40;
-        this.shrineT = 200;
+        this.mimicT = 160 + Math.random() * 25;
+        this.shrineT = 105;
         this.trial = null;
         this.trialsWon = 0;
         this.riftT = 25;
@@ -609,13 +610,13 @@ export class Battle {
         this.overloadOn = 0;
         this.magstormT = 45;
         this.brazierT = 3;
-        this.goldratT = 50;
-        this.eliteT = 75;
+        this.goldratT = 35;
+        this.eliteT = 40;
         // 地图：地面、装饰、环境危害
         this.stage = STAGES.find(x => x.id === stageId) || STAGES[0];
         this.daily = daily;
         this.ground.spriteFrame = Art.f(this.stage.ground);
-        this.hazardT = 30;
+        this.hazardT = 20;
         for (const [, nodes] of this.decorChunks) {
             for (const n of nodes) {
                 n.active = false;
@@ -640,7 +641,7 @@ export class Battle {
         if (this.garlicAura) { this.garlicAura.node.destroy(); this.garlicAura = null; }
 
         this.char = char;
-        this.traitT = char.id === 'nun' ? 10 : char.id === 'santa' ? 40 : 4;
+        this.traitT = char.id === 'nun' ? 10 : char.id === 'santa' ? 25 : 4;
         this.px = this.py = 0;
         this.time = 0;
         this.kills = 0;
@@ -1030,11 +1031,11 @@ export class Battle {
     // ------------------------------------------------------------------ 刷怪
 
     private updateSpawner(dt: number) {
-        // 血月：最后两分钟的终局冲刺
+        // 血月：最后一分钟的终局冲刺
         if (!this.endless && !this.bloodMoon && this.time >= BLOOD_MOON) {
             this.bloodMoon = true;
             this.ground.color = C_BLOODMOON;
-            this.onBanner('红月降临! 坚持最后两分钟!', new Color(255, 60, 60, 255));
+            this.onBanner('红月降临! 坚持最后一分钟!', new Color(255, 60, 60, 255));
             Sound.play('roar');
             Sound.playBgm('bgm_boss');
             this.bossMusic = false;
@@ -1042,18 +1043,18 @@ export class Battle {
         }
         let wave = WAVES[0];
         for (const w of WAVES) if (this.time >= w.t) wave = w;
-        // 刷怪节奏：开局 2 分钟逐步加速；之后每 60 秒一个波峰（约 15 秒怪潮）和波谷（喘息）
+        // 刷怪节奏：开局 1 分钟逐步加速；之后每 45 秒一个波峰（怪潮）和波谷（喘息）
         const pace = this.spawnPace();
         this.spawnTimer -= dt * pace;
         this.updateSurge(wave);
         if (this.spawnTimer <= 0) {
             this.spawnTimer = wave.interval;
-            // Boss 战期间小怪减少 40%，让玩家专心对付 Boss
-            const count = Math.round((wave.batch + Math.floor(this.time / 120)) * (this.boss ? 0.6 : 1) * (this.hasB('greedpact') ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - 900) / 600 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod('horde') ? 1.4 : 1) * (this.trial ? 2 : 1));
+            // Boss 战期间小怪减少 30%，保持战局紧张度
+            const count = Math.round((wave.batch + Math.floor(this.time / 65)) * (this.boss ? 0.7 : 1) * (this.hasB('greedpact') ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - WIN_TIME) / 320 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod('horde') ? 1.4 : 1) * (this.trial ? 2 : 1));
             // 远程小恶魔同时存在数量有上限，避免弹幕失控
             let imps = 0;
             for (const e of this.enemies) if (e.alive && e.def.ranged) imps++;
-            const impCap = 4 + Math.floor(Math.max(0, this.time - 540) / 120);
+            const impCap = 4 + Math.floor(Math.max(0, this.time - 285) / 70);
             for (let i = 0; i < count && this.enemies.length < (this.bloodMoon ? (Save.data.lite ? 290 : 420) : this.enemyCap); i++) {
                 let type = wave.types[Math.floor(Math.random() * wave.types.length)];
                 if (ENEMIES[type].ranged) {
@@ -1132,7 +1133,7 @@ export class Battle {
         }
         // 从屏幕上方入场；血量随玩家等级成长
         const b = this.spawnEnemy(id, this.px, this.py + this.vh / 2 + 80, true)!;
-        b.maxHp = b.hp = def.hp * (1 + 0.1 * this.level) * hpMul * this.stage.hpMul * (this.nightmare ? 1.5 : 1);
+        b.maxHp = b.hp = def.hp * (1 + 0.12 * this.level) * hpMul * this.stage.hpMul * (this.nightmare ? 1.5 : 1);
         b.ai = createBossAI(id, this, b);
         this.bosses.push(b);
         this.boss = b;
@@ -1162,13 +1163,13 @@ export class Battle {
     }
 
     // 竖屏下按方向计算屏幕外的出生距离（椭圆），避免左右两侧离得太远
-    // 刷怪速度倍率：早期慢（0.45 → 1），之后按 60 秒周期在 0.5（波谷）~ 1.7（波峰）之间起伏
+    // 刷怪速度倍率：早期慢（0.5 → 1），之后按 45 秒周期在 0.45（波谷）~ 1.65（波峰）之间起伏
     spawnPace() {
         const t = this.time;
         if (this.daily && this.mod('horde')) return 1.2;
-        const early = Math.min(1, 0.5 + t / 240); // 0:00 约 0.5 倍，2 分钟到 1 倍
-        if (t < 45 || this.boss || this.bloodMoon || this.endless) return early;
-        const ph = ((t - 45) % 60) / 60;               // 0 ~ 1
+        const early = Math.min(1, 0.5 + t / 120); // 0:00 约 0.5 倍，1 分钟到 1 倍
+        if (t < 25 || this.boss || this.bloodMoon || this.endless) return early;
+        const ph = ((t - 25) % 45) / 45;               // 0 ~ 1
         const s = Math.sin(ph * Math.PI * 2 - Math.PI / 2); // -1 波谷 … 1 波峰
         const shaped = Math.sign(s) * Math.pow(Math.abs(s), 0.6);
         return early * (1.05 + 0.6 * shaped);
@@ -1179,15 +1180,15 @@ export class Battle {
     private lastSurgeCycle = -1;
     private updateSurge(wave: { types: string[] }) {
         const t = this.time;
-        if (t < 105 || this.boss || this.bloodMoon || this.endless) return;
-        const cycle = Math.floor((t - 45) / 60);
-        const ph = ((t - 45) % 60) / 60;
+        if (t < 55 || this.boss || this.bloodMoon || this.endless) return;
+        const cycle = Math.floor((t - 25) / 45);
+        const ph = ((t - 25) % 45) / 45;
         if (ph < 0.42 || ph > 0.5 || cycle === this.lastSurgeCycle) return;
         this.lastSurgeCycle = cycle;
         const types = wave.types.filter(k => !ENEMIES[k].ranged);
         const pick = () => types[Math.floor(Math.random() * types.length)];
         const kind = this.surgeIdx++ % 3;
-        const n = Math.min(40, 14 + Math.floor(t / 30));
+        const n = Math.min(40, 14 + Math.floor(t / 16));
         if (kind === 0) {
             // 包围圈：一圈怪物从屏幕外同时向奶蛙收缩
             const R = Math.hypot(this.vw, this.vh) / 2 + 40, type = pick();
@@ -1245,7 +1246,7 @@ export class Battle {
         e.node.active = true;
         e.x = x; e.y = y;
         e.kx = e.ky = e.sx = e.sy = 0;
-        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 240 + (this.time / 280) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod('xp2') ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
+        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 120 + (this.time / 138) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod('xp2') ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
         e.flash = 0;
         e.punch = 0;
         e.anim = Math.random() * def.anim;
@@ -1271,8 +1272,8 @@ export class Battle {
         e.shadow.setScale(PX * s * (def.boss ? 2 : 1.2), PX * s, 1);
         e.node.setPosition(x, y);
         // 精英怪：金色、体型更大、血量 ×8，掉落丰厚
-        if (!force && !def.boss && !def.prop && !def.flee && this.time > 60 && this.eliteT <= 0) {
-            this.eliteT = this.mod('elites') ? 12 : (30 + Math.random() * 15) / (this.bloodMoon ? 3 : 1);
+        if (!force && !def.boss && !def.prop && !def.flee && this.time > 30 && this.eliteT <= 0) {
+            this.eliteT = this.mod('elites') ? 12 : (20 + Math.random() * 10) / (this.bloodMoon ? 3 : 1);
             this.eliteify(e);
         }
         this.enemies.push(e);
@@ -1358,8 +1359,8 @@ export class Battle {
                     e.y = py + (dy > 0 ? -1 : 1) * Math.min(Math.abs(dy), this.vh / 2 + 60);
                 }
             } else {
-                // 怪物随时间变快（15 分钟时 +25%）
-                const sp = def.speed * (e.flash > 0 ? 0.5 : 1) * (1 + Math.min(this.time, 900) / 3600) * (this.mod('fast') ? 1.25 : 1);
+                // 怪物随时间变快（8 分钟时 +30%）
+                const sp = def.speed * (e.flash > 0 ? 0.5 : 1) * (1 + Math.min(this.time, WIN_TIME) / 1600) * (this.mod('fast') ? 1.25 : 1);
                 e.modeT -= dt;
                 if (def.mimic && e.mode === 0) {
                     // 宝箱怪：伪装成宝箱一动不动，奶蛙靠近时张嘴扑过来
@@ -1410,7 +1411,7 @@ export class Battle {
                     if (e.shootT < 0.35 && e.shootT + dt >= 0.35) { e.flash = 0.3; e.punch = 0.2; }
                     if (e.shootT <= 0 && d < 420) {
                         e.shootT = 2.6 + Math.random() * 0.8;
-                        this.fireBullet('fireball', e.x, e.y, Math.atan2(dy, dx), 140, 4 * this.dmgRamp(), { radius: 9 });
+                        this.fireBullet('fireball', e.x, e.y, Math.atan2(dy, dx), 145, 4.5 * this.dmgRamp(), { radius: 9 });
                     }
                 } else if (this.decoyT > 0 && Math.abs(this.decoyX - e.x) + Math.abs(this.decoyY - e.y) < 700) {
                     // 幻影蛙：附近的怪物改为扑向诱饵
@@ -1459,7 +1460,7 @@ export class Battle {
                 e.hits.set('crush', this.time + 0.3);
                 this.chainBoomQueue.push(() => this.hurtEnemy(e, this.giantT > 0 ? this.skillDmg(20, 3) : this.skillDmg(15, 2.5), 520, px, py, null));
             }
-            if (d < def.radius + 12 && def.dmg > 0 && (!trample || def.boss) && (!e.ai || e.ai.touchable)) this.hurtPlayer(def.boss ? def.dmg * 1.3 : def.dmg * this.dmgRamp() * (e.elite ? 1.5 : 1));
+            if (d < def.radius + 12 && def.dmg > 0 && (!trample || def.boss) && (!e.ai || e.ai.touchable)) this.hurtPlayer(def.boss ? def.dmg * 1.45 : def.dmg * this.dmgRamp() * (e.elite ? 1.5 : 1));
 
             // 动画 & 受击闪烁
             e.anim += dt;
@@ -1511,11 +1512,11 @@ export class Battle {
     private updateFlow(dt: number) {
         this.sinceHurt += dt;
         const hpR = this.hp / this.stats.maxHp;
-        if (this.time < 30) return;
+        if (this.time < 20) return;
         if (hpR < 0.35) this.flow -= 0.03 * dt;
-        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.018 * dt;
-        else if (hpR > 0.5) this.flow += 0.003 * dt;
-        this.flow = Math.max(0.8, Math.min(1.7, this.flow));
+        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.02 * dt;
+        else if (hpR > 0.5) this.flow += 0.004 * dt;
+        this.flow = Math.max(0.88, Math.min(1.85, this.flow));
     }
 
     // 心流对怪物血量的影响：低于 1 时线性减弱，高于 1 时超线性增强（只针对碾压中的玩家）
@@ -1523,12 +1524,11 @@ export class Battle {
         return this.flow <= 1 ? 0.6 + 0.4 * this.flow : Math.pow(this.flow, 1.5);
     }
 
-    // 小怪接触伤害随时间的成长：前期平缓、后期陡峭（5 分钟 ×1.75，10 分钟 ×3.2，15 分钟 ×5.4）
+    // 小怪接触伤害随时间的成长：适配 8 分钟节奏，前 1.5 分钟平稳上手，3 分钟后压力持续攀升
     private dmgRamp() {
-        const m = this.time / 600;
-        // 前期额外伤害：开局 ×2.2，8 分钟内线性回落到 ×1（让前期被碰到也有压力）
-        const early = 1 + 1.2 * Math.max(0, 1 - this.time / 480);
-        return early * 1.3 * (1 + 0.5 * m + 0.85 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
+        const m = this.time / 330;
+        const early = 1 + 0.45 * Math.max(0, 1 - this.time / 150);
+        return early * 1.38 * (1 + 0.65 * m + 1.1 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
     }
 
     // 每日挑战规则
@@ -1579,7 +1579,7 @@ export class Battle {
             this.burst(this.px, this.py, 0x60c050, 16, 300);
         } else if (id === 'santa') {
             // 圣诞礼物：身边掉落随机增益道具
-            this.traitT = 70;
+            this.traitT = 40;
             const a = Math.random() * Math.PI * 2;
             const kind = Math.random() < 0.2 ? 'magnet' : BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)];
             this.spawnPickup(kind, this.px + Math.cos(a) * 70, this.py + Math.sin(a) * 70, 0, true);
@@ -1615,7 +1615,7 @@ export class Battle {
             dmg = Math.round(dmg * this.stats.critDmg);
             if (this.hasB('vampkiss')) this.heal(1);
             if (this.isChar('prism') && Math.random() < 0.35) this.refract(e, dmg);
-            if (this.char.charge === 'crit') this.chargeUlt(1 / (150 + this.time * 0.4));
+            if (this.char.charge === 'crit') this.chargeUlt(1 / (150 + this.time * 0.7));
         }
         // 先手符：对满血敌人增伤
         if (this.stats.fresh > 0 && e.hp >= e.maxHp) dmg = Math.round(dmg * (1 + this.stats.fresh));
@@ -1703,7 +1703,7 @@ export class Battle {
         this.attackKills++;
         if (this.trial) this.trial.got++;
         const ch = this.char.charge;
-        if (ch === 'kill' || ch === 'combo') this.chargeUlt((ch === 'combo' ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 0.8));
+        if (ch === 'kill' || ch === 'combo') this.chargeUlt((ch === 'combo' ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 1.4));
         // 果冻怪：分裂成两只小果冻（放到帧末，避免遍历时修改怪物列表）
         if (e.def.split) {
             const x = e.x, y = e.y, t = e.def.split;
@@ -1713,7 +1713,7 @@ export class Battle {
         if (e.def.burst) {
             const x = e.x, y = e.y;
             this.warnCircle(x, y, 70, 0.7, 0xff3030, () => {
-                this.explode(x, y, 70, 5 + this.time / 90, 0xff6030);
+                this.explode(x, y, 70, 5 + this.time / 50, 0xff6030);
                 this.explodeFriendly(x, y, 60, 12 + this.level, null, 160, 0xff6030, false);
             });
         }
@@ -1748,8 +1748,8 @@ export class Battle {
             this.spawnFx('aura', e.x, e.y, 0.5, 2, 5);
             Sound.play('bigkill');
         }
-        // 开局 3 分钟怪物较少，经验加成 50% 弥补，保证前期升级节奏
-        this.spawnPickup('gem', e.x, e.y, e.def.xp * (this.time < 180 ? 1.5 : 1), true);
+        // 开局 100 秒怪物较少，经验加成 50% 弥补，保证前期升级节奏
+        this.spawnPickup('gem', e.x, e.y, e.def.xp * (this.time < 100 ? 1.5 : 1), true);
         const r = Math.random();
         if (r < 0.0025) { if (!this.mod('gold3')) this.spawnPickup('chicken', e.x + 10, e.y, 0); }
         else if (r < 0.0055) this.spawnPickup('magnet', e.x + 10, e.y, 0);
@@ -2715,8 +2715,8 @@ export class Battle {
             if (hz.cloud) {
                 // 毒泡：红圈预警 → 喷发 → 留下 4 秒毒云（玩家进入减速掉血，怪物同样受伤）
                 this.warnCircle(x, y, R, fall, 0xff3030, () => {
-                    this.explode(x, y, R * 0.6, 4 + this.time / 60, hz.color);
-                    this.zone(x, y, R, 4, 2 + this.time / 150, 0x60c030);
+                    this.explode(x, y, R * 0.6, 4 + this.time / 35, hz.color);
+                    this.zone(x, y, R, 4, 2 + this.time / 85, 0x60c030);
                     this.spawnPZone('poison', null, x, y, R, 4, 12 + this.level);
                     Sound.play('splash');
                 });
@@ -2728,7 +2728,7 @@ export class Battle {
             }
             // 预警统一用红色（冰面上蓝色看不清）
             this.warnCircle(x, y, R, fall, 0xff3030, () => {
-                this.explode(x, y, R, 8 + this.time / 40, hz.color);
+                this.explode(x, y, R, 8 + this.time / 22, hz.color);
                 this.explodeFriendly(x, y, R, 30 + this.level * 2, null, 160, hz.color, false);
             });
             const f = this.spawnFx(hz.frame, x, y + 340, fall, PX * 1.5, 0);
@@ -2769,7 +2769,7 @@ export class Battle {
                 // 被卷到：沿切线甩出去
                 this.px += (-dy / d * 260 + dx / d * 200) * dt;
                 this.py += (dx / d * 260 + dy / d * 200) * dt;
-                this.hurtPlayer(6 + this.time / 60);
+                this.hurtPlayer(6 + this.time / 32);
             }
             if (Math.random() < 0.5) this.burst(t.x + (Math.random() - 0.5) * 50, t.y, 0xd8c090, 1, 120);
             if (t.t <= 0) t.sp.node.destroy();
@@ -2818,20 +2818,20 @@ export class Battle {
             }
         }
         this.eliteT -= dt;
-        // 神兵祭坛：1:40 起约每 150 秒在附近出现一座，打碎得到一把 30 秒神兵
+        // 神兵祭坛：0:55 起约每 85 秒在附近出现一座，打碎得到一把 30 秒神兵
         this.altarT -= dt;
         if (this.altarT <= 0) {
-            this.altarT = (140 + Math.random() * 30) * (this.hasB('epicfan') ? 0.6 : 1) / (1 + this.stats.finder);
+            this.altarT = (75 + Math.random() * 20) * (this.hasB('epicfan') ? 0.6 : 1) / (1 + this.stats.finder);
             const a = Math.random() * Math.PI * 2, r = 200 + Math.random() * 120;
             const al = this.spawnEnemy('altar', this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true)!;
-            al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 120);
+            al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 65);
             this.onBanner('神兵祭坛出现了! 打碎它!', new Color(255, 220, 110, 255));
             Sound.play('power');
         }
-        // 试炼石碑：3:20 起约每 150 秒出现，触碰开启 20 秒限时击杀挑战（Boss 战与红月期间不出现）
+        // 试炼石碑：1:45 起约每 85 秒出现，触碰开启 20 秒限时击杀挑战（Boss 战与红月期间不出现）
         this.shrineT -= dt;
         if (this.shrineT <= 0 && !this.boss && !this.bloodMoon && !this.trial) {
-            this.shrineT = 140 + Math.random() * 30;
+            this.shrineT = 75 + Math.random() * 20;
             const a = Math.random() * Math.PI * 2, r = 220 + Math.random() * 80;
             this.spawnPickup('shrine', this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, this.time + 45);
             this.onBanner('试炼石碑出现了! 触碰开启挑战', new Color(255, 120, 100, 255));
@@ -2843,10 +2843,10 @@ export class Battle {
         // 金鼠
         this.goldratT -= dt;
         if (this.goldratT <= 0) {
-            this.goldratT = 100;
+            this.goldratT = 60;
             const a = Math.random() * Math.PI * 2, r = 260;
             const g = this.spawnEnemy('goldrat', this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true)!;
-            g.maxHp = g.hp = ENEMIES.goldrat.hp * (1 + this.time / 120);
+            g.maxHp = g.hp = ENEMIES.goldrat.hp * (1 + this.time / 65);
             g.sp.color = C_ELITE;
             this.onBanner('金鼠出现! 快追!', new Color(255, 214, 90, 255));
             Sound.play('coin');
@@ -3545,7 +3545,7 @@ export class Battle {
     }
 
     private startTrial(x: number, y: number) {
-        const need = 40 + Math.floor(this.time / 12);
+        const need = 35 + Math.floor(this.time / 7);
         this.trial = { t: 20, need, got: 0 };
         this.spawnFx('aura', x, y, 0.5, 1.5, 6).sp.color = colorOf(0xff5040);
         this.burst(x, y, 0xff5040, 24, 320);
@@ -3587,10 +3587,10 @@ export class Battle {
     // ------------------------------------------------------------------ 随机事件：补给空投 / 流星雨 / 宝箱怪
 
     private updateRandomEvents(dt: number) {
-        // 补给空投：2:30 起约每 130 秒，金圈标出落点，3 秒后箱子落地（砸伤落点的怪物），散出补给
+        // 补给空投：1:20 起约每 72 秒，金圈标出落点，3 秒后箱子落地（砸伤落点的怪物），散出补给
         this.dropT -= dt;
         if (this.dropT <= 0) {
-            this.dropT = 120 + Math.random() * 25;
+            this.dropT = 65 + Math.random() * 15;
             const a = Math.random() * TAU, r = 180 + Math.random() * 100;
             const x = this.px + Math.cos(a) * r, y = this.py + Math.sin(a) * r;
             this.warnCircle(x, y, 70, 3, 0xffd040, () => {
@@ -3604,7 +3604,7 @@ export class Battle {
             this.onBanner('补给空投! 去金圈接住它', new Color(255, 215, 90, 255));
             Sound.play('power');
         }
-        // 流星雨：4:00 起约每 3~4 分钟一次（Boss 战时顺延），8 秒内流星接连砸向屏幕内的敌人，砸中掉落额外宝石
+        // 流星雨：2:05 起约每 1.5~2 分钟一次（Boss 战时顺延），8 秒内流星接连砸向屏幕内的敌人，砸中掉落额外宝石
         if (this.showerOn > 0) {
             this.showerOn -= dt;
             this.showerTick -= dt;
@@ -3624,17 +3624,17 @@ export class Battle {
         } else {
             this.showerT -= dt;
             if (this.showerT <= 0 && !this.boss) {
-                this.showerT = 180 + Math.random() * 60;
+                this.showerT = 95 + Math.random() * 30;
                 this.showerOn = 8;
                 this.showerTick = 0.5;
                 this.onBanner('流星雨! 星星砸向怪物', new Color(255, 240, 160, 255));
                 Sound.play('lightning');
             }
         }
-        // 宝箱怪：5:00 起约每 3 分钟，在附近伪装成宝箱
+        // 宝箱怪：2:40 起约每 1.5~2 分钟，在附近伪装成宝箱
         this.mimicT -= dt;
         if (this.mimicT <= 0) {
-            this.mimicT = 170 + Math.random() * 40;
+            this.mimicT = 95 + Math.random() * 25;
             const a = Math.random() * TAU, r = 230 + Math.random() * 80;
             const m = this.spawnEnemy('mimic', this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
             if (m) { m.maxHp = m.hp = m.hp * 6; m.mode = 0; }
@@ -3653,13 +3653,20 @@ export class Battle {
         let p = this.pickupPool.pop();
         if (!p) {
             p = new Pickup();
-            p.sp = mkSprite(this.pickupLayer, 'gem_blue');
-            p.node = p.sp.node;
+            p.node = mkNode('pickup', this.pickupLayer);
+            p.sp = mkSprite(p.node, 'gem_blue', 1);
         }
         let frame = kind;
         if (kind === 'gem') frame = value >= 20 ? 'gem_red' : value >= 3 ? 'gem_green' : 'gem_blue';
         p.node.setScale(PX, PX, 1);
         p.sp.spriteFrame = Art.f(frame);
+        const special = kind !== 'gem' && kind !== 'coin';
+        if (special && !p.glow) {
+            p.glow = mkSprite(p.node, 'aura', 0.5, 'pickup-glow');
+            p.glow.node.setSiblingIndex(0);
+            p.glow.color = new Color(255, 220, 120, 140);
+        }
+        if (p.glow) p.glow.node.active = special;
         p.kind = kind;
         p.value = value;
         p.x = x; p.y = y;
@@ -3703,6 +3710,10 @@ export class Battle {
         }
         for (const p of this.pickups) {
             if (!p.alive) continue;
+            if (p.glow && p.glow.node.active) {
+                const pulse = 0.46 + 0.06 * Math.sin(this.time * 3 + p.x * 0.01);
+                p.glow.node.setScale(pulse, pulse, 1);
+            }
             if (p.vx !== 0 || p.vy !== 0) {
                 p.x += p.vx * dt;
                 p.y += p.vy * dt;

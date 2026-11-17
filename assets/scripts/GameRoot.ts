@@ -159,14 +159,18 @@ export class GameRoot extends Component {
     private adRevived = false;
     private adRerolls = 0;
     private adBlessUsed = false;
+    private adLevelBonusPending = false;
+    private nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
     private adGoldUsed = false;
     private adChestUsed = false;
     private adWatchedThisResult = false;
     private lastRunGold = 0;
     private reviveT = 0;
     private reviveCount!: Label;
+    private reviveHint!: Label;
     private adRerollBtn!: Button;
     private adBlessBtn!: Button;
+    private adLevelBonusBtn!: Button;
     private chestAdBtn!: Button;
     private goldAdBtn!: Button;
     private shareBtn!: Button;
@@ -267,7 +271,7 @@ export class GameRoot extends Component {
                 Analytics.track('share', { from: 'menu', won: 0 });
                 const d = Save.data;
                 const query = d.bestTime ? Social.shareQuery({ time: d.bestTime, kills: d.bestKills, won: d.wins > 0 ? 1 : 0, daily: '' }) : '';
-                return { title: d.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(d.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在红月下坚持 15 分钟！`, query };
+                return { title: d.bestTime ? `${GAME_NAME}：我的奶蛙坚持了 ${this.fmtTime(d.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶蛙割草，在红月下坚持 8 分钟！`, query };
             };
             if (w.onShareAppMessage) w.onShareAppMessage(msg);
             if (w.onShareTimeline) w.onShareTimeline(msg);
@@ -532,7 +536,7 @@ export class GameRoot extends Component {
     private startVictory() {
         const b = this.battle;
         this.winT = 0;
-        this.winSub.string = b.daily ? '每日挑战成功!' : b.bossKills.includes('reaper') ? '击败了暗夜魔术师!' : '坚持了 15 分钟!';
+        this.winSub.string = b.daily ? '每日挑战成功!' : b.bossKills.includes('reaper') ? '击败了暗夜魔术师!' : '坚持了 8 分钟!';
         this.onJoyEnd();
         Sound.pauseBgm();
         Sound.play('achieve');
@@ -605,7 +609,7 @@ export class GameRoot extends Component {
         '武器会自动攻击 靠近小怪试试!',
         '捡起蓝色宝石 攒满经验就能升级',
         '三选一：新武器 或 强化道具',
-        '躲开怪物 坚持 15 分钟就胜利!',
+        '躲开怪物 坚持 8 分钟就胜利!',
         'Boss 要来了! 看到红圈红线立刻躲开',
     ];
 
@@ -853,7 +857,7 @@ export class GameRoot extends Component {
             gold.string = String(Save.data.gold);
             daily.node.active = Save.data.bonusDay !== new Date().toDateString();
             const d = Save.data;
-            best.string = (d.runs ? `最佳：存活 ${this.fmtTime(d.bestTime)}  ·  击败 ${d.bestKills}  ·  等级 ${d.bestLevel}` : '存活 15 分钟即可获胜') + (d.endlessBest ? `\n无尽模式最佳 ${this.fmtTime(d.endlessBest)}` : '') + `   成就 ${d.achievements.length}/${ACHIEVEMENTS.length}`;
+            best.string = (d.runs ? `最佳：存活 ${this.fmtTime(d.bestTime)}  ·  击败 ${d.bestKills}  ·  等级 ${d.bestLevel}` : '存活 8 分钟即可获胜') + (d.endlessBest ? `\n无尽模式最佳 ${this.fmtTime(d.endlessBest)}` : '') + `   成就 ${d.achievements.length}/${ACHIEVEMENTS.length}`;
         });
     }
 
@@ -925,6 +929,25 @@ export class GameRoot extends Component {
             mkSprite(lock.node, 'icon_lock', 3).node.setPosition(0, 20);
             const evOf = EVENTS.find(e => e.char === c.id);
             mkLabel(lock.node, c.cost < 0 ? (evOf ? evOf.lockText : '活动限定') : `${c.cost} 金币解锁`, 22, C_GOLD, 'center', 3).node.setPosition(0, -34);
+            const adUnlock = mkRect(lock.node, 184, 42, C_AD, 'ad-character');
+            adUnlock.node.setPosition(0, -ch / 2 + 27);
+            mkLabel(adUnlock.node, '▶ 看广告解锁', 19, C_WHITE, 'center', 2);
+            adUnlock.node.on(Node.EventType.TOUCH_END, (event: any) => {
+                event.propagationStopped = true;
+                if (this.state !== 'chars' || c.cost <= 0 || Save.data.chars.includes(c.id) || !Ads.canReward('character')) return;
+                Sound.play('click');
+                this.watchAd('character', () => {
+                    const d = Save.data;
+                    if (!d.chars.includes(c.id)) {
+                        d.chars.push(c.id);
+                        Analytics.track('char_unlock', { char: c.id, cost: 0, runs: d.runs });
+                    }
+                    d.selected = c.id;
+                    Save.save();
+                    Sound.play('chest');
+                    this.showToast(`解锁 ${c.name}!`);
+                });
+            });
             card.node.on(Node.EventType.TOUCH_END, () => {
                 Sound.play('click');
                 const d = Save.data;
@@ -943,6 +966,7 @@ export class GameRoot extends Component {
             });
             this.refreshers.push(() => {
                 lock.node.active = !Save.data.chars.includes(c.id);
+                adUnlock.node.active = c.cost > 0 && Ads.canReward('character');
                 const sel = Save.data.selected === c.id;
                 card.border.color = sel ? C_GREEN : C_BORDER;
                 card.fill.color = sel ? new Color(36, 64, 60, 250) : new Color(36, 30, 64, 245);
@@ -989,7 +1013,7 @@ export class GameRoot extends Component {
         this.refreshers.push(() => {
             const locked = Save.data.wins <= 0;
             const e = this.endlessMode, n = this.nightmareMode;
-            mode.label.string = locked ? '模式：普通（无尽 / 噩梦 首胜解锁）' : e ? '模式：无尽（Boss 循环，越来越强）' : n ? '模式：噩梦（生命 +60% 伤害 +30% 金币 +60%）' : '模式：普通（存活 15 分钟胜利）';
+            mode.label.string = locked ? '模式：普通（无尽 / 噩梦 首胜解锁）' : e ? '模式：无尽（Boss 循环，越来越强）' : n ? '模式：噩梦（生命 +60% 伤害 +30% 金币 +60%）' : '模式：普通（存活 8 分钟胜利）';
             mode.bg.color = e ? new Color(110, 40, 120, 255) : n ? new Color(140, 30, 40, 255) : C_BTN_GREY;
         });
     }
@@ -1168,6 +1192,16 @@ export class GameRoot extends Component {
             this.showToast('选完这张后还能再选一张!');
         }), C_AD, 26);
         this.adBlessBtn.node.setPosition(0, adY);
+        this.adLevelBonusBtn = mkButton(s, '▶ 看广告多选一次', 310, 80, () => {
+            if (this.state !== 'levelup' || this.cardMode !== 'level' || this.adLevelBonusPending || this.battle.time < this.nextAdLevelBonus) return;
+            this.watchAd('level_bonus', () => {
+                this.adLevelBonusPending = true;
+                this.nextAdLevelBonus = this.battle.time + AD_CONFIG.levelBonusInterval;
+                this.fillCards();
+                this.showToast('选完后再选一次!');
+            });
+        }, C_AD, 23);
+        this.adLevelBonusBtn.node.setPosition(0, adY);
     }
 
     private buildChest() {
@@ -1225,7 +1259,7 @@ export class GameRoot extends Component {
         // 抖音：分享本局录屏（按平台规则不发奖励）
         this.recBtn = mkButton(s, '分享本局录屏', 300, 72, () => {
             const b = this.battle;
-            Recorder.share(b.won ? '我的奶蛙活过了 15 分钟！' : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
+            Recorder.share(b.won ? '我的奶蛙活过了 8 分钟！' : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
         }, new Color(200, 40, 90, 255), 26);
         this.recBtn.node.setPosition(0, by + 186);
         this.refreshers.push(() => {
@@ -1250,8 +1284,10 @@ export class GameRoot extends Component {
 
     private buildRevive() {
         const s = this.screen('revive');
-        mkLabel(s, '你倒下了…', 64, C_RED, 'center', 5).node.setPosition(0, this.vh * 0.2);
-        mkLabel(s, '看一段广告，满状态原地复活?', 30, C_WHITE, 'center', 3).node.setPosition(0, this.vh * 0.1);
+        mkLabel(s, '你倒下了…', 64, C_RED, 'center', 5).node.setPosition(0, this.vh * 0.22);
+        this.reviveHint = mkLabel(s, '满状态原地复活，保留全部装备!', 26, C_GOLD, 'center', 3);
+        this.reviveHint.node.setPosition(0, this.vh * 0.14);
+        mkLabel(s, '看一段广告，满血复活 + 清场冲击波', 26, C_WHITE, 'center', 3).node.setPosition(0, this.vh * 0.08);
         this.reviveCount = mkLabel(s, '', 72, C_GOLD, 'center', 5, true);
         this.reviveCount.node.setPosition(0, 0);
         mkButton(s, '▶ 看广告复活', 420, 100, () => this.watchAd('revive', () => {
@@ -1260,6 +1296,18 @@ export class GameRoot extends Component {
             this.setState('play');
         }, () => { this.reviveT = Math.max(this.reviveT, 3); }), C_AD, 36).node.setPosition(0, -this.vh * 0.1);
         mkButton(s, '放弃', 260, 80, () => this.endRun(false), C_BTN_GREY, 28).node.setPosition(0, -this.vh * 0.2);
+        this.refreshers.push(() => {
+            if (this.state !== 'revive') return;
+            const b = this.battle;
+            const goal = this.dailyRun ? DAILY_GOAL : WIN_TIME;
+            if (b.boss && b.boss.alive) {
+                const pct = Math.max(1, Math.round((b.boss.hp / b.boss.maxHp) * 100));
+                this.reviveHint.string = `${b.boss.def.name} 只剩 ${pct}% 生命 · 复活直接翻盘!`;
+            } else {
+                const left = Math.max(1, Math.ceil(goal - b.time));
+                this.reviveHint.string = `已坚持 ${this.fmtTime(b.time)}（LV ${b.level}）· 距胜利只差 ${this.fmtTime(left)}!`;
+            }
+        });
     }
 
     // 启动页：动态夜景 + Logo 弹出 + 加载条 + 健康游戏忠告 + 适龄提示（法规要求）
@@ -1513,13 +1561,15 @@ export class GameRoot extends Component {
 
     private get today() { return new Date().toDateString(); }
 
-    // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 10 分钟
+    // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 6 分钟
     private startDaily() {
         const ds = dailySetup(this.today);
         const ch = CHARACTERS.find(c => c.id === ds.char) || CHARACTERS[0];
         this.dailyRun = true;
         this.tutStep = -1;
         this.adRevived = this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(ch, false, ds.stage, { mod: ds.mod, blessing: ds.blessing });
         this.battle.nightmare = false;
@@ -1543,6 +1593,8 @@ export class GameRoot extends Component {
         this.dailyRun = false;
         this.ultHinted = false;
         this.adRevived = this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(this.selectedChar(), this.endlessMode, this.currentStage.id);
         this.battle.nightmare = this.nightmareMode;
@@ -1575,7 +1627,7 @@ export class GameRoot extends Component {
         this.tutNode.active = false;
         const b = this.battle;
         const d = Save.data;
-        const bonus = Math.round((Math.floor(b.time / 60) * 25 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
+        const bonus = Math.round((Math.floor(b.time / 60) * 45 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
         let total = b.gold + bonus;
         // 每日首局金币 ×2
         const today = new Date().toDateString();
@@ -1754,13 +1806,13 @@ export class GameRoot extends Component {
         const ok: Record<string, boolean> = {
             win1: win,
             kill1k: b.kills >= 1000,
-            kill5k: b.kills >= 5000,
+            kill5k: b.kills >= 3000,
             combo500: b.maxCombo >= 500,
             lv50: b.level >= 50,
             evo1: b.evolvedCount >= 1,
             evo3: b.evolvedCount >= 3,
             goldrat: b.goldRats > 0,
-            endless20: b.endless && b.time >= 1200,
+            endless20: b.endless && b.time >= 720,
             allchars: CHARACTERS.every(c => c.cost < 0 || d.chars.includes(c.id)),
             daily1: this.dailyRun && win,
             stage_snow: win && !b.endless && !this.dailyRun && b.stage.id === 'snow',
@@ -1772,7 +1824,7 @@ export class GameRoot extends Component {
             codex_full: this.codexCount() >= codexEntries().length,
             epic3: b.epicsUsed >= 3,
             trial2: b.trialsWon >= 2,
-            ult10: b.ultCasts >= 10,
+            ult10: b.ultCasts >= 6,
         };
         for (const id of b.bossKills) ok['boss_' + id] = true;
         const got = ACHIEVEMENTS.filter(a => ok[a.id] && !d.achievements.includes(a.id));
@@ -2142,6 +2194,7 @@ export class GameRoot extends Component {
         }
         this.rerollBtn.node.active = false;
         this.adRerollBtn.node.active = false;
+        this.adLevelBonusBtn.node.active = false;
         // 开局的命运卡牌：可看广告额外多选一张（每局一次）
         this.adBlessBtn.node.active = !this.adBlessUsed && this.battle.time < 1 && Ads.canReward('blessing');
         Sound.play('card');
@@ -2165,6 +2218,11 @@ export class GameRoot extends Component {
         this.rerollBtn.node.active = this.battle.rerolls > 0;
         this.adBlessBtn.node.active = false;
         this.adRerollBtn.node.active = this.battle.rerolls <= 0 && this.adRerolls > 0 && Ads.canReward('reroll');
+        this.adLevelBonusBtn.node.active = !this.adLevelBonusPending && this.options.length > 0 && this.battle.time >= this.nextAdLevelBonus && Ads.canReward('level_bonus');
+        const hasReroll = this.rerollBtn.node.active || this.adRerollBtn.node.active;
+        this.rerollBtn.node.setPosition(this.adLevelBonusBtn.node.active ? -180 : 0, this.rerollBtn.node.position.y);
+        this.adRerollBtn.node.setPosition(this.adLevelBonusBtn.node.active ? -180 : 0, this.adRerollBtn.node.position.y);
+        this.adLevelBonusBtn.node.setPosition(hasReroll ? 185 : 0, this.adLevelBonusBtn.node.position.y);
         this.adRerollBtn.label.string = `▶ 看广告重抽 (${this.adRerolls})`;
         this.rerollBtn.label.string = `重抽 (${this.battle.rerolls})`;
     }
@@ -2177,7 +2235,7 @@ export class GameRoot extends Component {
     }
 
     private choose(i: number) {
-        if (this.state !== 'levelup') return;
+        if (this.state !== 'levelup' || Ads.showing) return;
         if (this.cardMode === 'blessing') {
             const b = this.blessOpts[i];
             if (!b) return;
@@ -2190,7 +2248,8 @@ export class GameRoot extends Component {
         if (!o) return;
         Sound.play('click');
         this.battle.applyOption(o);
-        this.battle.pendingLevels--;
+        if (this.adLevelBonusPending) this.adLevelBonusPending = false;
+        else this.battle.pendingLevels--;
         this.afterReward();
         if ((this.state as State) === 'play') this.battle.levelBlast();
     }

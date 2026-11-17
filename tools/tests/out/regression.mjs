@@ -435,7 +435,7 @@ var init_AdConfig = __esm({
   "../../assets/scripts/AdConfig.ts"() {
     AD_CONFIG = {
       // 激励视频广告位 ID（形如 adunit-xxxxxxxxxxxx），所有激励位共用
-      rewarded: "",
+      rewarded: "adunit-ea4d829bade8bc16",
       // 可选：按位置单独配置激励视频广告位（便于在后台分别统计收益），留空则使用 rewarded
       rewardedByPlace: {
         revive: "",
@@ -448,14 +448,19 @@ var init_AdConfig = __esm({
         // 宝箱再开一次
         blessing: "",
         // 开局额外命运卡
-        signin: ""
+        signin: "",
         // 签到双倍
+        level_bonus: "",
+        // 升级额外选择
+        character: ""
+        // 解锁角色
       },
       // 插屏广告位 ID：只在结算后弹出，每 N 局一次，新用户首日不弹
       interstitial: "",
       interstitialEvery: 3,
       // 每局次数上限
       rerollPerRun: 2,
+      levelBonusInterval: 90,
       // 调试：true 时在浏览器预览中模拟"看完广告"直接发奖，便于测试流程；上线前务必改回 false
       debugFake: false
     };
@@ -624,10 +629,10 @@ function eventActive(now = /* @__PURE__ */ new Date()) {
   return !!activeEvent(now);
 }
 function xpForLevel(lv) {
-  if (lv < 10) return 5 + (lv - 1) * 5;
-  if (lv < 30) return 60 + (lv - 10) * 14;
-  if (lv < 50) return 340 + (lv - 30) * 26;
-  return 860 + (lv - 50) * 45;
+  if (lv < 10) return 4 + (lv - 1) * 5;
+  if (lv < 30) return 46 + (lv - 10) * 10;
+  if (lv < 50) return 246 + (lv - 30) * 18;
+  return 606 + (lv - 50) * 32;
 }
 function powerUpCost(def, rank, totalBought) {
   return Math.round(def.cost * (rank + 1) * (1 + 0.07 * Math.min(totalBought, 20)));
@@ -708,28 +713,28 @@ var init_Defs = __esm({
       mimic: { frames: ["mimic_0", "mimic_1"], hp: 70, speed: 115, dmg: 7, xp: 30, radius: 16, anim: 0.12, scale: 1.2, knockRes: 0.8, color: 11033128, mimic: true },
       fox: { frames: ["fox_0", "fox_1"], hp: 30, speed: 70, dmg: 6, xp: 4, radius: 12, anim: 0.18, color: 8016080, blink: true },
       // ---- Boss
-      slimeking: { frames: ["slimeking_0", "slimeking_1"], hp: 340, speed: 46, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 5227087, name: "\u53F2\u83B1\u59C6\u738B" },
-      bonelord: { frames: ["bonelord_0", "bonelord_1"], hp: 650, speed: 58, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 15657172, name: "\u94C1\u7532\u5C06\u519B" },
-      vampire: { frames: ["vampire_0", "vampire_1"], hp: 1100, speed: 70, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 10491944, name: "\u8759\u8760\u4F2F\u7235" },
-      lich: { frames: ["lich_0", "lich_1"], hp: 1400, speed: 48, dmg: 14, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 8446207, name: "\u51B0\u971C\u5DEB\u5E08" },
-      eye: { frames: ["eye_0", "eye_1"], hp: 1700, speed: 55, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 9058938, name: "\u6C34\u6676\u9B54\u773C" },
-      toad: { frames: ["toad_0", "toad_1"], hp: 1300, speed: 52, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 5929530, name: "\u6BD2\u6CBC\u5DE8\u87FE" },
-      yeti: { frames: ["yeti_0", "yeti_1"], hp: 950, speed: 70, dmg: 9, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 15266047, name: "\u96EA\u602A\u738B" },
-      worm: { frames: ["worm_0", "worm_1"], hp: 1800, speed: 60, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 13144154, name: "\u6C99\u6F20\u5DE8\u8815" },
-      nian: { frames: ["nian_0", "nian_1"], hp: 950, speed: 76, dmg: 9, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 14172202, name: "\u5E74\u517D" },
-      reaper: { frames: ["reaper_0", "reaper_1"], hp: 3e3, speed: 82, dmg: 17, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 9068736, name: "\u6697\u591C\u9B54\u672F\u5E08", final: true }
+      slimeking: { frames: ["slimeking_0", "slimeking_1"], hp: 420, speed: 48, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 5227087, name: "\u53F2\u83B1\u59C6\u738B" },
+      bonelord: { frames: ["bonelord_0", "bonelord_1"], hp: 800, speed: 60, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 15657172, name: "\u94C1\u7532\u5C06\u519B" },
+      vampire: { frames: ["vampire_0", "vampire_1"], hp: 1350, speed: 72, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 10491944, name: "\u8759\u8760\u4F2F\u7235" },
+      lich: { frames: ["lich_0", "lich_1"], hp: 1750, speed: 50, dmg: 15, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 8446207, name: "\u51B0\u971C\u5DEB\u5E08" },
+      eye: { frames: ["eye_0", "eye_1"], hp: 2200, speed: 58, dmg: 16, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 9058938, name: "\u6C34\u6676\u9B54\u773C" },
+      toad: { frames: ["toad_0", "toad_1"], hp: 1600, speed: 54, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 5929530, name: "\u6BD2\u6CBC\u5DE8\u87FE" },
+      yeti: { frames: ["yeti_0", "yeti_1"], hp: 1200, speed: 72, dmg: 10, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 15266047, name: "\u96EA\u602A\u738B" },
+      worm: { frames: ["worm_0", "worm_1"], hp: 2300, speed: 62, dmg: 16, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 13144154, name: "\u6C99\u6F20\u5DE8\u8815" },
+      nian: { frames: ["nian_0", "nian_1"], hp: 1200, speed: 78, dmg: 10, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 14172202, name: "\u5E74\u517D" },
+      reaper: { frames: ["reaper_0", "reaper_1"], hp: 4500, speed: 86, dmg: 18, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 9068736, name: "\u6697\u591C\u9B54\u672F\u5E08", final: true }
     };
     WAVES = [
-      { t: 0, types: ["rat", "rat", "rat", "bat"], interval: 0.45, batch: 3 },
-      { t: 40, types: ["rat", "rat", "bat", "slime"], interval: 0.5, batch: 4 },
-      { t: 90, types: ["rat", "bat", "slime", "zombie"], interval: 0.55, batch: 4 },
-      { t: 150, types: ["bat", "slime", "zombie", "rat"], interval: 0.6, batch: 5 },
-      { t: 210, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.6, batch: 5 },
-      { t: 300, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.55, batch: 5 },
-      { t: 420, types: ["ghost", "skeleton", "bat", "zombie", "shroom", "boar"], interval: 0.5, batch: 6 },
-      { t: 540, types: ["ghost", "skeleton", "skeleton", "zombie", "imp", "fox"], interval: 0.45, batch: 6 },
-      { t: 660, types: ["ghost", "skeleton", "mummy", "bat", "imp", "boar"], interval: 0.4, batch: 7 },
-      { t: 780, types: ["ghost", "skeleton", "mummy", "ghost", "imp", "fox"], interval: 0.35, batch: 8 }
+      { t: 0, types: ["rat", "rat", "rat", "bat"], interval: 0.42, batch: 3 },
+      { t: 25, types: ["rat", "rat", "bat", "slime"], interval: 0.46, batch: 4 },
+      { t: 50, types: ["rat", "bat", "slime", "zombie"], interval: 0.5, batch: 4 },
+      { t: 80, types: ["bat", "slime", "zombie", "rat"], interval: 0.52, batch: 5 },
+      { t: 115, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.52, batch: 5 },
+      { t: 165, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.48, batch: 5 },
+      { t: 225, types: ["ghost", "skeleton", "bat", "zombie", "shroom", "boar"], interval: 0.45, batch: 6 },
+      { t: 285, types: ["ghost", "skeleton", "skeleton", "zombie", "imp", "fox"], interval: 0.42, batch: 6 },
+      { t: 345, types: ["ghost", "skeleton", "mummy", "bat", "imp", "boar"], interval: 0.38, batch: 7 },
+      { t: 420, types: ["ghost", "skeleton", "mummy", "ghost", "imp", "fox"], interval: 0.33, batch: 8 }
     ];
     MONSTER_INFO = {
       rat: { name: "\u7070\u9F20", desc: "\u6700\u5F31\u5C0F\u7684\u602A\u7269\uFF0C\u4E00\u78B0\u5C31\u5012\uFF0C\u662F\u524D\u671F\u7ECF\u9A8C\u7684\u4E3B\u8981\u6765\u6E90\u3002" },
@@ -737,37 +742,37 @@ var init_Defs = __esm({
       slime: { name: "\u53F2\u83B1\u59C6", desc: "\u9ECF\u7CCA\u7CCA\u7684\u5C0F\u5BB6\u4F19\uFF0C\u53F2\u83B1\u59C6\u738B\u7684\u5B50\u6C11\u3002" },
       zombie: { name: "\u6CE5\u5DF4\u602A", desc: "\u5706\u6EDA\u6EDA\u7684\u6CE5\u56E2\uFF0C\u8D70\u5F97\u6162\u4F46\u5F88\u7ED3\u5B9E\uFF0C\u4E0D\u5BB9\u6613\u88AB\u51FB\u9000\u3002" },
       skeleton: { name: "\u6728\u5076\u5175", desc: "\u6728\u5934\u505A\u7684\u5C0F\u5175\uFF0C\u901F\u5EA6\u548C\u529B\u6C14\u90FD\u4E0D\u5C0F\uFF0C\u4E2D\u671F\u4E3B\u529B\u3002" },
-      ghost: { name: "\u4E91\u6735\u7CBE", desc: "7 \u5206\u949F\u540E\u51FA\u73B0\uFF0C\u98D8\u5F97\u98DE\u5FEB\uFF0C\u6297\u51FB\u9000\u3002" },
-      shroom: { name: "\u7206\u70B8\u8611\u83C7", desc: "7 \u5206\u949F\u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u540E\u4F1A\u5728\u7EA2\u5708\u91CC\u7206\u70B8\u2014\u2014\u522B\u7AD9\u5728\u65C1\u8FB9\uFF0C\u4F46\u53EF\u4EE5\u7528\u5B83\u70B8\u6389\u602A\u7FA4\uFF01" },
-      imp: { name: "\u5C0F\u706B\u7075", desc: "\u4F1A\u8FDC\u7A0B\u53D1\u5C04\u5C0F\u706B\u7403\uFF0C\u4F18\u5148\u6E05\u7406\uFF01" },
+      ghost: { name: "\u4E91\u6735\u7CBE", desc: "3:45 \u540E\u51FA\u73B0\uFF0C\u98D8\u5F97\u98DE\u5FEB\uFF0C\u6297\u51FB\u9000\u3002" },
+      shroom: { name: "\u7206\u70B8\u8611\u83C7", desc: "3:45 \u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u540E\u4F1A\u5728\u7EA2\u5708\u91CC\u7206\u70B8\u2014\u2014\u522B\u7AD9\u5728\u65C1\u8FB9\uFF0C\u4F46\u53EF\u4EE5\u7528\u5B83\u70B8\u6389\u602A\u7FA4\uFF01" },
+      imp: { name: "\u5C0F\u706B\u7075", desc: "4:45 \u540E\u51FA\u73B0\uFF0C\u4F1A\u8FDC\u7A0B\u53D1\u5C04\u5C0F\u706B\u7403\uFF0C\u4F18\u5148\u6E05\u7406\uFF01" },
       mummy: { name: "\u7A3B\u8349\u4EBA", desc: "\u540E\u671F\u51FA\u73B0\u7684\u5927\u5757\u5934\uFF0C\u751F\u547D\u503C\u6781\u9AD8\u3002" },
-      jelly: { name: "\u679C\u51BB\u602A", desc: "3:30 \u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u65F6\u4F1A\u5206\u88C2\u6210\u4E24\u53EA\u8DD1\u5F97\u66F4\u5FEB\u7684\u5C0F\u679C\u51BB\u3002" },
+      jelly: { name: "\u679C\u51BB\u602A", desc: "1:55 \u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u65F6\u4F1A\u5206\u88C2\u6210\u4E24\u53EA\u8DD1\u5F97\u66F4\u5FEB\u7684\u5C0F\u679C\u51BB\u3002" },
       jellet: { name: "\u5C0F\u679C\u51BB", desc: "\u679C\u51BB\u602A\u5206\u88C2\u51FA\u6765\u7684\u5C0F\u5BB6\u4F19\uFF0C\u53C8\u5FEB\u53C8\u8106\u3002" },
-      boar: { name: "\u51B2\u950B\u91CE\u732A", desc: "7:00 \u540E\u51FA\u73B0\u3002\u9760\u8FD1\u65F6\u4F1A\u505C\u4E0B\u84C4\u529B\uFF0C\u6CBF\u7EA2\u7EBF\u9AD8\u901F\u51B2\u649E\u2014\u2014\u770B\u5230\u7EA2\u7EBF\u5C31\u4FA7\u8EAB\u8EB2\u5F00\uFF01" },
-      fox: { name: "\u95EA\u73B0\u72D0", desc: "9:00 \u540E\u51FA\u73B0\u3002\u4F1A\u7A81\u7136\u95EA\u73B0\u5230\u4F60\u8EAB\u8FB9\uFF0C\u7D2B\u5708\u5C31\u662F\u5B83\u7684\u843D\u70B9\u3002" },
-      mimic: { name: "\u5B9D\u7BB1\u602A", desc: "5:00 \u540E\u5076\u5C14\u51FA\u73B0\uFF0C\u4F2A\u88C5\u6210\u5B9D\u7BB1\u3002\u9760\u8FD1\u5C31\u4F1A\u5F20\u5F00\u5927\u5634\u6251\u8FC7\u6765\u2014\u2014\u51FB\u8D25\u5B83\u5FC5\u6389\u795E\u5175\uFF01" },
+      boar: { name: "\u51B2\u950B\u91CE\u732A", desc: "3:45 \u540E\u51FA\u73B0\u3002\u9760\u8FD1\u65F6\u4F1A\u505C\u4E0B\u84C4\u529B\uFF0C\u6CBF\u7EA2\u7EBF\u9AD8\u901F\u51B2\u649E\u2014\u2014\u770B\u5230\u7EA2\u7EBF\u5C31\u4FA7\u8EAB\u8EB2\u5F00\uFF01" },
+      fox: { name: "\u95EA\u73B0\u72D0", desc: "4:45 \u540E\u51FA\u73B0\u3002\u4F1A\u7A81\u7136\u95EA\u73B0\u5230\u4F60\u8EAB\u8FB9\uFF0C\u7D2B\u5708\u5C31\u662F\u5B83\u7684\u843D\u70B9\u3002" },
+      mimic: { name: "\u5B9D\u7BB1\u602A", desc: "2:40 \u540E\u5076\u5C14\u51FA\u73B0\uFF0C\u4F2A\u88C5\u6210\u5B9D\u7BB1\u3002\u9760\u8FD1\u5C31\u4F1A\u5F20\u5F00\u5927\u5634\u6251\u8FC7\u6765\u2014\u2014\u51FB\u8D25\u5B83\u5FC5\u6389\u795E\u5175\uFF01" },
       goldrat: { name: "\u91D1\u9F20", desc: "\u7A00\u6709\uFF01\u8DD1\u5F97\u98DE\u5FEB\uFF0C\u51FB\u8D25\u53EF\u83B7\u5F97\u5927\u91CF\u91D1\u5E01\u3002" },
-      slimeking: { name: "\u53F2\u83B1\u59C6\u738B", desc: "\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3001\u4F53\u529B\u51CF\u534A\u65F6\u5206\u88C2\u30022:00 \u767B\u573A\u3002" },
-      bonelord: { name: "\u94C1\u7532\u5C06\u519B", desc: "\u94A2\u523A\u73AF\u3001\u9884\u8B66\u51B2\u950B\u3001\u53EC\u5524\u6728\u5076\u5175\u30024:30 \u767B\u573A\u3002" },
-      vampire: { name: "\u8759\u8760\u4F2F\u7235", desc: "\u9B54\u6CD5\u5F39\u6247\u5C04\u3001\u77AC\u79FB\u9B54\u6CD5\u73AF\u3001\u8759\u8760\u98CE\u66B4\u30027:00 \u767B\u573A\u3002" },
-      lich: { name: "\u51B0\u971C\u5DEB\u5E08", desc: "\u51B0\u971C\u87BA\u65CB\u5F39\u5E55\u3001\u51B0\u9525\u9635\u3001\u51CF\u901F\u51B0\u57DF\u30029:30 \u767B\u573A\u3002" },
-      eye: { name: "\u6C34\u6676\u9B54\u773C", desc: "\u9B54\u6CD5\u5149\u675F\u626B\u5C04\u3001\u8FFD\u8E2A\u5149\u7403\u3001\u53CC\u5C42\u5F39\u73AF\u300212:00 \u767B\u573A\u3002" },
-      reaper: { name: "\u6697\u591C\u9B54\u672F\u5E08", desc: "\u6700\u7EC8 Boss\uFF1A\u56DE\u65CB\u98DE\u724C\u3001\u8FDE\u7EED\u51B2\u523A\u3001\u5E7B\u5F71\u53EC\u5524\u3002\u51FB\u8D25\u5373\u80DC\u5229\u3002" },
-      worm: { name: "\u6C99\u6F20\u5DE8\u8815", desc: "\u6D41\u6C99\u8352\u6F20 12:00 \u767B\u573A\uFF1A\u94BB\u5165\u6C99\u4E2D\u8FFD\u8E2A\u3001\u7834\u571F\u800C\u51FA\u6380\u8D77\u6C99\u5F39\u73AF\u3001\u55B7\u5410\u6C99\u6D41\u3001\u53EC\u5524\u51B2\u950B\u91CE\u732A\u3002" },
-      toad: { name: "\u6BD2\u6CBC\u5DE8\u87FE", desc: "\u6BD2\u96FE\u6CBC\u6CFD 7:00 \u767B\u573A\uFF1A\u6BD2\u6DB2\u55B7\u5410\u3001\u957F\u820C\u7A81\u523A\u3001\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3002" },
+      slimeking: { name: "\u53F2\u83B1\u59C6\u738B", desc: "\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3001\u4F53\u529B\u51CF\u534A\u65F6\u5206\u88C2\u30021:05 \u767B\u573A\u3002" },
+      bonelord: { name: "\u94C1\u7532\u5C06\u519B", desc: "\u94A2\u523A\u73AF\u3001\u9884\u8B66\u51B2\u950B\u3001\u53EC\u5524\u6728\u5076\u5175\u30022:20 \u767B\u573A\u3002" },
+      vampire: { name: "\u8759\u8760\u4F2F\u7235", desc: "\u9B54\u6CD5\u5F39\u6247\u5C04\u3001\u77AC\u79FB\u9B54\u6CD5\u73AF\u3001\u8759\u8760\u98CE\u66B4\u30023:35 \u767B\u573A\u3002" },
+      lich: { name: "\u51B0\u971C\u5DEB\u5E08", desc: "\u51B0\u971C\u87BA\u65CB\u5F39\u5E55\u3001\u51B0\u9525\u9635\u3001\u51CF\u901F\u51B0\u57DF\u30024:50 \u767B\u573A\u3002" },
+      eye: { name: "\u6C34\u6676\u9B54\u773C", desc: "\u9B54\u6CD5\u5149\u675F\u626B\u5C04\u3001\u8FFD\u8E2A\u5149\u7403\u3001\u53CC\u5C42\u5F39\u73AF\u30026:05 \u767B\u573A\u3002" },
+      reaper: { name: "\u6697\u591C\u9B54\u672F\u5E08", desc: "\u6700\u7EC8 Boss\uFF1A\u56DE\u65CB\u98DE\u724C\u3001\u8FDE\u7EED\u51B2\u523A\u3001\u5E7B\u5F71\u53EC\u5524\u30027:20 \u767B\u573A\uFF0C\u51FB\u8D25\u5373\u80DC\u5229\u3002" },
+      worm: { name: "\u6C99\u6F20\u5DE8\u8815", desc: "\u6D41\u6C99\u8352\u6F20 6:05 \u767B\u573A\uFF1A\u94BB\u5165\u6C99\u4E2D\u8FFD\u8E2A\u3001\u7834\u571F\u800C\u51FA\u6380\u8D77\u6C99\u5F39\u73AF\u3001\u55B7\u5410\u6C99\u6D41\u3001\u53EC\u5524\u51B2\u950B\u91CE\u732A\u3002" },
+      toad: { name: "\u6BD2\u6CBC\u5DE8\u87FE", desc: "\u6BD2\u96FE\u6CBC\u6CFD 3:35 \u767B\u573A\uFF1A\u6BD2\u6DB2\u55B7\u5410\u3001\u957F\u820C\u7A81\u523A\u3001\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3002" },
       yeti: { name: "\u96EA\u602A\u738B", desc: "\u5723\u8BDE\u9650\u5B9A\uFF1A\u96EA\u7403\u8FDE\u5C04\u3001\u51B0\u9525\u9635\u3001\u51B2\u950B\u649E\u51FB\u3001\u53EC\u5524\u4E91\u6735\u7CBE\u3002" },
       nian: { name: "\u5E74\u517D", desc: "\u65B0\u6625\u9650\u5B9A\uFF1A\u7206\u7AF9\u4E71\u5C04\u3001\u8FDE\u7EED\u51B2\u649E\u3001\u70DF\u82B1\u9F50\u653E\u3001\u6012\u543C\u53EC\u5524\u3002" }
     };
     BOSS_SCHEDULE = [
-      { t: 120, id: "slimeking" },
-      { t: 270, id: "bonelord" },
-      { t: 420, id: "vampire" },
-      { t: 570, id: "lich" },
-      { t: 720, id: "eye" },
-      { t: 840, id: "reaper" }
+      { t: 65, id: "slimeking" },
+      { t: 140, id: "bonelord" },
+      { t: 215, id: "vampire" },
+      { t: 290, id: "lich" },
+      { t: 365, id: "eye" },
+      { t: 440, id: "reaper" }
     ];
-    SWARM_TIMES = [75, 200, 360, 500, 650];
-    WIN_TIME = 900;
+    SWARM_TIMES = [40, 110, 190, 270, 350];
+    WIN_TIME = 480;
     STAGES = [
       {
         id: "grass",
@@ -873,7 +878,7 @@ var init_Defs = __esm({
       }
     ];
     EVENT = { force: false };
-    BLOOD_MOON = 780;
+    BLOOD_MOON = 420;
     MAX_ENEMIES = 340;
     WEAPONS = [
       {
@@ -1262,7 +1267,7 @@ var init_Defs = __esm({
       }
     ];
     BASE_STATS = {
-      maxHp: 90,
+      maxHp: 72,
       might: 1,
       armor: 0,
       recovery: 0,
@@ -1369,7 +1374,7 @@ var init_Defs = __esm({
       { id: "sage", name: "\u957F\u8001\u86D9", title: "\u8001\u8D24\u8005", sprite: "hero_sage", weapon: "lightning", desc: "\u51B7\u5374 -10%\uFF0C\u8303\u56F4 +10%", bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: "\u5929\u96F7", trait: "\u6BCF 7 \u79D2\u53EC\u5524 3 \u9053\u843D\u96F7\u5288\u5411\u5C4F\u5E55\u5185\u654C\u4EBA", ultName: "\u96F7\u66B4\u5929\u7F5A", ult: "4 \u79D2\u96F7\u66B4\uFF0C\u843D\u96F7\u4E0D\u65AD\u5288\u5411\u5C4F\u5E55\u5185\u7684\u654C\u4EBA", charge: "time" },
       { id: "druid", name: "\u5FB7\u9C81\u4F0A\u86D9", title: "\u68EE\u6797\u5B88\u62A4\u8005", sprite: "hero_druid", weapon: "spikes", desc: "\u6BCF\u79D2\u6062\u590D +0.4\uFF0C\u8303\u56F4 +10%", bonus: { recovery: 0.4, area: 0.1 }, cost: 3e3, traitName: "\u85E4\u8513\u7F20\u7ED5", trait: "\u6BCF 9 \u79D2\u7528\u85E4\u8513\u5B9A\u4F4F\u8EAB\u8FB9\u7684\u654C\u4EBA 1.5 \u79D2", ultName: "\u4E07\u6728\u56DE\u6625", ult: "\u85E4\u8513\u628A\u5468\u56F4\u654C\u4EBA\u62C9\u5230\u8EAB\u8FB9\u7F20\u4F4F 2.5 \u79D2\uFF0C\u56DE\u590D 15% \u751F\u547D", charge: "still" },
       { id: "prism", name: "\u68F1\u955C\u86D9", title: "\u5149\u5B66\u602A\u624D", sprite: "hero_prism", weapon: "laser", desc: "\u66B4\u51FB\u7387 +8%\uFF0C\u4F24\u5BB3 +10%", bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: "\u6298\u5C04", trait: "\u66B4\u51FB\u65F6 35% \u51E0\u7387\u6298\u5C04\u5230\u9644\u8FD1\u654C\u4EBA\uFF0850% \u4F24\u5BB3\uFF09", ultName: "\u5149\u8C31\u7206\u53D1", ult: "\u5411\u56DB\u9762\u516B\u65B9\u8FDE\u5C04\u4E09\u8F6E\u5F69\u8679\u5149\u675F", charge: "crit" },
-      { id: "fu", name: "\u798F\u86D9", title: "\u65B0\u6625\u9650\u5B9A", sprite: "hero_fu", weapon: "bomb", desc: "\u91D1\u5E01 +30%\uFF0C\u6700\u5927\u751F\u547D +20", bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: "\u62DB\u8D22\u8FDB\u5B9D", trait: "\u62FE\u53D6\u91D1\u5E01\u65F6 20% \u51E0\u7387\u7FFB\u500D", ultName: "\u8D22\u795E\u5230", ult: "\u8EAB\u8FB9\u7684\u5C0F\u602A\u5168\u90E8\u53D8\u6210\u91D1\u5E01\uFF0C\u7CBE\u82F1\u602A\u53D7\u91CD\u521B", charge: "gold" },
+      { id: "fu", name: "\u798F\u86D9", title: "\u65B0\u6625\u9650\u5B9A", sprite: "hero_fu", weapon: "cross", desc: "\u91D1\u5E01 +30%\uFF0C\u6700\u5927\u751F\u547D +20", bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: "\u62DB\u8D22\u8FDB\u5B9D", trait: "\u62FE\u53D6\u91D1\u5E01\u65F6 20% \u51E0\u7387\u7FFB\u500D", ultName: "\u8D22\u795E\u5230", ult: "\u8EAB\u8FB9\u7684\u5C0F\u602A\u5168\u90E8\u53D8\u6210\u91D1\u5E01\uFF0C\u7CBE\u82F1\u602A\u53D7\u91CD\u521B", charge: "gold" },
       { id: "santa", name: "\u5723\u8BDE\u86D9", title: "\u5723\u8BDE\u9650\u5B9A", sprite: "hero_santa", weapon: "frost", desc: "\u91D1\u5E01 +20%\uFF0C\u51B7\u5374 -8%", bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: "\u5723\u8BDE\u793C\u7269", trait: "\u6BCF 70 \u79D2\u8EAB\u8FB9\u6389\u843D\u4E00\u4E2A\u968F\u673A\u589E\u76CA\u9053\u5177", ultName: "\u5723\u8BDE\u96EA\u6A47", ult: "\u96EA\u6A47\u98DE\u8FC7\u6295\u4E0B\u4E00\u4E32\u793C\u7269\u70B8\u5F39\uFF0C\u5E76\u9001\u51FA\u4E00\u4E2A\u589E\u76CA\u9053\u5177", charge: "time" }
     ];
     POWERUPS = [
@@ -1413,7 +1418,7 @@ var init_Defs = __esm({
     ACHIEVEMENTS = [
       { id: "win1", name: "\u521D\u6B21\u80DC\u5229", desc: "\u8D62\u5F97\u4E00\u5C40\u6E38\u620F", gold: 500 },
       { id: "kill1k", name: "\u5272\u8349\u80FD\u624B", desc: "\u5355\u5C40\u51FB\u8D25 1000 \u4E2A\u654C\u4EBA", gold: 200 },
-      { id: "kill5k", name: "\u5272\u8349\u5927\u5E08", desc: "\u5355\u5C40\u51FB\u8D25 5000 \u4E2A\u654C\u4EBA", gold: 600 },
+      { id: "kill5k", name: "\u5272\u8349\u5927\u5E08", desc: "\u5355\u5C40\u51FB\u8D25 3000 \u4E2A\u654C\u4EBA", gold: 600 },
       { id: "combo500", name: "\u65E0\u53CC", desc: "\u8FBE\u6210 500 \u8FDE\u51FB", gold: 300 },
       { id: "lv50", name: "\u767B\u5CF0\u9020\u6781", desc: "\u5355\u5C40\u8FBE\u5230 50 \u7EA7", gold: 300 },
       { id: "evo1", name: "\u8FDB\u5316", desc: "\u8FDB\u5316\u4E00\u628A\u6B66\u5668", gold: 300 },
@@ -1425,7 +1430,7 @@ var init_Defs = __esm({
       { id: "boss_eye", name: "\u95ED\u76EE", desc: "\u51FB\u8D25\u6C34\u6676\u9B54\u773C", gold: 350 },
       { id: "boss_reaper", name: "\u8C22\u5E55", desc: "\u51FB\u8D25\u6697\u591C\u9B54\u672F\u5E08", gold: 800 },
       { id: "goldrat", name: "\u6355\u9F20\u8FBE\u4EBA", desc: "\u6293\u4F4F\u4E00\u53EA\u91D1\u9F20", gold: 150 },
-      { id: "endless20", name: "\u6C38\u591C\u884C\u8005", desc: "\u65E0\u5C3D\u6A21\u5F0F\u5B58\u6D3B 20 \u5206\u949F", gold: 1e3 },
+      { id: "endless20", name: "\u6C38\u591C\u884C\u8005", desc: "\u65E0\u5C3D\u6A21\u5F0F\u5B58\u6D3B 12 \u5206\u949F", gold: 1e3 },
       { id: "allchars", name: "\u5168\u5458\u96C6\u7ED3", desc: "\u89E3\u9501\u5168\u90E8\u89D2\u8272", gold: 1e3 },
       { id: "nightmare1", name: "\u5669\u68A6\u5F81\u670D\u8005", desc: "\u5728\u5669\u68A6\u96BE\u5EA6\u4E0B\u53D6\u5F97\u80DC\u5229", gold: 1500 },
       { id: "codex_half", name: "\u6536\u85CF\u5BB6", desc: "\u56FE\u9274\u6536\u96C6\u8FBE\u5230 50%", gold: 300 },
@@ -1441,9 +1446,9 @@ var init_Defs = __esm({
       { id: "boss_nian", name: "\u9A71\u9010\u5E74\u517D", desc: "\u51FB\u8D25\u65B0\u6625\u9650\u5B9A Boss \u5E74\u517D", gold: 600 },
       { id: "epic3", name: "\u795E\u5175\u6536\u85CF\u5BB6", desc: "\u5355\u5C40\u4F7F\u7528 3 \u628A\u795E\u5175", gold: 300 },
       { id: "trial2", name: "\u8BD5\u70BC\u52C7\u8005", desc: "\u5355\u5C40\u5B8C\u6210 2 \u6B21\u8BD5\u70BC", gold: 400 },
-      { id: "ult10", name: "\u5927\u62DB\u72C2\u9B54", desc: "\u5355\u5C40\u91CA\u653E 10 \u6B21\u5927\u62DB", gold: 300 }
+      { id: "ult10", name: "\u5927\u62DB\u72C2\u9B54", desc: "\u5355\u5C40\u91CA\u653E 6 \u6B21\u5927\u62DB", gold: 300 }
     ];
-    ENDLESS_BOSS_INTERVAL = 150;
+    ENDLESS_BOSS_INTERVAL = 90;
     DAILY_MODS = [
       { id: "fast", name: "\u602A\u6F6E\u72C2\u5954", desc: "\u602A\u7269\u79FB\u52A8\u901F\u5EA6 +25%" },
       { id: "xp2", name: "\u7ECF\u9A8C\u7FFB\u500D", desc: "\u7ECF\u9A8C \xD72\uFF0C\u4F46\u602A\u7269\u751F\u547D +50%" },
@@ -1452,7 +1457,7 @@ var init_Defs = __esm({
       { id: "horde", name: "\u65E0\u5C3D\u602A\u6F6E", desc: "\u602A\u7269\u6570\u91CF +40%" },
       { id: "glass", name: "\u6613\u788E\u5976\u86D9", desc: "\u53D7\u5230\u4F24\u5BB3 \xD71.5\uFF0C\u9020\u6210\u4F24\u5BB3 +40%" }
     ];
-    DAILY_GOAL = 600;
+    DAILY_GOAL = 360;
     DAILY_REWARD = 400;
     PICKUP_INFO = {
       chicken: { name: "\u70E4\u9E21\u817F", desc: "\u56DE\u590D 30 \u751F\u547D\u3002\u5F88\u7A00\u6709\uFF0C\u7701\u7740\u70B9\u53D7\u4F24\uFF01" },
@@ -1506,10 +1511,10 @@ var init_Defs = __esm({
     ];
     ENEMY_IDS = new Map(Object.keys(ENEMIES).map((k) => [ENEMIES[k], k]));
     QUEST_POOL = [
-      { id: "kills1", stat: "kills", n: 1500, name: "\u7D2F\u8BA1\u51FB\u8D25 1500 \u53EA\u602A\u7269", gold: 120 },
-      { id: "kills2", stat: "kills", n: 4e3, name: "\u7D2F\u8BA1\u51FB\u8D25 4000 \u53EA\u602A\u7269", gold: 200 },
-      { id: "time1", stat: "time", n: 300, name: "\u5355\u5C40\u5B58\u6D3B 5 \u5206\u949F", gold: 100, best: true },
-      { id: "time2", stat: "time", n: 540, name: "\u5355\u5C40\u5B58\u6D3B 9 \u5206\u949F", gold: 180, best: true },
+      { id: "kills1", stat: "kills", n: 1e3, name: "\u7D2F\u8BA1\u51FB\u8D25 1000 \u53EA\u602A\u7269", gold: 120 },
+      { id: "kills2", stat: "kills", n: 2500, name: "\u7D2F\u8BA1\u51FB\u8D25 2500 \u53EA\u602A\u7269", gold: 200 },
+      { id: "time1", stat: "time", n: 180, name: "\u5355\u5C40\u5B58\u6D3B 3 \u5206\u949F", gold: 100, best: true },
+      { id: "time2", stat: "time", n: 360, name: "\u5355\u5C40\u5B58\u6D3B 6 \u5206\u949F", gold: 180, best: true },
       { id: "boss", stat: "boss", n: 3, name: "\u7D2F\u8BA1\u51FB\u8D25 3 \u4E2A Boss", gold: 150 },
       { id: "evolve", stat: "evolve", n: 1, name: "\u8FDB\u5316 1 \u628A\u6B66\u5668", gold: 180 },
       { id: "gold", stat: "gold", n: 300, name: "\u7D2F\u8BA1\u62FE\u53D6 300 \u91D1\u5E01", gold: 100 },
@@ -1682,6 +1687,12 @@ var init_Ads = __esm({
         this.fails = /* @__PURE__ */ new Map();
       }
       static {
+        this.retryAt = /* @__PURE__ */ new Map();
+      }
+      static {
+        this.activeUnit = "";
+      }
+      static {
         this.inter = null;
       }
       static {
@@ -1707,8 +1718,16 @@ var init_Ads = __esm({
             try {
               const ad = a.createRewardedVideoAd({ adUnitId: id });
               ad.onLoad(() => this.fails.set(id, 0));
-              ad.onError(() => this.fails.set(id, (this.fails.get(id) || 0) + 1));
-              ad.onClose((res) => this.finish({ ok: !res || res.isEnded !== false, reason: res && res.isEnded === false ? "skipped" : void 0 }));
+              ad.onError(() => {
+                this.fails.set(id, (this.fails.get(id) || 0) + 1);
+                this.retryAt.set(id, Date.now() + 6e4);
+              });
+              ad.onClose((res) => {
+                if (!this.busy || this.activeUnit !== id) return;
+                const ok2 = res === void 0 || res != null && res.isEnded === true;
+                this.fails.set(id, 0);
+                this.finish({ ok: ok2, reason: ok2 ? void 0 : "skipped" });
+              });
               this.units.set(id, ad);
             } catch (e) {
             }
@@ -1731,11 +1750,11 @@ var init_Ads = __esm({
       static unitFor(place) {
         return AD_CONFIG.rewardedByPlace[place] || AD_CONFIG.rewarded;
       }
-      // 某个位置当前能否展示激励视频（未配置 / 非小游戏环境 / 连续拉取失败 3 次 → 不可用）
+      // 某个位置当前能否展示激励视频（未配置 / 非小游戏环境 / 连续拉取失败 3 次 → 冷却 60 秒后允许重试）
       static canReward(place) {
         if (AD_CONFIG.debugFake) return true;
         const id = this.unitFor(place);
-        return !!id && this.units.has(id) && (this.fails.get(id) || 0) < 3;
+        return !!id && this.units.has(id) && ((this.fails.get(id) || 0) < 3 || Date.now() >= (this.retryAt.get(id) || 0));
       }
       static showReward(place, cb) {
         if (this.busy) return;
@@ -1749,13 +1768,15 @@ var init_Ads = __esm({
           return;
         }
         this.busy = true;
+        this.activeUnit = this.unitFor(place);
         this.pending = cb;
         this.bgmWasPlaying = Sound.bgmPlaying();
         Sound.pauseBgm();
-        ad.show().catch(() => {
-          ad.load().then(() => ad.show()).catch(() => {
+        Promise.resolve().then(() => ad.show()).catch(() => {
+          Promise.resolve().then(() => ad.load()).then(() => ad.show()).catch(() => {
             const id = this.unitFor(place);
             this.fails.set(id, (this.fails.get(id) || 0) + 1);
+            this.retryAt.set(id, Date.now() + 6e4);
             this.finish({ ok: false, reason: "error" });
           });
         });
@@ -1763,6 +1784,7 @@ var init_Ads = __esm({
       static finish(r) {
         const cb = this.pending;
         this.pending = null;
+        this.activeUnit = "";
         this.busy = false;
         if (this.bgmWasPlaying) Sound.resumeBgm();
         if (cb) cb(r);
@@ -5477,6 +5499,7 @@ var init_Battle = __esm({
     };
     Pickup = class {
       constructor() {
+        this.glow = null;
         this.kind = "";
         this.value = 0;
         this.x = 0;
@@ -5967,18 +5990,18 @@ var init_Battle = __esm({
         this.holes = [];
         this.giantT = this.bootsT = this.bankT = this.decoyT = 0;
         if (this.decoySp) this.decoySp.node.active = false;
-        this.altarT = 100;
+        this.altarT = 55;
         for (const t of this.tornados) t.sp.node.destroy();
         this.tornados = [];
-        this.windT = 25;
+        this.windT = 20;
         this.windOn = 0;
         this.ultBuffT = 0;
         this.phoenixUsed = false;
-        this.dropT = 150;
-        this.showerT = 240 + Math.random() * 60;
+        this.dropT = 80;
+        this.showerT = 125 + Math.random() * 30;
         this.showerOn = 0;
-        this.mimicT = 300 + Math.random() * 40;
-        this.shrineT = 200;
+        this.mimicT = 160 + Math.random() * 25;
+        this.shrineT = 105;
         this.trial = null;
         this.trialsWon = 0;
         this.riftT = 25;
@@ -5986,12 +6009,12 @@ var init_Battle = __esm({
         this.overloadOn = 0;
         this.magstormT = 45;
         this.brazierT = 3;
-        this.goldratT = 50;
-        this.eliteT = 75;
+        this.goldratT = 35;
+        this.eliteT = 40;
         this.stage = STAGES.find((x) => x.id === stageId) || STAGES[0];
         this.daily = daily;
         this.ground.spriteFrame = Art.f(this.stage.ground);
-        this.hazardT = 30;
+        this.hazardT = 20;
         for (const [, nodes] of this.decorChunks) {
           for (const n of nodes) {
             n.active = false;
@@ -6021,7 +6044,7 @@ var init_Battle = __esm({
           this.garlicAura = null;
         }
         this.char = char;
-        this.traitT = char.id === "nun" ? 10 : char.id === "santa" ? 40 : 4;
+        this.traitT = char.id === "nun" ? 10 : char.id === "santa" ? 25 : 4;
         this.px = this.py = 0;
         this.time = 0;
         this.kills = 0;
@@ -6400,7 +6423,7 @@ var init_Battle = __esm({
         if (!this.endless && !this.bloodMoon && this.time >= BLOOD_MOON) {
           this.bloodMoon = true;
           this.ground.color = C_BLOODMOON;
-          this.onBanner("\u7EA2\u6708\u964D\u4E34! \u575A\u6301\u6700\u540E\u4E24\u5206\u949F!", new Color(255, 60, 60, 255));
+          this.onBanner("\u7EA2\u6708\u964D\u4E34! \u575A\u6301\u6700\u540E\u4E00\u5206\u949F!", new Color(255, 60, 60, 255));
           Sound.play("roar");
           Sound.playBgm("bgm_boss");
           this.bossMusic = false;
@@ -6413,10 +6436,10 @@ var init_Battle = __esm({
         this.updateSurge(wave);
         if (this.spawnTimer <= 0) {
           this.spawnTimer = wave.interval;
-          const count = Math.round((wave.batch + Math.floor(this.time / 120)) * (this.boss ? 0.6 : 1) * (this.hasB("greedpact") ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - 900) / 600 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod("horde") ? 1.4 : 1) * (this.trial ? 2 : 1));
+          const count = Math.round((wave.batch + Math.floor(this.time / 65)) * (this.boss ? 0.7 : 1) * (this.hasB("greedpact") ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - WIN_TIME) / 320 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod("horde") ? 1.4 : 1) * (this.trial ? 2 : 1));
           let imps = 0;
           for (const e of this.enemies) if (e.alive && e.def.ranged) imps++;
-          const impCap = 4 + Math.floor(Math.max(0, this.time - 540) / 120);
+          const impCap = 4 + Math.floor(Math.max(0, this.time - 285) / 70);
           for (let i = 0; i < count && this.enemies.length < (this.bloodMoon ? Save.data.lite ? 290 : 420 : this.enemyCap); i++) {
             let type = wave.types[Math.floor(Math.random() * wave.types.length)];
             if (ENEMIES[type].ranged) {
@@ -6485,7 +6508,7 @@ var init_Battle = __esm({
           this.onBanner(`${old.def.name} \u64A4\u9000\u4E86\u2026`, new Color(180, 180, 200, 255));
         }
         const b = this.spawnEnemy(id, this.px, this.py + this.vh / 2 + 80, true);
-        b.maxHp = b.hp = def.hp * (1 + 0.1 * this.level) * hpMul * this.stage.hpMul * (this.nightmare ? 1.5 : 1);
+        b.maxHp = b.hp = def.hp * (1 + 0.12 * this.level) * hpMul * this.stage.hpMul * (this.nightmare ? 1.5 : 1);
         b.ai = createBossAI(id, this, b);
         this.bosses.push(b);
         this.boss = b;
@@ -6511,28 +6534,28 @@ var init_Battle = __esm({
         this.onBanner(text, new Color(255, 140, 90, 255));
       }
       // 竖屏下按方向计算屏幕外的出生距离（椭圆），避免左右两侧离得太远
-      // 刷怪速度倍率：早期慢（0.45 → 1），之后按 60 秒周期在 0.5（波谷）~ 1.7（波峰）之间起伏
+      // 刷怪速度倍率：早期慢（0.5 → 1），之后按 45 秒周期在 0.45（波谷）~ 1.65（波峰）之间起伏
       spawnPace() {
         const t = this.time;
         if (this.daily && this.mod("horde")) return 1.2;
-        const early = Math.min(1, 0.5 + t / 240);
-        if (t < 45 || this.boss || this.bloodMoon || this.endless) return early;
-        const ph = (t - 45) % 60 / 60;
+        const early = Math.min(1, 0.5 + t / 120);
+        if (t < 25 || this.boss || this.bloodMoon || this.endless) return early;
+        const ph = (t - 25) % 45 / 45;
         const s = Math.sin(ph * Math.PI * 2 - Math.PI / 2);
         const shaped = Math.sign(s) * Math.pow(Math.abs(s), 0.6);
         return early * (1.05 + 0.6 * shaped);
       }
       updateSurge(wave) {
         const t = this.time;
-        if (t < 105 || this.boss || this.bloodMoon || this.endless) return;
-        const cycle = Math.floor((t - 45) / 60);
-        const ph = (t - 45) % 60 / 60;
+        if (t < 55 || this.boss || this.bloodMoon || this.endless) return;
+        const cycle = Math.floor((t - 25) / 45);
+        const ph = (t - 25) % 45 / 45;
         if (ph < 0.42 || ph > 0.5 || cycle === this.lastSurgeCycle) return;
         this.lastSurgeCycle = cycle;
         const types = wave.types.filter((k) => !ENEMIES[k].ranged);
         const pick = () => types[Math.floor(Math.random() * types.length)];
         const kind = this.surgeIdx++ % 3;
-        const n = Math.min(40, 14 + Math.floor(t / 30));
+        const n = Math.min(40, 14 + Math.floor(t / 16));
         if (kind === 0) {
           const R = Math.hypot(this.vw, this.vh) / 2 + 40, type = pick();
           for (let i = 0; i < n; i++) {
@@ -6585,7 +6608,7 @@ var init_Battle = __esm({
         e.x = x;
         e.y = y;
         e.kx = e.ky = e.sx = e.sy = 0;
-        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 240 + (this.time / 280) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod("xp2") ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
+        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 120 + (this.time / 138) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod("xp2") ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
         e.flash = 0;
         e.punch = 0;
         e.anim = Math.random() * def.anim;
@@ -6610,8 +6633,8 @@ var init_Battle = __esm({
         e.shadow.setPosition(0, flying ? -h - 8 : -h);
         e.shadow.setScale(PX * s * (def.boss ? 2 : 1.2), PX * s, 1);
         e.node.setPosition(x, y);
-        if (!force && !def.boss && !def.prop && !def.flee && this.time > 60 && this.eliteT <= 0) {
-          this.eliteT = this.mod("elites") ? 12 : (30 + Math.random() * 15) / (this.bloodMoon ? 3 : 1);
+        if (!force && !def.boss && !def.prop && !def.flee && this.time > 30 && this.eliteT <= 0) {
+          this.eliteT = this.mod("elites") ? 12 : (20 + Math.random() * 10) / (this.bloodMoon ? 3 : 1);
           this.eliteify(e);
         }
         this.enemies.push(e);
@@ -6698,7 +6721,7 @@ var init_Battle = __esm({
               e.y = py + (dy > 0 ? -1 : 1) * Math.min(Math.abs(dy), this.vh / 2 + 60);
             }
           } else {
-            const sp = def.speed * (e.flash > 0 ? 0.5 : 1) * (1 + Math.min(this.time, 900) / 3600) * (this.mod("fast") ? 1.25 : 1);
+            const sp = def.speed * (e.flash > 0 ? 0.5 : 1) * (1 + Math.min(this.time, WIN_TIME) / 1600) * (this.mod("fast") ? 1.25 : 1);
             e.modeT -= dt;
             if (def.mimic && e.mode === 0) {
               e.anim = 0;
@@ -6761,7 +6784,7 @@ var init_Battle = __esm({
               }
               if (e.shootT <= 0 && d < 420) {
                 e.shootT = 2.6 + Math.random() * 0.8;
-                this.fireBullet("fireball", e.x, e.y, Math.atan2(dy, dx), 140, 4 * this.dmgRamp(), { radius: 9 });
+                this.fireBullet("fireball", e.x, e.y, Math.atan2(dy, dx), 145, 4.5 * this.dmgRamp(), { radius: 9 });
               }
             } else if (this.decoyT > 0 && Math.abs(this.decoyX - e.x) + Math.abs(this.decoyY - e.y) < 700) {
               const ox = this.decoyX - e.x, oy = this.decoyY - e.y, od = Math.hypot(ox, oy) || 1;
@@ -6810,7 +6833,7 @@ var init_Battle = __esm({
             e.hits.set("crush", this.time + 0.3);
             this.chainBoomQueue.push(() => this.hurtEnemy(e, this.giantT > 0 ? this.skillDmg(20, 3) : this.skillDmg(15, 2.5), 520, px, py, null));
           }
-          if (d < def.radius + 12 && def.dmg > 0 && (!trample || def.boss) && (!e.ai || e.ai.touchable)) this.hurtPlayer(def.boss ? def.dmg * 1.3 : def.dmg * this.dmgRamp() * (e.elite ? 1.5 : 1));
+          if (d < def.radius + 12 && def.dmg > 0 && (!trample || def.boss) && (!e.ai || e.ai.touchable)) this.hurtPlayer(def.boss ? def.dmg * 1.45 : def.dmg * this.dmgRamp() * (e.elite ? 1.5 : 1));
           e.anim += dt;
           let frameDirty = false;
           if (e.anim >= def.anim) {
@@ -6860,21 +6883,21 @@ var init_Battle = __esm({
       updateFlow(dt) {
         this.sinceHurt += dt;
         const hpR = this.hp / this.stats.maxHp;
-        if (this.time < 30) return;
+        if (this.time < 20) return;
         if (hpR < 0.35) this.flow -= 0.03 * dt;
-        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.018 * dt;
-        else if (hpR > 0.5) this.flow += 3e-3 * dt;
-        this.flow = Math.max(0.8, Math.min(1.7, this.flow));
+        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.02 * dt;
+        else if (hpR > 0.5) this.flow += 4e-3 * dt;
+        this.flow = Math.max(0.88, Math.min(1.85, this.flow));
       }
       // 心流对怪物血量的影响：低于 1 时线性减弱，高于 1 时超线性增强（只针对碾压中的玩家）
       flowHp() {
         return this.flow <= 1 ? 0.6 + 0.4 * this.flow : Math.pow(this.flow, 1.5);
       }
-      // 小怪接触伤害随时间的成长：前期平缓、后期陡峭（5 分钟 ×1.75，10 分钟 ×3.2，15 分钟 ×5.4）
+      // 小怪接触伤害随时间的成长：适配 8 分钟节奏，前 1.5 分钟平稳上手，3 分钟后压力持续攀升
       dmgRamp() {
-        const m = this.time / 600;
-        const early = 1 + 1.2 * Math.max(0, 1 - this.time / 480);
-        return early * 1.3 * (1 + 0.5 * m + 0.85 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
+        const m = this.time / 330;
+        const early = 1 + 0.45 * Math.max(0, 1 - this.time / 150);
+        return early * 1.38 * (1 + 0.65 * m + 1.1 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
       }
       // 每日挑战规则
       mod(id) {
@@ -6920,7 +6943,7 @@ var init_Battle = __esm({
           f.sp.color = colorOf(6340688);
           this.burst(this.px, this.py, 6340688, 16, 300);
         } else if (id === "santa") {
-          this.traitT = 70;
+          this.traitT = 40;
           const a = Math.random() * Math.PI * 2;
           const kind = Math.random() < 0.2 ? "magnet" : BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)];
           this.spawnPickup(kind, this.px + Math.cos(a) * 70, this.py + Math.sin(a) * 70, 0, true);
@@ -6950,7 +6973,7 @@ var init_Battle = __esm({
           dmg = Math.round(dmg * this.stats.critDmg);
           if (this.hasB("vampkiss")) this.heal(1);
           if (this.isChar("prism") && Math.random() < 0.35) this.refract(e, dmg);
-          if (this.char.charge === "crit") this.chargeUlt(1 / (150 + this.time * 0.4));
+          if (this.char.charge === "crit") this.chargeUlt(1 / (150 + this.time * 0.7));
         }
         if (this.stats.fresh > 0 && e.hp >= e.maxHp) dmg = Math.round(dmg * (1 + this.stats.fresh));
         if ((e.elite || e.def.boss) && this.stats.eliteDmg > 0) dmg = Math.round(dmg * (1 + this.stats.eliteDmg));
@@ -7030,7 +7053,7 @@ var init_Battle = __esm({
         this.attackKills++;
         if (this.trial) this.trial.got++;
         const ch = this.char.charge;
-        if (ch === "kill" || ch === "combo") this.chargeUlt((ch === "combo" ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 0.8));
+        if (ch === "kill" || ch === "combo") this.chargeUlt((ch === "combo" ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 1.4));
         if (e.def.split) {
           const x = e.x, y = e.y, t = e.def.split;
           this.chainBoomQueue.push(() => {
@@ -7040,7 +7063,7 @@ var init_Battle = __esm({
         if (e.def.burst) {
           const x = e.x, y = e.y;
           this.warnCircle(x, y, 70, 0.7, 16724016, () => {
-            this.explode(x, y, 70, 5 + this.time / 90, 16736304);
+            this.explode(x, y, 70, 5 + this.time / 50, 16736304);
             this.explodeFriendly(x, y, 60, 12 + this.level, null, 160, 16736304, false);
           });
         }
@@ -7075,7 +7098,7 @@ var init_Battle = __esm({
           this.spawnFx("aura", e.x, e.y, 0.5, 2, 5);
           Sound.play("bigkill");
         }
-        this.spawnPickup("gem", e.x, e.y, e.def.xp * (this.time < 180 ? 1.5 : 1), true);
+        this.spawnPickup("gem", e.x, e.y, e.def.xp * (this.time < 100 ? 1.5 : 1), true);
         const r = Math.random();
         if (r < 25e-4) {
           if (!this.mod("gold3")) this.spawnPickup("chicken", e.x + 10, e.y, 0);
@@ -8057,8 +8080,8 @@ var init_Battle = __esm({
           const x = this.px + this.mx * 80 + Math.cos(a) * r, y = this.py + this.my * 80 + Math.sin(a) * r;
           if (hz.cloud) {
             this.warnCircle(x, y, R, fall, 16724016, () => {
-              this.explode(x, y, R * 0.6, 4 + this.time / 60, hz.color);
-              this.zone(x, y, R, 4, 2 + this.time / 150, 6340656);
+              this.explode(x, y, R * 0.6, 4 + this.time / 35, hz.color);
+              this.zone(x, y, R, 4, 2 + this.time / 85, 6340656);
               this.spawnPZone("poison", null, x, y, R, 4, 12 + this.level);
               Sound.play("splash");
             });
@@ -8069,7 +8092,7 @@ var init_Battle = __esm({
             continue;
           }
           this.warnCircle(x, y, R, fall, 16724016, () => {
-            this.explode(x, y, R, 8 + this.time / 40, hz.color);
+            this.explode(x, y, R, 8 + this.time / 22, hz.color);
             this.explodeFriendly(x, y, R, 30 + this.level * 2, null, 160, hz.color, false);
           });
           const f = this.spawnFx(hz.frame, x, y + 340, fall, PX * 1.5, 0);
@@ -8107,7 +8130,7 @@ var init_Battle = __esm({
           if (d < R) {
             this.px += (-dy / d * 260 + dx / d * 200) * dt;
             this.py += (dx / d * 260 + dy / d * 200) * dt;
-            this.hurtPlayer(6 + this.time / 60);
+            this.hurtPlayer(6 + this.time / 32);
           }
           if (Math.random() < 0.5) this.burst(t.x + (Math.random() - 0.5) * 50, t.y, 14205072, 1, 120);
           if (t.t <= 0) t.sp.node.destroy();
@@ -8158,16 +8181,16 @@ var init_Battle = __esm({
         this.eliteT -= dt;
         this.altarT -= dt;
         if (this.altarT <= 0) {
-          this.altarT = (140 + Math.random() * 30) * (this.hasB("epicfan") ? 0.6 : 1) / (1 + this.stats.finder);
+          this.altarT = (75 + Math.random() * 20) * (this.hasB("epicfan") ? 0.6 : 1) / (1 + this.stats.finder);
           const a = Math.random() * Math.PI * 2, r = 200 + Math.random() * 120;
           const al = this.spawnEnemy("altar", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
-          al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 120);
+          al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 65);
           this.onBanner("\u795E\u5175\u796D\u575B\u51FA\u73B0\u4E86! \u6253\u788E\u5B83!", new Color(255, 220, 110, 255));
           Sound.play("power");
         }
         this.shrineT -= dt;
         if (this.shrineT <= 0 && !this.boss && !this.bloodMoon && !this.trial) {
-          this.shrineT = 140 + Math.random() * 30;
+          this.shrineT = 75 + Math.random() * 20;
           const a = Math.random() * Math.PI * 2, r = 220 + Math.random() * 80;
           this.spawnPickup("shrine", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, this.time + 45);
           this.onBanner("\u8BD5\u70BC\u77F3\u7891\u51FA\u73B0\u4E86! \u89E6\u78B0\u5F00\u542F\u6311\u6218", new Color(255, 120, 100, 255));
@@ -8178,10 +8201,10 @@ var init_Battle = __esm({
         this.updateRandomEvents(dt);
         this.goldratT -= dt;
         if (this.goldratT <= 0) {
-          this.goldratT = 100;
+          this.goldratT = 60;
           const a = Math.random() * Math.PI * 2, r = 260;
           const g2 = this.spawnEnemy("goldrat", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
-          g2.maxHp = g2.hp = ENEMIES.goldrat.hp * (1 + this.time / 120);
+          g2.maxHp = g2.hp = ENEMIES.goldrat.hp * (1 + this.time / 65);
           g2.sp.color = C_ELITE;
           this.onBanner("\u91D1\u9F20\u51FA\u73B0! \u5FEB\u8FFD!", new Color(255, 214, 90, 255));
           Sound.play("coin");
@@ -8874,7 +8897,7 @@ var init_Battle = __esm({
         Sound.play("card");
       }
       startTrial(x, y) {
-        const need = 40 + Math.floor(this.time / 12);
+        const need = 35 + Math.floor(this.time / 7);
         this.trial = { t: 20, need, got: 0 };
         this.spawnFx("aura", x, y, 0.5, 1.5, 6).sp.color = colorOf(16732224);
         this.burst(x, y, 16732224, 24, 320);
@@ -8913,7 +8936,7 @@ var init_Battle = __esm({
       updateRandomEvents(dt) {
         this.dropT -= dt;
         if (this.dropT <= 0) {
-          this.dropT = 120 + Math.random() * 25;
+          this.dropT = 65 + Math.random() * 15;
           const a = Math.random() * TAU2, r = 180 + Math.random() * 100;
           const x = this.px + Math.cos(a) * r, y = this.py + Math.sin(a) * r;
           this.warnCircle(x, y, 70, 3, 16764992, () => {
@@ -8946,7 +8969,7 @@ var init_Battle = __esm({
         } else {
           this.showerT -= dt;
           if (this.showerT <= 0 && !this.boss) {
-            this.showerT = 180 + Math.random() * 60;
+            this.showerT = 95 + Math.random() * 30;
             this.showerOn = 8;
             this.showerTick = 0.5;
             this.onBanner("\u6D41\u661F\u96E8! \u661F\u661F\u7838\u5411\u602A\u7269", new Color(255, 240, 160, 255));
@@ -8955,7 +8978,7 @@ var init_Battle = __esm({
         }
         this.mimicT -= dt;
         if (this.mimicT <= 0) {
-          this.mimicT = 170 + Math.random() * 40;
+          this.mimicT = 95 + Math.random() * 25;
           const a = Math.random() * TAU2, r = 230 + Math.random() * 80;
           const m = this.spawnEnemy("mimic", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
           if (m) {
@@ -8973,13 +8996,20 @@ var init_Battle = __esm({
         let p = this.pickupPool.pop();
         if (!p) {
           p = new Pickup();
-          p.sp = mkSprite(this.pickupLayer, "gem_blue");
-          p.node = p.sp.node;
+          p.node = mkNode("pickup", this.pickupLayer);
+          p.sp = mkSprite(p.node, "gem_blue", 1);
         }
         let frame = kind;
         if (kind === "gem") frame = value >= 20 ? "gem_red" : value >= 3 ? "gem_green" : "gem_blue";
         p.node.setScale(PX, PX, 1);
         p.sp.spriteFrame = Art.f(frame);
+        const special = kind !== "gem" && kind !== "coin";
+        if (special && !p.glow) {
+          p.glow = mkSprite(p.node, "aura", 0.5, "pickup-glow");
+          p.glow.node.setSiblingIndex(0);
+          p.glow.color = new Color(255, 220, 120, 140);
+        }
+        if (p.glow) p.glow.node.active = special;
         p.kind = kind;
         p.value = value;
         p.x = x;
@@ -9020,6 +9050,10 @@ var init_Battle = __esm({
         }
         for (const p of this.pickups) {
           if (!p.alive) continue;
+          if (p.glow && p.glow.node.active) {
+            const pulse = 0.46 + 0.06 * Math.sin(this.time * 3 + p.x * 0.01);
+            p.glow.node.setScale(pulse, pulse, 1);
+          }
           if (p.vx !== 0 || p.vy !== 0) {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
@@ -10406,6 +10440,8 @@ var init_GameRoot = __esm({
         this.adRevived = false;
         this.adRerolls = 0;
         this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adGoldUsed = false;
         this.adChestUsed = false;
         this.adWatchedThisResult = false;
@@ -10434,6 +10470,8 @@ var init_GameRoot = __esm({
         this.codexSel = null;
         this.rankKind = "best";
         this.rankBack = "menu";
+        // 排行画布。SubContextView 推迟到打开排行时再挂，避免启动时调用 wx.getOpenDataContext()
+        this.rankView = null;
       }
       onLoad() {
         view.setDesignResolutionSize(DESIGN_W, DESIGN_H, ResolutionPolicy.FIXED_WIDTH);
@@ -10522,7 +10560,7 @@ var init_GameRoot = __esm({
             Analytics.track("share", { from: "menu", won: 0 });
             const d = Save.data;
             const query = d.bestTime ? Social.shareQuery({ time: d.bestTime, kills: d.bestKills, won: d.wins > 0 ? 1 : 0, daily: "" }) : "";
-            return { title: d.bestTime ? `${GAME_NAME}\uFF1A\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(d.bestTime)}\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F` : `${GAME_NAME}\uFF1A\u80D6\u5976\u86D9\u5272\u8349\uFF0C\u5728\u7EA2\u6708\u4E0B\u575A\u6301 15 \u5206\u949F\uFF01`, query };
+            return { title: d.bestTime ? `${GAME_NAME}\uFF1A\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(d.bestTime)}\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F` : `${GAME_NAME}\uFF1A\u80D6\u5976\u86D9\u5272\u8349\uFF0C\u5728\u7EA2\u6708\u4E0B\u575A\u6301 8 \u5206\u949F\uFF01`, query };
           };
           if (w.onShareAppMessage) w.onShareAppMessage(msg);
           if (w.onShareTimeline) w.onShareTimeline(msg);
@@ -10752,7 +10790,7 @@ var init_GameRoot = __esm({
       startVictory() {
         const b = this.battle;
         this.winT = 0;
-        this.winSub.string = b.daily ? "\u6BCF\u65E5\u6311\u6218\u6210\u529F!" : b.bossKills.includes("reaper") ? "\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08!" : "\u575A\u6301\u4E86 15 \u5206\u949F!";
+        this.winSub.string = b.daily ? "\u6BCF\u65E5\u6311\u6218\u6210\u529F!" : b.bossKills.includes("reaper") ? "\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08!" : "\u575A\u6301\u4E86 8 \u5206\u949F!";
         this.onJoyEnd();
         Sound.pauseBgm();
         Sound.play("achieve");
@@ -11035,7 +11073,7 @@ var init_GameRoot = __esm({
           gold.string = String(Save.data.gold);
           daily.node.active = Save.data.bonusDay !== (/* @__PURE__ */ new Date()).toDateString();
           const d = Save.data;
-          best.string = (d.runs ? `\u6700\u4F73\uFF1A\u5B58\u6D3B ${this.fmtTime(d.bestTime)}  \xB7  \u51FB\u8D25 ${d.bestKills}  \xB7  \u7B49\u7EA7 ${d.bestLevel}` : "\u5B58\u6D3B 15 \u5206\u949F\u5373\u53EF\u83B7\u80DC") + (d.endlessBest ? `
+          best.string = (d.runs ? `\u6700\u4F73\uFF1A\u5B58\u6D3B ${this.fmtTime(d.bestTime)}  \xB7  \u51FB\u8D25 ${d.bestKills}  \xB7  \u7B49\u7EA7 ${d.bestLevel}` : "\u5B58\u6D3B 8 \u5206\u949F\u5373\u53EF\u83B7\u80DC") + (d.endlessBest ? `
 \u65E0\u5C3D\u6A21\u5F0F\u6700\u4F73 ${this.fmtTime(d.endlessBest)}` : "") + `   \u6210\u5C31 ${d.achievements.length}/${ACHIEVEMENTS.length}`;
         });
       }
@@ -11106,6 +11144,25 @@ var init_GameRoot = __esm({
           mkSprite(lock.node, "icon_lock", 3).node.setPosition(0, 20);
           const evOf = EVENTS.find((e) => e.char === c.id);
           mkLabel(lock.node, c.cost < 0 ? evOf ? evOf.lockText : "\u6D3B\u52A8\u9650\u5B9A" : `${c.cost} \u91D1\u5E01\u89E3\u9501`, 22, C_GOLD2, "center", 3).node.setPosition(0, -34);
+          const adUnlock = mkRect(lock.node, 184, 42, C_AD, "ad-character");
+          adUnlock.node.setPosition(0, -ch / 2 + 27);
+          mkLabel(adUnlock.node, "\u25B6 \u770B\u5E7F\u544A\u89E3\u9501", 19, C_WHITE2, "center", 2);
+          adUnlock.node.on(Node.EventType.TOUCH_END, (event) => {
+            event.propagationStopped = true;
+            if (this.state !== "chars" || c.cost <= 0 || Save.data.chars.includes(c.id) || !Ads.canReward("character")) return;
+            Sound.play("click");
+            this.watchAd("character", () => {
+              const d = Save.data;
+              if (!d.chars.includes(c.id)) {
+                d.chars.push(c.id);
+                Analytics.track("char_unlock", { char: c.id, cost: 0, runs: d.runs });
+              }
+              d.selected = c.id;
+              Save.save();
+              Sound.play("chest");
+              this.showToast(`\u89E3\u9501 ${c.name}!`);
+            });
+          });
           card.node.on(Node.EventType.TOUCH_END, () => {
             Sound.play("click");
             const d = Save.data;
@@ -11130,6 +11187,7 @@ var init_GameRoot = __esm({
           });
           this.refreshers.push(() => {
             lock.node.active = !Save.data.chars.includes(c.id);
+            adUnlock.node.active = c.cost > 0 && Ads.canReward("character");
             const sel = Save.data.selected === c.id;
             card.border.color = sel ? C_GREEN : C_BORDER2;
             card.fill.color = sel ? new Color(36, 64, 60, 250) : new Color(36, 30, 64, 245);
@@ -11177,7 +11235,7 @@ var init_GameRoot = __esm({
         this.refreshers.push(() => {
           const locked = Save.data.wins <= 0;
           const e = this.endlessMode, n = this.nightmareMode;
-          mode.label.string = locked ? "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u65E0\u5C3D / \u5669\u68A6 \u9996\u80DC\u89E3\u9501\uFF09" : e ? "\u6A21\u5F0F\uFF1A\u65E0\u5C3D\uFF08Boss \u5FAA\u73AF\uFF0C\u8D8A\u6765\u8D8A\u5F3A\uFF09" : n ? "\u6A21\u5F0F\uFF1A\u5669\u68A6\uFF08\u751F\u547D +60% \u4F24\u5BB3 +30% \u91D1\u5E01 +60%\uFF09" : "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u5B58\u6D3B 15 \u5206\u949F\u80DC\u5229\uFF09";
+          mode.label.string = locked ? "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u65E0\u5C3D / \u5669\u68A6 \u9996\u80DC\u89E3\u9501\uFF09" : e ? "\u6A21\u5F0F\uFF1A\u65E0\u5C3D\uFF08Boss \u5FAA\u73AF\uFF0C\u8D8A\u6765\u8D8A\u5F3A\uFF09" : n ? "\u6A21\u5F0F\uFF1A\u5669\u68A6\uFF08\u751F\u547D +60% \u4F24\u5BB3 +30% \u91D1\u5E01 +60%\uFF09" : "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u5B58\u6D3B 8 \u5206\u949F\u80DC\u5229\uFF09";
           mode.bg.color = e ? new Color(110, 40, 120, 255) : n ? new Color(140, 30, 40, 255) : C_BTN_GREY;
         });
       }
@@ -11375,6 +11433,16 @@ var init_GameRoot = __esm({
           this.showToast("\u9009\u5B8C\u8FD9\u5F20\u540E\u8FD8\u80FD\u518D\u9009\u4E00\u5F20!");
         }), C_AD, 26);
         this.adBlessBtn.node.setPosition(0, adY);
+        this.adLevelBonusBtn = mkButton(s, "\u25B6 \u770B\u5E7F\u544A\u591A\u9009\u4E00\u6B21", 310, 80, () => {
+          if (this.state !== "levelup" || this.cardMode !== "level" || this.adLevelBonusPending || this.battle.time < this.nextAdLevelBonus) return;
+          this.watchAd("level_bonus", () => {
+            this.adLevelBonusPending = true;
+            this.nextAdLevelBonus = this.battle.time + AD_CONFIG.levelBonusInterval;
+            this.fillCards();
+            this.showToast("\u9009\u5B8C\u540E\u518D\u9009\u4E00\u6B21!");
+          });
+        }, C_AD, 23);
+        this.adLevelBonusBtn.node.setPosition(0, adY);
       }
       buildChest() {
         const s = this.screen("chest");
@@ -11437,7 +11505,7 @@ var init_GameRoot = __esm({
         this.shareBtn = mkButton(s, "\u5206\u4EAB\u6218\u7EE9", 200, 80, () => this.shareResult(), C_BTN_BLUE, 26);
         this.recBtn = mkButton(s, "\u5206\u4EAB\u672C\u5C40\u5F55\u5C4F", 300, 72, () => {
           const b = this.battle;
-          Recorder.share(b.won ? "\u6211\u7684\u5976\u86D9\u6D3B\u8FC7\u4E86 15 \u5206\u949F\uFF01" : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269`, (ok2) => {
+          Recorder.share(b.won ? "\u6211\u7684\u5976\u86D9\u6D3B\u8FC7\u4E86 8 \u5206\u949F\uFF01" : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269`, (ok2) => {
             if (!ok2) this.showToast("\u5206\u4EAB\u672A\u5B8C\u6210");
           });
         }, new Color(200, 40, 90, 255), 26);
@@ -11462,8 +11530,10 @@ var init_GameRoot = __esm({
       }
       buildRevive() {
         const s = this.screen("revive");
-        mkLabel(s, "\u4F60\u5012\u4E0B\u4E86\u2026", 64, C_RED, "center", 5).node.setPosition(0, this.vh * 0.2);
-        mkLabel(s, "\u770B\u4E00\u6BB5\u5E7F\u544A\uFF0C\u6EE1\u72B6\u6001\u539F\u5730\u590D\u6D3B?", 30, C_WHITE2, "center", 3).node.setPosition(0, this.vh * 0.1);
+        mkLabel(s, "\u4F60\u5012\u4E0B\u4E86\u2026", 64, C_RED, "center", 5).node.setPosition(0, this.vh * 0.22);
+        this.reviveHint = mkLabel(s, "\u6EE1\u72B6\u6001\u539F\u5730\u590D\u6D3B\uFF0C\u4FDD\u7559\u5168\u90E8\u88C5\u5907!", 26, C_GOLD2, "center", 3);
+        this.reviveHint.node.setPosition(0, this.vh * 0.14);
+        mkLabel(s, "\u770B\u4E00\u6BB5\u5E7F\u544A\uFF0C\u6EE1\u8840\u590D\u6D3B + \u6E05\u573A\u51B2\u51FB\u6CE2", 26, C_WHITE2, "center", 3).node.setPosition(0, this.vh * 0.08);
         this.reviveCount = mkLabel(s, "", 72, C_GOLD2, "center", 5, true);
         this.reviveCount.node.setPosition(0, 0);
         mkButton(s, "\u25B6 \u770B\u5E7F\u544A\u590D\u6D3B", 420, 100, () => this.watchAd("revive", () => {
@@ -11474,6 +11544,18 @@ var init_GameRoot = __esm({
           this.reviveT = Math.max(this.reviveT, 3);
         }), C_AD, 36).node.setPosition(0, -this.vh * 0.1);
         mkButton(s, "\u653E\u5F03", 260, 80, () => this.endRun(false), C_BTN_GREY, 28).node.setPosition(0, -this.vh * 0.2);
+        this.refreshers.push(() => {
+          if (this.state !== "revive") return;
+          const b = this.battle;
+          const goal = this.dailyRun ? DAILY_GOAL : WIN_TIME;
+          if (b.boss && b.boss.alive) {
+            const pct = Math.max(1, Math.round(b.boss.hp / b.boss.maxHp * 100));
+            this.reviveHint.string = `${b.boss.def.name} \u53EA\u5269 ${pct}% \u751F\u547D \xB7 \u590D\u6D3B\u76F4\u63A5\u7FFB\u76D8!`;
+          } else {
+            const left = Math.max(1, Math.ceil(goal - b.time));
+            this.reviveHint.string = `\u5DF2\u575A\u6301 ${this.fmtTime(b.time)}\uFF08LV ${b.level}\uFF09\xB7 \u8DDD\u80DC\u5229\u53EA\u5DEE ${this.fmtTime(left)}!`;
+          }
+        });
       }
       // 启动页：动态夜景 + Logo 弹出 + 加载条 + 健康游戏忠告 + 适龄提示（法规要求）
       buildSplash() {
@@ -11640,6 +11722,7 @@ var init_GameRoot = __esm({
           Save.data.codexSeen = Save.data.codex.length;
           Save.save();
         }
+        if (s === "rank") this.ensureRankView();
         if (s === "revive") {
           this.reviveT = 8;
           Sound.pauseBgm();
@@ -11719,13 +11802,15 @@ var init_GameRoot = __esm({
       get today() {
         return (/* @__PURE__ */ new Date()).toDateString();
       }
-      // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 10 分钟
+      // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 6 分钟
       startDaily() {
         const ds = dailySetup(this.today);
         const ch = CHARACTERS.find((c) => c.id === ds.char) || CHARACTERS[0];
         this.dailyRun = true;
         this.tutStep = -1;
         this.adRevived = this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(ch, false, ds.stage, { mod: ds.mod, blessing: ds.blessing });
         this.battle.nightmare = false;
@@ -11747,6 +11832,8 @@ var init_GameRoot = __esm({
         this.dailyRun = false;
         this.ultHinted = false;
         this.adRevived = this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(this.selectedChar(), this.endlessMode, this.currentStage.id);
         this.battle.nightmare = this.nightmareMode;
@@ -11777,7 +11864,7 @@ var init_GameRoot = __esm({
         this.tutNode.active = false;
         const b = this.battle;
         const d = Save.data;
-        const bonus = Math.round((Math.floor(b.time / 60) * 25 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
+        const bonus = Math.round((Math.floor(b.time / 60) * 45 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
         let total = b.gold + bonus;
         const today2 = (/* @__PURE__ */ new Date()).toDateString();
         const daily = d.bonusDay !== today2;
@@ -11968,13 +12055,13 @@ var init_GameRoot = __esm({
         const ok2 = {
           win1: win,
           kill1k: b.kills >= 1e3,
-          kill5k: b.kills >= 5e3,
+          kill5k: b.kills >= 3e3,
           combo500: b.maxCombo >= 500,
           lv50: b.level >= 50,
           evo1: b.evolvedCount >= 1,
           evo3: b.evolvedCount >= 3,
           goldrat: b.goldRats > 0,
-          endless20: b.endless && b.time >= 1200,
+          endless20: b.endless && b.time >= 720,
           allchars: CHARACTERS.every((c) => c.cost < 0 || d.chars.includes(c.id)),
           daily1: this.dailyRun && win,
           stage_snow: win && !b.endless && !this.dailyRun && b.stage.id === "snow",
@@ -11986,7 +12073,7 @@ var init_GameRoot = __esm({
           codex_full: this.codexCount() >= codexEntries().length,
           epic3: b.epicsUsed >= 3,
           trial2: b.trialsWon >= 2,
-          ult10: b.ultCasts >= 10
+          ult10: b.ultCasts >= 6
         };
         for (const id of b.bossKills) ok2["boss_" + id] = true;
         const got = ACHIEVEMENTS.filter((a) => ok2[a.id] && !d.achievements.includes(a.id));
@@ -12266,10 +12353,9 @@ var init_GameRoot = __esm({
         if (Social.rankSupported) {
           const view2 = mkNode("subctx", area.node);
           view2.addComponent(UITransform).setContentSize(aw, ah);
-          const sub = view2.addComponent(SubContextView);
-          sub.designResolutionSize = new Size(aw, ah);
-          sub.fps = 30;
+          this.rankView = view2;
         } else {
+          this.rankView = null;
           mkLabel(area.node, "\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00\u5373\u53EF\u67E5\u770B\u597D\u53CB\u6392\u884C", 26, C_GREY, "center", 2);
         }
         this.refreshers.push(() => {
@@ -12277,6 +12363,16 @@ var init_GameRoot = __esm({
         });
         mkLabel(s, "\u53EA\u663E\u793A\u540C\u6837\u5728\u73A9\u300A\u5976\u86D9\u5272\u8349\u300B\u7684\u5FAE\u4FE1\u597D\u53CB", 20, C_GREY, "center", 2).node.setPosition(0, this.bottom + 136 - 24);
         mkButton(s, "\u8FD4\u56DE", 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
+      }
+      // 打开排行榜时才挂上。SubContextView.onLoad 会立刻 wx.getOpenDataContext()，
+      // 若在 buildUI 里挂，一进游戏就会报 getOpenDataContext:fail。
+      ensureRankView() {
+        const view2 = this.rankView;
+        if (!view2 || !view2.isValid || view2.getComponent(SubContextView)) return;
+        const ui = view2.getComponent(UITransform);
+        const sub = view2.addComponent(SubContextView);
+        sub.designResolutionSize = new Size(ui ? ui.width : 640, ui ? ui.height : 300);
+        sub.fps = 30;
       }
       buildAchievements() {
         const s = this.screen("achv");
@@ -12339,6 +12435,7 @@ var init_GameRoot = __esm({
         }
         this.rerollBtn.node.active = false;
         this.adRerollBtn.node.active = false;
+        this.adLevelBonusBtn.node.active = false;
         this.adBlessBtn.node.active = !this.adBlessUsed && this.battle.time < 1 && Ads.canReward("blessing");
         Sound.play("card");
         this.setState("levelup");
@@ -12360,6 +12457,11 @@ var init_GameRoot = __esm({
         this.rerollBtn.node.active = this.battle.rerolls > 0;
         this.adBlessBtn.node.active = false;
         this.adRerollBtn.node.active = this.battle.rerolls <= 0 && this.adRerolls > 0 && Ads.canReward("reroll");
+        this.adLevelBonusBtn.node.active = !this.adLevelBonusPending && this.options.length > 0 && this.battle.time >= this.nextAdLevelBonus && Ads.canReward("level_bonus");
+        const hasReroll = this.rerollBtn.node.active || this.adRerollBtn.node.active;
+        this.rerollBtn.node.setPosition(this.adLevelBonusBtn.node.active ? -180 : 0, this.rerollBtn.node.position.y);
+        this.adRerollBtn.node.setPosition(this.adLevelBonusBtn.node.active ? -180 : 0, this.adRerollBtn.node.position.y);
+        this.adLevelBonusBtn.node.setPosition(hasReroll ? 185 : 0, this.adLevelBonusBtn.node.position.y);
         this.adRerollBtn.label.string = `\u25B6 \u770B\u5E7F\u544A\u91CD\u62BD (${this.adRerolls})`;
         this.rerollBtn.label.string = `\u91CD\u62BD (${this.battle.rerolls})`;
       }
@@ -12370,7 +12472,7 @@ var init_GameRoot = __esm({
         this.fillCards();
       }
       choose(i) {
-        if (this.state !== "levelup") return;
+        if (this.state !== "levelup" || Ads.showing) return;
         if (this.cardMode === "blessing") {
           const b = this.blessOpts[i];
           if (!b) return;
@@ -12383,7 +12485,8 @@ var init_GameRoot = __esm({
         if (!o) return;
         Sound.play("click");
         this.battle.applyOption(o);
-        this.battle.pendingLevels--;
+        if (this.adLevelBonusPending) this.adLevelBonusPending = false;
+        else this.battle.pendingLevels--;
         this.afterReward();
         if (this.state === "play") this.battle.levelBlast();
       }
@@ -12636,7 +12739,7 @@ var init_GameRoot = __esm({
       "\u6B66\u5668\u4F1A\u81EA\u52A8\u653B\u51FB \u9760\u8FD1\u5C0F\u602A\u8BD5\u8BD5!",
       "\u6361\u8D77\u84DD\u8272\u5B9D\u77F3 \u6512\u6EE1\u7ECF\u9A8C\u5C31\u80FD\u5347\u7EA7",
       "\u4E09\u9009\u4E00\uFF1A\u65B0\u6B66\u5668 \u6216 \u5F3A\u5316\u9053\u5177",
-      "\u8EB2\u5F00\u602A\u7269 \u575A\u6301 15 \u5206\u949F\u5C31\u80DC\u5229!",
+      "\u8EB2\u5F00\u602A\u7269 \u575A\u6301 8 \u5206\u949F\u5C31\u80DC\u5229!",
       "Boss \u8981\u6765\u4E86! \u770B\u5230\u7EA2\u5708\u7EA2\u7EBF\u7ACB\u523B\u8EB2\u5F00"
     ];
     GameRoot = __decorateClass([
@@ -12666,8 +12769,9 @@ if (MODE === "B") {
       }, onError() {
       }, onClose(cb) {
         close = cb;
-      }, load: () => Promise.resolve(), show: () => {
-        setTimeout(() => close({ isEnded: true }), 0);
+      }, load: () => G.__adFail ? Promise.reject(new Error("load failed")) : Promise.resolve(), show: () => {
+        if (G.__adFail) return Promise.reject(new Error("show failed"));
+        setTimeout(() => close(G.__adMalformed ? {} : { isEnded: !G.__adSkip }), 0);
         return Promise.resolve();
       } };
     },
@@ -12875,19 +12979,19 @@ if (MODE === "C") {
   start();
   B().time = 0;
   const p0 = B().spawnPace();
-  B().time = 300;
+  B().time = 200;
   let lo = 9, hi = 0;
-  for (let t = 300; t < 360; t += 1) {
+  for (let t = 200; t < 260; t += 1) {
     B().time = t;
     const p = B().spawnPace();
     lo = Math.min(lo, p);
     hi = Math.max(hi, p);
   }
   ok(p0 < 0.6, `\u5F00\u5C40\u5237\u602A\u901F\u5EA6\u4F4E\uFF08${p0.toFixed(2)} \u500D\uFF09`);
-  ok(hi / lo > 2.5, `5 \u5206\u949F\u540E\u6709\u6CE2\u5CF0\u6CE2\u8C37\uFF08${lo.toFixed(2)} ~ ${hi.toFixed(2)}\uFF09`);
-  B().bossIdx = 1;
-  B().time = 160;
-  play(60 * 60);
+  ok(hi / lo > 2.5, `\u4E2D\u671F\u6709\u6CE2\u5CF0\u6CE2\u8C37\uFF08${lo.toFixed(2)} ~ ${hi.toFixed(2)}\uFF09`);
+  B().bossIdx = 2;
+  B().time = 150;
+  play(60 * 50);
   ok(B().lastSurgeCycle >= 0, "\u6CE2\u5CF0\u51FA\u73B0\u7279\u6B8A\u51FA\u602A\uFF08\u5305\u56F4 / \u51B2\u950B / \u602A\u6F6E\uFF09");
   g.endRun(false);
   section("\u6447\u6746\u5E95\u5EA7\u56FA\u5B9A");
@@ -12921,9 +13025,25 @@ if (MODE === "C") {
   step(110);
   ok(g.state === (MODE === "B" ? "revive" : "result"), MODE === "B" ? "\u52A8\u753B\u540E\u51FA\u73B0\u590D\u6D3B\u754C\u9762" : "\u52A8\u753B\u540E\u76F4\u63A5\u7ED3\u7B97\uFF08\u65E0\u5E7F\u544A\uFF09");
   if (MODE === "B") {
+    G.__adSkip = true;
     findButton("\u25B6 \u770B\u5E7F\u544A\u590D\u6D3B").emit("te");
     await wait();
-    ok(g.state === "play" && !B().dead && B().playerBody.active, "\u770B\u5E7F\u544A\u590D\u6D3B\uFF0C\u5976\u86D9\u5916\u89C2\u6062\u590D");
+    ok(g.state === "revive" && B().dead && !g.adRevived, "\u63D0\u524D\u5173\u95ED\u5E7F\u544A\u4E0D\u4F1A\u590D\u6D3B");
+    G.__adSkip = false;
+    G.__adMalformed = true;
+    findButton("\u25B6 \u770B\u5E7F\u544A\u590D\u6D3B").emit("te");
+    await wait();
+    ok(g.state === "revive" && B().dead && !g.adRevived, "\u7F3A\u5931\u5B8C\u6210\u6807\u8BB0\u7684\u5E7F\u544A\u56DE\u8C03\u4E0D\u4F1A\u53D1\u5956");
+    G.__adMalformed = false;
+    G.__adFail = true;
+    findButton("\u25B6 \u770B\u5E7F\u544A\u590D\u6D3B").emit("te");
+    await wait();
+    ok(g.state === "revive" && B().dead && !g.adRevived, "\u5E7F\u544A\u52A0\u8F7D\u5931\u8D25\u4E0D\u4F1A\u590D\u6D3B");
+    ok(g.reviveHint && g.reviveHint.string.includes("\u8DDD\u80DC\u5229\u53EA\u5DEE"), "\u590D\u6D3B\u754C\u9762\u663E\u793A\u6FC0\u52B1\u63D0\u793A");
+    G.__adFail = false;
+    findButton("\u25B6 \u770B\u5E7F\u544A\u590D\u6D3B").emit("te");
+    await wait();
+    ok(g.state === "play" && !B().dead && B().playerBody.active && B().hp === B().stats.maxHp, "\u5B8C\u6574\u770B\u5E7F\u544A\u540E\u6EE1\u8840\u590D\u6D3B\uFF0C\u5976\u86D9\u5916\u89C2\u6062\u590D");
     B().gold = 50;
     B().iframe = 0;
     B().hp = 1;
@@ -12935,6 +13055,78 @@ if (MODE === "C") {
     g.goldAdBtn.node.emit("te");
     await wait();
     ok(Save2.data.gold > gold0, "\u770B\u5E7F\u544A\u91D1\u5E01\u7FFB\u500D");
+  }
+  section("8 \u5206\u949F\u8282\u594F\u4E0E\u6570\u503C\u914D\u7F6E");
+  ok(D.WIN_TIME === 480 && D.BLOOD_MOON === 420 && D.DAILY_GOAL === 360, "8 \u5206\u949F\u5355\u5C40\u30017 \u5206\u949F\u7EA2\u6708\u4E0E 6 \u5206\u949F\u6BCF\u65E5\u6311\u6218\u914D\u7F6E\u751F\u6548");
+  ok(D.BOSS_SCHEDULE[D.BOSS_SCHEDULE.length - 1].t === 440 && AD_CONFIG2.levelBonusInterval === 90, "\u6700\u7EC8 Boss 7:20 \u767B\u573A\uFF0C\u5347\u7EA7\u989D\u5916\u9009\u62E9\u5E7F\u544A\u95F4\u9694 90 \u79D2");
+  section("\u89D2\u8272\u751F\u547D\u3001\u521D\u59CB\u6B66\u5668\u4E0E\u6389\u843D\u5149\u6548");
+  base();
+  Save2.data.lossStreak = 0;
+  Save2.data.power.maxhp = 0;
+  start();
+  ok(D.BASE_STATS.maxHp === 72 && B().stats.maxHp === 92, "\u57FA\u7840\u751F\u547D\u964D\u4F4E\u4E14\u89D2\u8272\u751F\u547D\u52A0\u6210\u4ECD\u751F\u6548");
+  ok(new Set(D.CHARACTERS.map((c) => c.weapon)).size === D.CHARACTERS.length && D.CHARACTERS.every((c) => D.WEAPONS.some((w) => w.id === c.weapon)), "\u6BCF\u4E2A\u89D2\u8272\u62E5\u6709\u4E0D\u540C\u7684\u6709\u6548\u521D\u59CB\u6B66\u5668");
+  B().spawnPickup("chicken", 500, 500, 1);
+  const special = B().pickups[B().pickups.length - 1];
+  ok(!!special.glow && special.glow.node.active, "\u7279\u6B8A\u6389\u843D\u663E\u793A\u5149\u6548");
+  B().pickups.pop();
+  B().freePickup(special);
+  B().spawnPickup("gem", 500, 500, 1);
+  const reused = B().pickups[B().pickups.length - 1];
+  ok(reused === special && !reused.glow.node.active, "\u5BF9\u8C61\u6C60\u590D\u7528\u4E3A\u5B9D\u77F3\u65F6\u9690\u85CF\u5149\u6548");
+  g.endRun(false);
+  section("\u989D\u5916\u5347\u7EA7\u4E0E\u5E7F\u544A\u89E3\u9501\u89D2\u8272");
+  base();
+  start();
+  const lbInt = AD_CONFIG2.levelBonusInterval;
+  B().time = lbInt - 1;
+  B().pendingLevels = 1;
+  g.openLevelUp();
+  ok(!g.adLevelBonusBtn.node.active, "\u5230\u8FBE\u95F4\u9694\u524D\u4E0D\u663E\u793A\u989D\u5916\u9009\u62E9\u5E7F\u544A");
+  B().time = lbInt;
+  g.fillCards();
+  ok(g.adLevelBonusBtn.node.active === (MODE === "B"), "\u5230\u8FBE\u95F4\u9694\u540E\u4EC5\u5728\u5E7F\u544A\u53EF\u7528\u65F6\u663E\u793A\u989D\u5916\u9009\u62E9");
+  if (MODE === "B") {
+    G.__adSkip = true;
+    g.adLevelBonusBtn.node.emit("te");
+    await wait();
+    ok(!g.adLevelBonusPending && B().pendingLevels === 1, "\u672A\u770B\u5B8C\u4E0D\u4F1A\u83B7\u5F97\u989D\u5916\u9009\u62E9");
+    G.__adSkip = false;
+    g.adLevelBonusBtn.node.emit("te");
+    await wait();
+    ok(g.adLevelBonusPending && !g.adLevelBonusBtn.node.active, "\u5B8C\u6574\u89C2\u770B\u540E\u83B7\u5F97\u4E00\u6B21\u989D\u5916\u9009\u62E9");
+    g.choose(0);
+    ok(g.state === "levelup" && B().pendingLevels === 1 && !g.adLevelBonusPending, "\u989D\u5916\u9009\u62E9\u4E0D\u6D88\u8017\u539F\u5347\u7EA7\u673A\u4F1A");
+    g.choose(0);
+    ok(B().pendingLevels === 0 && g.state === "play", "\u4E24\u6B21\u9009\u62E9\u5B8C\u6210\u540E\u6062\u590D\u6E38\u620F");
+    B().time = lbInt * 2 - 1;
+    B().pendingLevels = 1;
+    g.openLevelUp();
+    ok(!g.adLevelBonusBtn.node.active, "\u5E7F\u544A\u5956\u52B1\u6709\u51B7\u5374\u95F4\u9694");
+    B().time = lbInt * 2;
+    g.fillCards();
+    ok(g.adLevelBonusBtn.node.active, "\u95F4\u9694\u7ED3\u675F\u540E\u53EF\u518D\u6B21\u770B\u5E7F\u544A");
+  }
+  g.endRun(false);
+  base();
+  Save2.data.chars = ["hunter", "mage"];
+  Save2.data.gold = 0;
+  g.setState("chars");
+  const card = g.screens.chars.children.find((n) => n.children.some((c) => (c.comps || []).some((x) => x.string === "\u6E38\u4FA0\u86D9")));
+  const lock = card.children.find((n) => n.name === "lock");
+  const unlockAd = lock.children.find((n) => n.name === "ad-character");
+  ok(unlockAd.active === (MODE === "B"), "\u89D2\u8272\u5E7F\u544A\u5165\u53E3\u6309\u53EF\u7528\u6027\u663E\u793A");
+  if (MODE === "B") {
+    G.__adSkip = true;
+    const evt = {};
+    unlockAd.emit("te", evt);
+    await wait();
+    ok(evt.propagationStopped && !Save2.data.chars.includes("rogue"), "\u63D0\u524D\u5173\u95ED\u5E7F\u544A\u4E0D\u89E3\u9501\u4E14\u4E0D\u4F1A\u89E6\u53D1\u91D1\u5E01\u8D2D\u4E70");
+    G.__adSkip = false;
+    unlockAd.emit("te", {});
+    await wait();
+    ok(Save2.data.chars.includes("rogue") && Save2.data.selected === "rogue" && Save2.data.gold === 0, "\u5B8C\u6574\u89C2\u770B\u540E\u6C38\u4E45\u89E3\u9501\u5E76\u9009\u4E2D\u89D2\u8272\uFF0C\u4E0D\u6263\u91D1\u5E01");
+    ok(!lock.active, "\u89E3\u9501\u540E\u89D2\u8272\u5361\u79FB\u9664\u9501\u5B9A\u906E\u7F69");
   }
   section("\u68F1\u955C\u6FC0\u5149\u97F3\u6548");
   base();
@@ -12955,11 +13147,11 @@ if (MODE === "C") {
   step(1);
   clearCards();
   ok(!!B().daily && !B().nightmare, "\u6BCF\u65E5\u6311\u6218\u5F00\u5C40\uFF08\u4E0D\u53D7\u5669\u68A6\u5F71\u54CD\uFF09");
-  B().time = 599.9;
+  B().time = D.DAILY_GOAL - 0.1;
   B().hp = B().stats.maxHp;
   play(30);
   until("result", 400);
-  ok(Save2.data.dailyDone === today && g.resultHint.string.includes("+400"), "\u5B58\u6D3B 10 \u5206\u949F\u9886\u53D6 400 \u91D1\u5E01");
+  ok(Save2.data.dailyDone === today && g.resultHint.string.includes("+400"), "\u5B58\u6D3B 6 \u5206\u949F\u9886\u53D6 400 \u91D1\u5E01");
   section("\u9650\u65F6\u6D3B\u52A8");
   const at = (s) => D.activeEvent(/* @__PURE__ */ new Date(s + "T12:00:00"));
   ok(at("2026-12-25").id === "xmas" && at("2027-02-06").id === "cny" && !at("2027-01-15"), "\u5723\u8BDE / \u65B0\u6625\u6309\u65E5\u671F\u5F00\u542F");
@@ -12975,7 +13167,8 @@ if (MODE === "C") {
     Save2.data.stage = stage;
     Save2.data.chars = Save2.data.chars.filter((c) => c !== char);
     start();
-    B().time = 262;
+    B().bossIdx = 1;
+    B().time = 132;
     let killed = false;
     for (let i = 0; i < 60 * 40 && !killed; i++) {
       B().hp = B().stats.maxHp;
@@ -13030,7 +13223,8 @@ if (MODE === "C") {
   Save2.data.stages = ["grass", "snow", "lava", "swamp"];
   Save2.data.stage = "swamp";
   start();
-  B().time = 300;
+  B().bossIdx = 2;
+  B().time = 180;
   B().hazardT = 0.1;
   let clouds = 0;
   for (let i = 0; i < 60 * 25; i++) {
@@ -13041,12 +13235,13 @@ if (MODE === "C") {
     clouds = Math.max(clouds, B().pzones.filter((z4) => z4.alive && z4.kind === "poison").length);
   }
   ok(clouds > 0, "\u6BD2\u6CE1\u55B7\u53D1\u7559\u4E0B\u6BD2\u4E91");
-  ok(B().nextBoss()?.name === "\u6BD2\u6CBC\u5DE8\u87FE" || B().bossKills.length > 0, "\u6CBC\u6CFD 7:00 \u7684 Boss \u6362\u6210\u6BD2\u6CBC\u5DE8\u87FE");
+  ok(B().nextBoss()?.name === "\u6BD2\u6CBC\u5DE8\u87FE" || B().bossKills.length > 0, "\u6CBC\u6CFD 3:35 \u7684 Boss \u6362\u6210\u6BD2\u6CBC\u5DE8\u87FE");
   clearCards();
   g.endRun(false);
   base();
   start();
-  B().time = 430;
+  B().bossIdx = 3;
+  B().time = 230;
   for (const e of B().enemies) e.alive = false;
   B().summon("shroom", B().px + 30, B().py);
   const sh = B().enemies.find((e) => e.alive && e.def.burst);
@@ -13128,7 +13323,8 @@ if (MODE === "C") {
     Save2.data.chars = allIds;
     Save2.data.selected = id;
     start();
-    B().time = 300;
+    B().time = 150;
+    B().bossIdx = 2;
     play(60 * 3);
     const k02 = B().kills, hp0 = B().hp;
     B().ult = 1;
@@ -13227,7 +13423,7 @@ if (MODE === "C") {
   for (const ep of D.EPICS) {
     base();
     start();
-    B().time = 360;
+    B().time = 230;
     B().bossIdx = 3;
     play(60 * 2);
     B().spawnPickup("epic_" + ep.id, B().px, B().py, 0);
@@ -13318,6 +13514,7 @@ if (MODE === "C") {
   base();
   start();
   B().time = 100;
+  B().bossIdx = 2;
   B().shrineT = 0.01;
   step(2);
   const shrine = B().pickups.find((p) => p.alive && p.kind === "shrine");
@@ -13352,8 +13549,8 @@ if (MODE === "C") {
   Save2.data.stages = ["grass", "snow", "lava", "swamp", "desert"];
   Save2.data.stage = "desert";
   start();
-  B().time = 330;
-  B().bossIdx = 2;
+  B().time = 320;
+  B().bossIdx = 4;
   B().hazardT = 0.1;
   B().windT = 0.1;
   let tor = 0, wind = 0, threwD = "";
@@ -13371,14 +13568,14 @@ if (MODE === "C") {
   }
   ok(!threwD && tor > 0, "\u6D41\u6C99\u8352\u6F20\uFF1A\u9F99\u5377\u98CE\u51FA\u73B0" + threwD);
   ok(wind > 60, "\u6D41\u6C99\u8352\u6F20\uFF1A\u72C2\u98CE\u6301\u7EED\u6570\u79D2");
-  ok(D.ENEMIES.worm.boss && B().stage.bossSwap.eye === "worm", "\u6D41\u6C99\u8352\u6F20 12:00 \u7684 Boss \u6362\u6210\u6C99\u6F20\u5DE8\u8815");
+  ok(D.ENEMIES.worm.boss && B().stage.bossSwap.eye === "worm", "\u6D41\u6C99\u8352\u6F20 6:05 \u7684 Boss \u6362\u6210\u6C99\u6F20\u5DE8\u8815");
   clearCards();
   g.endRun(false);
   base();
   Save2.data.stages = ["grass", "snow", "lava", "swamp", "desert"];
   Save2.data.stage = "desert";
   start();
-  B().time = 715;
+  B().time = 360;
   B().bossIdx = 4;
   let wormSeen = false, wormKilled = false, under = false, threwW = "";
   try {
@@ -13404,7 +13601,7 @@ if (MODE === "C") {
   g.endRun(false);
   base();
   start();
-  B().time = 600;
+  B().time = 300;
   B().bossIdx = 5;
   play(30);
   for (const e of B().enemies) e.alive = false;
@@ -13483,8 +13680,8 @@ if (MODE === "C") {
     for (const evo of [false, true]) {
       base();
       start();
-      B().time = 300;
-      B().bossIdx = 2;
+      B().time = 240;
+      B().bossIdx = 3;
       B().weapons = [];
       B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w2) => w2.id === id), level: 1 });
       const w = B().weapons[0];
@@ -13525,8 +13722,8 @@ if (MODE === "C") {
   Save2.data.runs = 0;
   Save2.data.tutDone = true;
   start();
-  B().time = 200;
-  B().bossIdx = 1;
+  B().time = 160;
+  B().bossIdx = 3;
   B().dropT = 0.01;
   step(2);
   const pk0 = B().pickups.filter((p) => p.alive && p.kind !== "gem" && p.kind !== "coin").length;
@@ -13554,8 +13751,8 @@ if (MODE === "C") {
   g.endRun(false);
   base();
   start();
-  B().time = 330;
-  B().bossIdx = 2;
+  B().time = 240;
+  B().bossIdx = 3;
   play(10);
   B().mimicT = 0.01;
   step(2);
@@ -13576,8 +13773,8 @@ if (MODE === "C") {
   section("\u955C\u76FE / \u730E\u738B\u5FBD\u7AE0 / \u7FBD\u6BDB\u62AB\u98CE / \u7A7F\u7532\u7BAD\u5934");
   base();
   start();
-  B().time = 300;
-  B().bossIdx = 2;
+  B().time = 240;
+  B().bossIdx = 3;
   B().weapons = [];
   B().applyOption({ kind: "weapon", wdef: D.WEAPONS.find((w) => w.id === "mirror"), level: 1 });
   step(2);
@@ -13619,8 +13816,8 @@ if (MODE === "C") {
   section("\u86D9\u820C / \u8611\u83C7\u70AE\u53F0 / \u8377\u53F6\u5730\u96F7 / \u5148\u624B\u7B26 / \u5BFB\u5B9D\u7F57\u76D8 / \u82D4\u85D3\u62A4\u7532");
   base();
   start();
-  B().time = 300;
-  B().bossIdx = 2;
+  B().time = 240;
+  B().bossIdx = 3;
   play(10);
   for (const e of B().enemies) e.alive = false;
   step(1);

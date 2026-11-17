@@ -19,7 +19,7 @@ var __decorateClass = (decorators, target, key, kind) => {
 
 // ../promo/cc.ts
 import { createRequire } from "node:module";
-var Vec3, Vec2, Rect, Size, Color, Layers, nodeCount, Component, Node, UITransform, SpriteFrame, Sprite, Label, Canvas, ImageAsset, Texture2D, view, ResolutionPolicy, store, sys, game, Game, AudioClip, sfxLog, AudioSource, require2, resources, Input, inputHandlers, input, KeyCode, Director, director, _decorator;
+var Vec3, Vec2, Rect, Size, Color, Layers, nodeCount, Component, Node, UITransform, SpriteFrame, Sprite, Label, SubContextView, Canvas, ImageAsset, Texture2D, view, ResolutionPolicy, store, sys, game, Game, AudioClip, sfxLog, AudioSource, require2, resources, Input, inputHandlers, input, KeyCode, Director, director, _decorator;
 var init_cc = __esm({
   "../promo/cc.ts"() {
     Vec3 = class {
@@ -272,6 +272,13 @@ var init_cc = __esm({
         this._c = new Color(v.r, v.g, v.b, v.a);
       }
     };
+    SubContextView = class extends Component {
+      constructor() {
+        super(...arguments);
+        this.designResolutionSize = null;
+        this.fps = 60;
+      }
+    };
     Canvas = class extends Component {
       constructor() {
         super(...arguments);
@@ -393,6 +400,7 @@ function defaults() {
     lossStreak: 0,
     bonusDay: "",
     privacyOk: false,
+    privacyVer: 0,
     firstDay: "",
     runsSinceInter: 0,
     stage: "grass",
@@ -409,7 +417,10 @@ function defaults() {
     questDone: [],
     signCount: 0,
     signDate: "",
-    signShown: ""
+    signShown: "",
+    updatedAt: 0,
+    addTipShown: false,
+    unlockSeen: 0
   };
 }
 var KEY, Save;
@@ -421,6 +432,11 @@ var init_Save = __esm({
       static {
         this.data = defaults();
       }
+      static {
+        // 每次存档后回调（云存档用来安排上传）
+        this.onSaved = () => {
+        };
+      }
       static load() {
         try {
           const raw = sys.localStorage.getItem(KEY);
@@ -431,10 +447,20 @@ var init_Save = __esm({
         }
       }
       static save() {
+        this.data.updatedAt = Date.now();
         try {
           sys.localStorage.setItem(KEY, JSON.stringify(this.data));
         } catch (e) {
           console.warn("[Save] save failed", e);
+        }
+        this.onSaved();
+      }
+      // 用另一份存档（云端）整体替换本地，缺失字段补默认值；保留原 updatedAt 不触发回传
+      static replace(d2) {
+        this.data = Object.assign(defaults(), d2);
+        try {
+          sys.localStorage.setItem(KEY, JSON.stringify(this.data));
+        } catch (e) {
         }
       }
       static rank(id) {
@@ -508,10 +534,10 @@ function eventActive(now = /* @__PURE__ */ new Date()) {
   return !!activeEvent(now);
 }
 function xpForLevel(lv) {
-  if (lv < 10) return 5 + (lv - 1) * 5;
-  if (lv < 30) return 60 + (lv - 10) * 14;
-  if (lv < 50) return 340 + (lv - 30) * 26;
-  return 860 + (lv - 50) * 45;
+  if (lv < 10) return 4 + (lv - 1) * 5;
+  if (lv < 30) return 46 + (lv - 10) * 10;
+  if (lv < 50) return 246 + (lv - 30) * 18;
+  return 606 + (lv - 50) * 32;
 }
 function powerUpCost(def, rank, totalBought) {
   return Math.round(def.cost * (rank + 1) * (1 + 0.07 * Math.min(totalBought, 20)));
@@ -592,28 +618,28 @@ var init_Defs = __esm({
       mimic: { frames: ["mimic_0", "mimic_1"], hp: 70, speed: 115, dmg: 7, xp: 30, radius: 16, anim: 0.12, scale: 1.2, knockRes: 0.8, color: 11033128, mimic: true },
       fox: { frames: ["fox_0", "fox_1"], hp: 30, speed: 70, dmg: 6, xp: 4, radius: 12, anim: 0.18, color: 8016080, blink: true },
       // ---- Boss
-      slimeking: { frames: ["slimeking_0", "slimeking_1"], hp: 340, speed: 46, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 5227087, name: "\u53F2\u83B1\u59C6\u738B" },
-      bonelord: { frames: ["bonelord_0", "bonelord_1"], hp: 650, speed: 58, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 15657172, name: "\u94C1\u7532\u5C06\u519B" },
-      vampire: { frames: ["vampire_0", "vampire_1"], hp: 1100, speed: 70, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 10491944, name: "\u8759\u8760\u4F2F\u7235" },
-      lich: { frames: ["lich_0", "lich_1"], hp: 1400, speed: 48, dmg: 14, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 8446207, name: "\u51B0\u971C\u5DEB\u5E08" },
-      eye: { frames: ["eye_0", "eye_1"], hp: 1700, speed: 55, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 9058938, name: "\u6C34\u6676\u9B54\u773C" },
-      toad: { frames: ["toad_0", "toad_1"], hp: 1300, speed: 52, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 5929530, name: "\u6BD2\u6CBC\u5DE8\u87FE" },
-      yeti: { frames: ["yeti_0", "yeti_1"], hp: 950, speed: 70, dmg: 9, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 15266047, name: "\u96EA\u602A\u738B" },
-      worm: { frames: ["worm_0", "worm_1"], hp: 1800, speed: 60, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 13144154, name: "\u6C99\u6F20\u5DE8\u8815" },
-      nian: { frames: ["nian_0", "nian_1"], hp: 950, speed: 76, dmg: 9, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 14172202, name: "\u5E74\u517D" },
-      reaper: { frames: ["reaper_0", "reaper_1"], hp: 3e3, speed: 82, dmg: 17, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 9068736, name: "\u6697\u591C\u9B54\u672F\u5E08", final: true }
+      slimeking: { frames: ["slimeking_0", "slimeking_1"], hp: 420, speed: 48, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 5227087, name: "\u53F2\u83B1\u59C6\u738B" },
+      bonelord: { frames: ["bonelord_0", "bonelord_1"], hp: 800, speed: 60, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 15657172, name: "\u94C1\u7532\u5C06\u519B" },
+      vampire: { frames: ["vampire_0", "vampire_1"], hp: 1350, speed: 72, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 10491944, name: "\u8759\u8760\u4F2F\u7235" },
+      lich: { frames: ["lich_0", "lich_1"], hp: 1750, speed: 50, dmg: 15, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 8446207, name: "\u51B0\u971C\u5DEB\u5E08" },
+      eye: { frames: ["eye_0", "eye_1"], hp: 2200, speed: 58, dmg: 16, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 9058938, name: "\u6C34\u6676\u9B54\u773C" },
+      toad: { frames: ["toad_0", "toad_1"], hp: 1600, speed: 54, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 5929530, name: "\u6BD2\u6CBC\u5DE8\u87FE" },
+      yeti: { frames: ["yeti_0", "yeti_1"], hp: 1200, speed: 72, dmg: 10, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 15266047, name: "\u96EA\u602A\u738B" },
+      worm: { frames: ["worm_0", "worm_1"], hp: 2300, speed: 62, dmg: 16, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 13144154, name: "\u6C99\u6F20\u5DE8\u8815" },
+      nian: { frames: ["nian_0", "nian_1"], hp: 1200, speed: 78, dmg: 10, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 14172202, name: "\u5E74\u517D" },
+      reaper: { frames: ["reaper_0", "reaper_1"], hp: 4500, speed: 86, dmg: 18, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 9068736, name: "\u6697\u591C\u9B54\u672F\u5E08", final: true }
     };
     WAVES = [
-      { t: 0, types: ["rat", "rat", "rat", "bat"], interval: 0.45, batch: 3 },
-      { t: 40, types: ["rat", "rat", "bat", "slime"], interval: 0.5, batch: 4 },
-      { t: 90, types: ["rat", "bat", "slime", "zombie"], interval: 0.55, batch: 4 },
-      { t: 150, types: ["bat", "slime", "zombie", "rat"], interval: 0.6, batch: 5 },
-      { t: 210, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.6, batch: 5 },
-      { t: 300, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.55, batch: 5 },
-      { t: 420, types: ["ghost", "skeleton", "bat", "zombie", "shroom", "boar"], interval: 0.5, batch: 6 },
-      { t: 540, types: ["ghost", "skeleton", "skeleton", "zombie", "imp", "fox"], interval: 0.45, batch: 6 },
-      { t: 660, types: ["ghost", "skeleton", "mummy", "bat", "imp", "boar"], interval: 0.4, batch: 7 },
-      { t: 780, types: ["ghost", "skeleton", "mummy", "ghost", "imp", "fox"], interval: 0.35, batch: 8 }
+      { t: 0, types: ["rat", "rat", "rat", "bat"], interval: 0.42, batch: 3 },
+      { t: 25, types: ["rat", "rat", "bat", "slime"], interval: 0.46, batch: 4 },
+      { t: 50, types: ["rat", "bat", "slime", "zombie"], interval: 0.5, batch: 4 },
+      { t: 80, types: ["bat", "slime", "zombie", "rat"], interval: 0.52, batch: 5 },
+      { t: 115, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.52, batch: 5 },
+      { t: 165, types: ["skeleton", "zombie", "bat", "rat", "jelly"], interval: 0.48, batch: 5 },
+      { t: 225, types: ["ghost", "skeleton", "bat", "zombie", "shroom", "boar"], interval: 0.45, batch: 6 },
+      { t: 285, types: ["ghost", "skeleton", "skeleton", "zombie", "imp", "fox"], interval: 0.42, batch: 6 },
+      { t: 345, types: ["ghost", "skeleton", "mummy", "bat", "imp", "boar"], interval: 0.38, batch: 7 },
+      { t: 420, types: ["ghost", "skeleton", "mummy", "ghost", "imp", "fox"], interval: 0.33, batch: 8 }
     ];
     MONSTER_INFO = {
       rat: { name: "\u7070\u9F20", desc: "\u6700\u5F31\u5C0F\u7684\u602A\u7269\uFF0C\u4E00\u78B0\u5C31\u5012\uFF0C\u662F\u524D\u671F\u7ECF\u9A8C\u7684\u4E3B\u8981\u6765\u6E90\u3002" },
@@ -621,37 +647,37 @@ var init_Defs = __esm({
       slime: { name: "\u53F2\u83B1\u59C6", desc: "\u9ECF\u7CCA\u7CCA\u7684\u5C0F\u5BB6\u4F19\uFF0C\u53F2\u83B1\u59C6\u738B\u7684\u5B50\u6C11\u3002" },
       zombie: { name: "\u6CE5\u5DF4\u602A", desc: "\u5706\u6EDA\u6EDA\u7684\u6CE5\u56E2\uFF0C\u8D70\u5F97\u6162\u4F46\u5F88\u7ED3\u5B9E\uFF0C\u4E0D\u5BB9\u6613\u88AB\u51FB\u9000\u3002" },
       skeleton: { name: "\u6728\u5076\u5175", desc: "\u6728\u5934\u505A\u7684\u5C0F\u5175\uFF0C\u901F\u5EA6\u548C\u529B\u6C14\u90FD\u4E0D\u5C0F\uFF0C\u4E2D\u671F\u4E3B\u529B\u3002" },
-      ghost: { name: "\u4E91\u6735\u7CBE", desc: "7 \u5206\u949F\u540E\u51FA\u73B0\uFF0C\u98D8\u5F97\u98DE\u5FEB\uFF0C\u6297\u51FB\u9000\u3002" },
-      shroom: { name: "\u7206\u70B8\u8611\u83C7", desc: "7 \u5206\u949F\u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u540E\u4F1A\u5728\u7EA2\u5708\u91CC\u7206\u70B8\u2014\u2014\u522B\u7AD9\u5728\u65C1\u8FB9\uFF0C\u4F46\u53EF\u4EE5\u7528\u5B83\u70B8\u6389\u602A\u7FA4\uFF01" },
-      imp: { name: "\u5C0F\u706B\u7075", desc: "\u4F1A\u8FDC\u7A0B\u53D1\u5C04\u5C0F\u706B\u7403\uFF0C\u4F18\u5148\u6E05\u7406\uFF01" },
+      ghost: { name: "\u4E91\u6735\u7CBE", desc: "3:45 \u540E\u51FA\u73B0\uFF0C\u98D8\u5F97\u98DE\u5FEB\uFF0C\u6297\u51FB\u9000\u3002" },
+      shroom: { name: "\u7206\u70B8\u8611\u83C7", desc: "3:45 \u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u540E\u4F1A\u5728\u7EA2\u5708\u91CC\u7206\u70B8\u2014\u2014\u522B\u7AD9\u5728\u65C1\u8FB9\uFF0C\u4F46\u53EF\u4EE5\u7528\u5B83\u70B8\u6389\u602A\u7FA4\uFF01" },
+      imp: { name: "\u5C0F\u706B\u7075", desc: "4:45 \u540E\u51FA\u73B0\uFF0C\u4F1A\u8FDC\u7A0B\u53D1\u5C04\u5C0F\u706B\u7403\uFF0C\u4F18\u5148\u6E05\u7406\uFF01" },
       mummy: { name: "\u7A3B\u8349\u4EBA", desc: "\u540E\u671F\u51FA\u73B0\u7684\u5927\u5757\u5934\uFF0C\u751F\u547D\u503C\u6781\u9AD8\u3002" },
-      jelly: { name: "\u679C\u51BB\u602A", desc: "3:30 \u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u65F6\u4F1A\u5206\u88C2\u6210\u4E24\u53EA\u8DD1\u5F97\u66F4\u5FEB\u7684\u5C0F\u679C\u51BB\u3002" },
+      jelly: { name: "\u679C\u51BB\u602A", desc: "1:55 \u540E\u51FA\u73B0\u3002\u88AB\u51FB\u8D25\u65F6\u4F1A\u5206\u88C2\u6210\u4E24\u53EA\u8DD1\u5F97\u66F4\u5FEB\u7684\u5C0F\u679C\u51BB\u3002" },
       jellet: { name: "\u5C0F\u679C\u51BB", desc: "\u679C\u51BB\u602A\u5206\u88C2\u51FA\u6765\u7684\u5C0F\u5BB6\u4F19\uFF0C\u53C8\u5FEB\u53C8\u8106\u3002" },
-      boar: { name: "\u51B2\u950B\u91CE\u732A", desc: "7:00 \u540E\u51FA\u73B0\u3002\u9760\u8FD1\u65F6\u4F1A\u505C\u4E0B\u84C4\u529B\uFF0C\u6CBF\u7EA2\u7EBF\u9AD8\u901F\u51B2\u649E\u2014\u2014\u770B\u5230\u7EA2\u7EBF\u5C31\u4FA7\u8EAB\u8EB2\u5F00\uFF01" },
-      fox: { name: "\u95EA\u73B0\u72D0", desc: "9:00 \u540E\u51FA\u73B0\u3002\u4F1A\u7A81\u7136\u95EA\u73B0\u5230\u4F60\u8EAB\u8FB9\uFF0C\u7D2B\u5708\u5C31\u662F\u5B83\u7684\u843D\u70B9\u3002" },
-      mimic: { name: "\u5B9D\u7BB1\u602A", desc: "5:00 \u540E\u5076\u5C14\u51FA\u73B0\uFF0C\u4F2A\u88C5\u6210\u5B9D\u7BB1\u3002\u9760\u8FD1\u5C31\u4F1A\u5F20\u5F00\u5927\u5634\u6251\u8FC7\u6765\u2014\u2014\u51FB\u8D25\u5B83\u5FC5\u6389\u795E\u5175\uFF01" },
+      boar: { name: "\u51B2\u950B\u91CE\u732A", desc: "3:45 \u540E\u51FA\u73B0\u3002\u9760\u8FD1\u65F6\u4F1A\u505C\u4E0B\u84C4\u529B\uFF0C\u6CBF\u7EA2\u7EBF\u9AD8\u901F\u51B2\u649E\u2014\u2014\u770B\u5230\u7EA2\u7EBF\u5C31\u4FA7\u8EAB\u8EB2\u5F00\uFF01" },
+      fox: { name: "\u95EA\u73B0\u72D0", desc: "4:45 \u540E\u51FA\u73B0\u3002\u4F1A\u7A81\u7136\u95EA\u73B0\u5230\u4F60\u8EAB\u8FB9\uFF0C\u7D2B\u5708\u5C31\u662F\u5B83\u7684\u843D\u70B9\u3002" },
+      mimic: { name: "\u5B9D\u7BB1\u602A", desc: "2:40 \u540E\u5076\u5C14\u51FA\u73B0\uFF0C\u4F2A\u88C5\u6210\u5B9D\u7BB1\u3002\u9760\u8FD1\u5C31\u4F1A\u5F20\u5F00\u5927\u5634\u6251\u8FC7\u6765\u2014\u2014\u51FB\u8D25\u5B83\u5FC5\u6389\u795E\u5175\uFF01" },
       goldrat: { name: "\u91D1\u9F20", desc: "\u7A00\u6709\uFF01\u8DD1\u5F97\u98DE\u5FEB\uFF0C\u51FB\u8D25\u53EF\u83B7\u5F97\u5927\u91CF\u91D1\u5E01\u3002" },
-      slimeking: { name: "\u53F2\u83B1\u59C6\u738B", desc: "\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3001\u4F53\u529B\u51CF\u534A\u65F6\u5206\u88C2\u30022:00 \u767B\u573A\u3002" },
-      bonelord: { name: "\u94C1\u7532\u5C06\u519B", desc: "\u94A2\u523A\u73AF\u3001\u9884\u8B66\u51B2\u950B\u3001\u53EC\u5524\u6728\u5076\u5175\u30024:30 \u767B\u573A\u3002" },
-      vampire: { name: "\u8759\u8760\u4F2F\u7235", desc: "\u9B54\u6CD5\u5F39\u6247\u5C04\u3001\u77AC\u79FB\u9B54\u6CD5\u73AF\u3001\u8759\u8760\u98CE\u66B4\u30027:00 \u767B\u573A\u3002" },
-      lich: { name: "\u51B0\u971C\u5DEB\u5E08", desc: "\u51B0\u971C\u87BA\u65CB\u5F39\u5E55\u3001\u51B0\u9525\u9635\u3001\u51CF\u901F\u51B0\u57DF\u30029:30 \u767B\u573A\u3002" },
-      eye: { name: "\u6C34\u6676\u9B54\u773C", desc: "\u9B54\u6CD5\u5149\u675F\u626B\u5C04\u3001\u8FFD\u8E2A\u5149\u7403\u3001\u53CC\u5C42\u5F39\u73AF\u300212:00 \u767B\u573A\u3002" },
-      reaper: { name: "\u6697\u591C\u9B54\u672F\u5E08", desc: "\u6700\u7EC8 Boss\uFF1A\u56DE\u65CB\u98DE\u724C\u3001\u8FDE\u7EED\u51B2\u523A\u3001\u5E7B\u5F71\u53EC\u5524\u3002\u51FB\u8D25\u5373\u80DC\u5229\u3002" },
-      worm: { name: "\u6C99\u6F20\u5DE8\u8815", desc: "\u6D41\u6C99\u8352\u6F20 12:00 \u767B\u573A\uFF1A\u94BB\u5165\u6C99\u4E2D\u8FFD\u8E2A\u3001\u7834\u571F\u800C\u51FA\u6380\u8D77\u6C99\u5F39\u73AF\u3001\u55B7\u5410\u6C99\u6D41\u3001\u53EC\u5524\u51B2\u950B\u91CE\u732A\u3002" },
-      toad: { name: "\u6BD2\u6CBC\u5DE8\u87FE", desc: "\u6BD2\u96FE\u6CBC\u6CFD 7:00 \u767B\u573A\uFF1A\u6BD2\u6DB2\u55B7\u5410\u3001\u957F\u820C\u7A81\u523A\u3001\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3002" },
+      slimeking: { name: "\u53F2\u83B1\u59C6\u738B", desc: "\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3001\u4F53\u529B\u51CF\u534A\u65F6\u5206\u88C2\u30021:05 \u767B\u573A\u3002" },
+      bonelord: { name: "\u94C1\u7532\u5C06\u519B", desc: "\u94A2\u523A\u73AF\u3001\u9884\u8B66\u51B2\u950B\u3001\u53EC\u5524\u6728\u5076\u5175\u30022:20 \u767B\u573A\u3002" },
+      vampire: { name: "\u8759\u8760\u4F2F\u7235", desc: "\u9B54\u6CD5\u5F39\u6247\u5C04\u3001\u77AC\u79FB\u9B54\u6CD5\u73AF\u3001\u8759\u8760\u98CE\u66B4\u30023:35 \u767B\u573A\u3002" },
+      lich: { name: "\u51B0\u971C\u5DEB\u5E08", desc: "\u51B0\u971C\u87BA\u65CB\u5F39\u5E55\u3001\u51B0\u9525\u9635\u3001\u51CF\u901F\u51B0\u57DF\u30024:50 \u767B\u573A\u3002" },
+      eye: { name: "\u6C34\u6676\u9B54\u773C", desc: "\u9B54\u6CD5\u5149\u675F\u626B\u5C04\u3001\u8FFD\u8E2A\u5149\u7403\u3001\u53CC\u5C42\u5F39\u73AF\u30026:05 \u767B\u573A\u3002" },
+      reaper: { name: "\u6697\u591C\u9B54\u672F\u5E08", desc: "\u6700\u7EC8 Boss\uFF1A\u56DE\u65CB\u98DE\u724C\u3001\u8FDE\u7EED\u51B2\u523A\u3001\u5E7B\u5F71\u53EC\u5524\u30027:20 \u767B\u573A\uFF0C\u51FB\u8D25\u5373\u80DC\u5229\u3002" },
+      worm: { name: "\u6C99\u6F20\u5DE8\u8815", desc: "\u6D41\u6C99\u8352\u6F20 6:05 \u767B\u573A\uFF1A\u94BB\u5165\u6C99\u4E2D\u8FFD\u8E2A\u3001\u7834\u571F\u800C\u51FA\u6380\u8D77\u6C99\u5F39\u73AF\u3001\u55B7\u5410\u6C99\u6D41\u3001\u53EC\u5524\u51B2\u950B\u91CE\u732A\u3002" },
+      toad: { name: "\u6BD2\u6CBC\u5DE8\u87FE", desc: "\u6BD2\u96FE\u6CBC\u6CFD 3:35 \u767B\u573A\uFF1A\u6BD2\u6DB2\u55B7\u5410\u3001\u957F\u820C\u7A81\u523A\u3001\u8DF3\u8DC3\u7838\u5730\u3001\u53EC\u5524\u53F2\u83B1\u59C6\u3002" },
       yeti: { name: "\u96EA\u602A\u738B", desc: "\u5723\u8BDE\u9650\u5B9A\uFF1A\u96EA\u7403\u8FDE\u5C04\u3001\u51B0\u9525\u9635\u3001\u51B2\u950B\u649E\u51FB\u3001\u53EC\u5524\u4E91\u6735\u7CBE\u3002" },
       nian: { name: "\u5E74\u517D", desc: "\u65B0\u6625\u9650\u5B9A\uFF1A\u7206\u7AF9\u4E71\u5C04\u3001\u8FDE\u7EED\u51B2\u649E\u3001\u70DF\u82B1\u9F50\u653E\u3001\u6012\u543C\u53EC\u5524\u3002" }
     };
     BOSS_SCHEDULE = [
-      { t: 120, id: "slimeking" },
-      { t: 270, id: "bonelord" },
-      { t: 420, id: "vampire" },
-      { t: 570, id: "lich" },
-      { t: 720, id: "eye" },
-      { t: 840, id: "reaper" }
+      { t: 65, id: "slimeking" },
+      { t: 140, id: "bonelord" },
+      { t: 215, id: "vampire" },
+      { t: 290, id: "lich" },
+      { t: 365, id: "eye" },
+      { t: 440, id: "reaper" }
     ];
-    SWARM_TIMES = [75, 200, 360, 500, 650];
-    WIN_TIME = 900;
+    SWARM_TIMES = [40, 110, 190, 270, 350];
+    WIN_TIME = 480;
     STAGES = [
       {
         id: "grass",
@@ -757,7 +783,7 @@ var init_Defs = __esm({
       }
     ];
     EVENT = { force: false };
-    BLOOD_MOON = 780;
+    BLOOD_MOON = 420;
     MAX_ENEMIES = 340;
     WEAPONS = [
       {
@@ -1146,7 +1172,7 @@ var init_Defs = __esm({
       }
     ];
     BASE_STATS = {
-      maxHp: 90,
+      maxHp: 72,
       might: 1,
       armor: 0,
       recovery: 0,
@@ -1253,7 +1279,7 @@ var init_Defs = __esm({
       { id: "sage", name: "\u957F\u8001\u86D9", title: "\u8001\u8D24\u8005", sprite: "hero_sage", weapon: "lightning", desc: "\u51B7\u5374 -10%\uFF0C\u8303\u56F4 +10%", bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: "\u5929\u96F7", trait: "\u6BCF 7 \u79D2\u53EC\u5524 3 \u9053\u843D\u96F7\u5288\u5411\u5C4F\u5E55\u5185\u654C\u4EBA", ultName: "\u96F7\u66B4\u5929\u7F5A", ult: "4 \u79D2\u96F7\u66B4\uFF0C\u843D\u96F7\u4E0D\u65AD\u5288\u5411\u5C4F\u5E55\u5185\u7684\u654C\u4EBA", charge: "time" },
       { id: "druid", name: "\u5FB7\u9C81\u4F0A\u86D9", title: "\u68EE\u6797\u5B88\u62A4\u8005", sprite: "hero_druid", weapon: "spikes", desc: "\u6BCF\u79D2\u6062\u590D +0.4\uFF0C\u8303\u56F4 +10%", bonus: { recovery: 0.4, area: 0.1 }, cost: 3e3, traitName: "\u85E4\u8513\u7F20\u7ED5", trait: "\u6BCF 9 \u79D2\u7528\u85E4\u8513\u5B9A\u4F4F\u8EAB\u8FB9\u7684\u654C\u4EBA 1.5 \u79D2", ultName: "\u4E07\u6728\u56DE\u6625", ult: "\u85E4\u8513\u628A\u5468\u56F4\u654C\u4EBA\u62C9\u5230\u8EAB\u8FB9\u7F20\u4F4F 2.5 \u79D2\uFF0C\u56DE\u590D 15% \u751F\u547D", charge: "still" },
       { id: "prism", name: "\u68F1\u955C\u86D9", title: "\u5149\u5B66\u602A\u624D", sprite: "hero_prism", weapon: "laser", desc: "\u66B4\u51FB\u7387 +8%\uFF0C\u4F24\u5BB3 +10%", bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: "\u6298\u5C04", trait: "\u66B4\u51FB\u65F6 35% \u51E0\u7387\u6298\u5C04\u5230\u9644\u8FD1\u654C\u4EBA\uFF0850% \u4F24\u5BB3\uFF09", ultName: "\u5149\u8C31\u7206\u53D1", ult: "\u5411\u56DB\u9762\u516B\u65B9\u8FDE\u5C04\u4E09\u8F6E\u5F69\u8679\u5149\u675F", charge: "crit" },
-      { id: "fu", name: "\u798F\u86D9", title: "\u65B0\u6625\u9650\u5B9A", sprite: "hero_fu", weapon: "bomb", desc: "\u91D1\u5E01 +30%\uFF0C\u6700\u5927\u751F\u547D +20", bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: "\u62DB\u8D22\u8FDB\u5B9D", trait: "\u62FE\u53D6\u91D1\u5E01\u65F6 20% \u51E0\u7387\u7FFB\u500D", ultName: "\u8D22\u795E\u5230", ult: "\u8EAB\u8FB9\u7684\u5C0F\u602A\u5168\u90E8\u53D8\u6210\u91D1\u5E01\uFF0C\u7CBE\u82F1\u602A\u53D7\u91CD\u521B", charge: "gold" },
+      { id: "fu", name: "\u798F\u86D9", title: "\u65B0\u6625\u9650\u5B9A", sprite: "hero_fu", weapon: "cross", desc: "\u91D1\u5E01 +30%\uFF0C\u6700\u5927\u751F\u547D +20", bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: "\u62DB\u8D22\u8FDB\u5B9D", trait: "\u62FE\u53D6\u91D1\u5E01\u65F6 20% \u51E0\u7387\u7FFB\u500D", ultName: "\u8D22\u795E\u5230", ult: "\u8EAB\u8FB9\u7684\u5C0F\u602A\u5168\u90E8\u53D8\u6210\u91D1\u5E01\uFF0C\u7CBE\u82F1\u602A\u53D7\u91CD\u521B", charge: "gold" },
       { id: "santa", name: "\u5723\u8BDE\u86D9", title: "\u5723\u8BDE\u9650\u5B9A", sprite: "hero_santa", weapon: "frost", desc: "\u91D1\u5E01 +20%\uFF0C\u51B7\u5374 -8%", bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: "\u5723\u8BDE\u793C\u7269", trait: "\u6BCF 70 \u79D2\u8EAB\u8FB9\u6389\u843D\u4E00\u4E2A\u968F\u673A\u589E\u76CA\u9053\u5177", ultName: "\u5723\u8BDE\u96EA\u6A47", ult: "\u96EA\u6A47\u98DE\u8FC7\u6295\u4E0B\u4E00\u4E32\u793C\u7269\u70B8\u5F39\uFF0C\u5E76\u9001\u51FA\u4E00\u4E2A\u589E\u76CA\u9053\u5177", charge: "time" }
     ];
     POWERUPS = [
@@ -1297,7 +1323,7 @@ var init_Defs = __esm({
     ACHIEVEMENTS = [
       { id: "win1", name: "\u521D\u6B21\u80DC\u5229", desc: "\u8D62\u5F97\u4E00\u5C40\u6E38\u620F", gold: 500 },
       { id: "kill1k", name: "\u5272\u8349\u80FD\u624B", desc: "\u5355\u5C40\u51FB\u8D25 1000 \u4E2A\u654C\u4EBA", gold: 200 },
-      { id: "kill5k", name: "\u5272\u8349\u5927\u5E08", desc: "\u5355\u5C40\u51FB\u8D25 5000 \u4E2A\u654C\u4EBA", gold: 600 },
+      { id: "kill5k", name: "\u5272\u8349\u5927\u5E08", desc: "\u5355\u5C40\u51FB\u8D25 3000 \u4E2A\u654C\u4EBA", gold: 600 },
       { id: "combo500", name: "\u65E0\u53CC", desc: "\u8FBE\u6210 500 \u8FDE\u51FB", gold: 300 },
       { id: "lv50", name: "\u767B\u5CF0\u9020\u6781", desc: "\u5355\u5C40\u8FBE\u5230 50 \u7EA7", gold: 300 },
       { id: "evo1", name: "\u8FDB\u5316", desc: "\u8FDB\u5316\u4E00\u628A\u6B66\u5668", gold: 300 },
@@ -1309,7 +1335,7 @@ var init_Defs = __esm({
       { id: "boss_eye", name: "\u95ED\u76EE", desc: "\u51FB\u8D25\u6C34\u6676\u9B54\u773C", gold: 350 },
       { id: "boss_reaper", name: "\u8C22\u5E55", desc: "\u51FB\u8D25\u6697\u591C\u9B54\u672F\u5E08", gold: 800 },
       { id: "goldrat", name: "\u6355\u9F20\u8FBE\u4EBA", desc: "\u6293\u4F4F\u4E00\u53EA\u91D1\u9F20", gold: 150 },
-      { id: "endless20", name: "\u6C38\u591C\u884C\u8005", desc: "\u65E0\u5C3D\u6A21\u5F0F\u5B58\u6D3B 20 \u5206\u949F", gold: 1e3 },
+      { id: "endless20", name: "\u6C38\u591C\u884C\u8005", desc: "\u65E0\u5C3D\u6A21\u5F0F\u5B58\u6D3B 12 \u5206\u949F", gold: 1e3 },
       { id: "allchars", name: "\u5168\u5458\u96C6\u7ED3", desc: "\u89E3\u9501\u5168\u90E8\u89D2\u8272", gold: 1e3 },
       { id: "nightmare1", name: "\u5669\u68A6\u5F81\u670D\u8005", desc: "\u5728\u5669\u68A6\u96BE\u5EA6\u4E0B\u53D6\u5F97\u80DC\u5229", gold: 1500 },
       { id: "codex_half", name: "\u6536\u85CF\u5BB6", desc: "\u56FE\u9274\u6536\u96C6\u8FBE\u5230 50%", gold: 300 },
@@ -1325,9 +1351,9 @@ var init_Defs = __esm({
       { id: "boss_nian", name: "\u9A71\u9010\u5E74\u517D", desc: "\u51FB\u8D25\u65B0\u6625\u9650\u5B9A Boss \u5E74\u517D", gold: 600 },
       { id: "epic3", name: "\u795E\u5175\u6536\u85CF\u5BB6", desc: "\u5355\u5C40\u4F7F\u7528 3 \u628A\u795E\u5175", gold: 300 },
       { id: "trial2", name: "\u8BD5\u70BC\u52C7\u8005", desc: "\u5355\u5C40\u5B8C\u6210 2 \u6B21\u8BD5\u70BC", gold: 400 },
-      { id: "ult10", name: "\u5927\u62DB\u72C2\u9B54", desc: "\u5355\u5C40\u91CA\u653E 10 \u6B21\u5927\u62DB", gold: 300 }
+      { id: "ult10", name: "\u5927\u62DB\u72C2\u9B54", desc: "\u5355\u5C40\u91CA\u653E 6 \u6B21\u5927\u62DB", gold: 300 }
     ];
-    ENDLESS_BOSS_INTERVAL = 150;
+    ENDLESS_BOSS_INTERVAL = 90;
     DAILY_MODS = [
       { id: "fast", name: "\u602A\u6F6E\u72C2\u5954", desc: "\u602A\u7269\u79FB\u52A8\u901F\u5EA6 +25%" },
       { id: "xp2", name: "\u7ECF\u9A8C\u7FFB\u500D", desc: "\u7ECF\u9A8C \xD72\uFF0C\u4F46\u602A\u7269\u751F\u547D +50%" },
@@ -1336,7 +1362,7 @@ var init_Defs = __esm({
       { id: "horde", name: "\u65E0\u5C3D\u602A\u6F6E", desc: "\u602A\u7269\u6570\u91CF +40%" },
       { id: "glass", name: "\u6613\u788E\u5976\u86D9", desc: "\u53D7\u5230\u4F24\u5BB3 \xD71.5\uFF0C\u9020\u6210\u4F24\u5BB3 +40%" }
     ];
-    DAILY_GOAL = 600;
+    DAILY_GOAL = 360;
     DAILY_REWARD = 400;
     PICKUP_INFO = {
       chicken: { name: "\u70E4\u9E21\u817F", desc: "\u56DE\u590D 30 \u751F\u547D\u3002\u5F88\u7A00\u6709\uFF0C\u7701\u7740\u70B9\u53D7\u4F24\uFF01" },
@@ -1390,10 +1416,10 @@ var init_Defs = __esm({
     ];
     ENEMY_IDS = new Map(Object.keys(ENEMIES).map((k) => [ENEMIES[k], k]));
     QUEST_POOL = [
-      { id: "kills1", stat: "kills", n: 1500, name: "\u7D2F\u8BA1\u51FB\u8D25 1500 \u53EA\u602A\u7269", gold: 120 },
-      { id: "kills2", stat: "kills", n: 4e3, name: "\u7D2F\u8BA1\u51FB\u8D25 4000 \u53EA\u602A\u7269", gold: 200 },
-      { id: "time1", stat: "time", n: 300, name: "\u5355\u5C40\u5B58\u6D3B 5 \u5206\u949F", gold: 100, best: true },
-      { id: "time2", stat: "time", n: 540, name: "\u5355\u5C40\u5B58\u6D3B 9 \u5206\u949F", gold: 180, best: true },
+      { id: "kills1", stat: "kills", n: 1e3, name: "\u7D2F\u8BA1\u51FB\u8D25 1000 \u53EA\u602A\u7269", gold: 120 },
+      { id: "kills2", stat: "kills", n: 2500, name: "\u7D2F\u8BA1\u51FB\u8D25 2500 \u53EA\u602A\u7269", gold: 200 },
+      { id: "time1", stat: "time", n: 180, name: "\u5355\u5C40\u5B58\u6D3B 3 \u5206\u949F", gold: 100, best: true },
+      { id: "time2", stat: "time", n: 360, name: "\u5355\u5C40\u5B58\u6D3B 6 \u5206\u949F", gold: 180, best: true },
       { id: "boss", stat: "boss", n: 3, name: "\u7D2F\u8BA1\u51FB\u8D25 3 \u4E2A Boss", gold: 150 },
       { id: "evolve", stat: "evolve", n: 1, name: "\u8FDB\u5316 1 \u628A\u6B66\u5668", gold: 180 },
       { id: "gold", stat: "gold", n: 300, name: "\u7D2F\u8BA1\u62FE\u53D6 300 \u91D1\u5E01", gold: 100 },
@@ -1421,7 +1447,7 @@ var init_AdConfig = __esm({
   "../../assets/scripts/AdConfig.ts"() {
     AD_CONFIG = {
       // 激励视频广告位 ID（形如 adunit-xxxxxxxxxxxx），所有激励位共用
-      rewarded: "",
+      rewarded: "adunit-ea4d829bade8bc16",
       // 可选：按位置单独配置激励视频广告位（便于在后台分别统计收益），留空则使用 rewarded
       rewardedByPlace: {
         revive: "",
@@ -1434,14 +1460,19 @@ var init_AdConfig = __esm({
         // 宝箱再开一次
         blessing: "",
         // 开局额外命运卡
-        signin: ""
+        signin: "",
         // 签到双倍
+        level_bonus: "",
+        // 升级额外选择
+        character: ""
+        // 解锁角色
       },
       // 插屏广告位 ID：只在结算后弹出，每 N 局一次，新用户首日不弹
       interstitial: "",
       interstitialEvery: 3,
       // 每局次数上限
       rerollPerRun: 2,
+      levelBonusInterval: 90,
       // 调试：true 时在浏览器预览中模拟"看完广告"直接发奖，便于测试流程；上线前务必改回 false
       debugFake: false
     };
@@ -1594,6 +1625,12 @@ var init_Ads = __esm({
         this.fails = /* @__PURE__ */ new Map();
       }
       static {
+        this.retryAt = /* @__PURE__ */ new Map();
+      }
+      static {
+        this.activeUnit = "";
+      }
+      static {
         this.inter = null;
       }
       static {
@@ -1619,8 +1656,16 @@ var init_Ads = __esm({
             try {
               const ad = a.createRewardedVideoAd({ adUnitId: id });
               ad.onLoad(() => this.fails.set(id, 0));
-              ad.onError(() => this.fails.set(id, (this.fails.get(id) || 0) + 1));
-              ad.onClose((res2) => this.finish({ ok: !res2 || res2.isEnded !== false, reason: res2 && res2.isEnded === false ? "skipped" : void 0 }));
+              ad.onError(() => {
+                this.fails.set(id, (this.fails.get(id) || 0) + 1);
+                this.retryAt.set(id, Date.now() + 6e4);
+              });
+              ad.onClose((res2) => {
+                if (!this.busy || this.activeUnit !== id) return;
+                const ok = res2 === void 0 || res2 != null && res2.isEnded === true;
+                this.fails.set(id, 0);
+                this.finish({ ok, reason: ok ? void 0 : "skipped" });
+              });
               this.units.set(id, ad);
             } catch (e) {
             }
@@ -1643,11 +1688,11 @@ var init_Ads = __esm({
       static unitFor(place) {
         return AD_CONFIG.rewardedByPlace[place] || AD_CONFIG.rewarded;
       }
-      // 某个位置当前能否展示激励视频（未配置 / 非小游戏环境 / 连续拉取失败 3 次 → 不可用）
+      // 某个位置当前能否展示激励视频（未配置 / 非小游戏环境 / 连续拉取失败 3 次 → 冷却 60 秒后允许重试）
       static canReward(place) {
         if (AD_CONFIG.debugFake) return true;
         const id = this.unitFor(place);
-        return !!id && this.units.has(id) && (this.fails.get(id) || 0) < 3;
+        return !!id && this.units.has(id) && ((this.fails.get(id) || 0) < 3 || Date.now() >= (this.retryAt.get(id) || 0));
       }
       static showReward(place, cb) {
         if (this.busy) return;
@@ -1661,13 +1706,15 @@ var init_Ads = __esm({
           return;
         }
         this.busy = true;
+        this.activeUnit = this.unitFor(place);
         this.pending = cb;
         this.bgmWasPlaying = Sound.bgmPlaying();
         Sound.pauseBgm();
-        ad.show().catch(() => {
-          ad.load().then(() => ad.show()).catch(() => {
+        Promise.resolve().then(() => ad.show()).catch(() => {
+          Promise.resolve().then(() => ad.load()).then(() => ad.show()).catch(() => {
             const id = this.unitFor(place);
             this.fails.set(id, (this.fails.get(id) || 0) + 1);
+            this.retryAt.set(id, Date.now() + 6e4);
             this.finish({ ok: false, reason: "error" });
           });
         });
@@ -1675,22 +1722,83 @@ var init_Ads = __esm({
       static finish(r) {
         const cb = this.pending;
         this.pending = null;
+        this.activeUnit = "";
         this.busy = false;
         if (this.bgmWasPlaying) Sound.resumeBgm();
         if (cb) cb(r);
       }
-      // 结算后调用：每 N 局一次插屏；新用户首日、本次结算已看过激励视频时不弹
+      // 结算后调用：每 N 局一次插屏；新用户首日、本次结算已看过激励视频时不弹。返回是否尝试弹出
       static afterRun(watchedReward) {
         const d2 = Save.data;
         d2.runsSinceInter = (d2.runsSinceInter || 0) + 1;
         Save.save();
-        if (!this.inter || watchedReward) return;
-        if (d2.firstDay === (/* @__PURE__ */ new Date()).toDateString()) return;
-        if (d2.runsSinceInter < AD_CONFIG.interstitialEvery) return;
+        if (!this.inter || watchedReward) return false;
+        if (d2.firstDay === (/* @__PURE__ */ new Date()).toDateString()) return false;
+        if (d2.runsSinceInter < AD_CONFIG.interstitialEvery) return false;
         d2.runsSinceInter = 0;
         Save.save();
         this.inter.show().catch(() => {
         });
+        return true;
+      }
+    };
+  }
+});
+
+// ../../assets/scripts/Analytics.ts
+var Analytics;
+var init_Analytics = __esm({
+  "../../assets/scripts/Analytics.ts"() {
+    init_Ads();
+    init_Save();
+    Analytics = class {
+      static {
+        // true 时在控制台打印每条埋点，便于在预览中核对
+        this.debug = false;
+      }
+      static {
+        // 最近上报的事件（测试与调试用，最多保留 50 条）
+        this.log = [];
+      }
+      static track(id, data = {}) {
+        this.log.push({ id, data });
+        if (this.log.length > 50) this.log.shift();
+        if (this.debug) console.log("[Analytics]", id, JSON.stringify(data));
+        const a = mgApi();
+        if (!a) return;
+        try {
+          if (a.reportEvent) a.reportEvent(id, data);
+          else if (a.reportAnalytics) a.reportAnalytics(id, data);
+        } catch (e) {
+        }
+      }
+      // 热启动（从后台回到游戏，例如点开别人分享的卡片）也记录场景值；冷启动由 launch 事件记录
+      static init() {
+        const a = mgApi();
+        if (!a || !a.onShow) return;
+        try {
+          a.onShow((res2) => this.track("app_show", { scene: res2 && typeof res2.scene === "number" ? res2.scene : 0, runs: Save.data.runs }));
+        } catch (e) {
+        }
+      }
+      // 距首次游玩的天数（0 = 首日），用于看次留 / 七留
+      static dayN() {
+        const f = Save.data.firstDay;
+        if (!f) return 0;
+        const t0 = new Date(f).getTime();
+        if (isNaN(t0)) return 0;
+        const today = new Date((/* @__PURE__ */ new Date()).toDateString()).getTime();
+        return Math.max(0, Math.round((today - t0) / 864e5));
+      }
+      // 启动场景值（1007 单聊分享卡片 / 1008 群聊 / 1154 朋友圈 / 1001 下拉 / 1005 搜索 / 1089 我的小程序 等）
+      static launchScene() {
+        try {
+          const a = mgApi();
+          const o = a && a.getLaunchOptionsSync ? a.getLaunchOptionsSync() : null;
+          return o && typeof o.scene === "number" ? o.scene : 0;
+        } catch (e) {
+          return 0;
+        }
       }
     };
   }
@@ -5321,6 +5429,7 @@ var init_Battle = __esm({
     };
     Pickup = class {
       constructor() {
+        this.glow = null;
         this.kind = "";
         this.value = 0;
         this.x = 0;
@@ -5811,18 +5920,18 @@ var init_Battle = __esm({
         this.holes = [];
         this.giantT = this.bootsT = this.bankT = this.decoyT = 0;
         if (this.decoySp) this.decoySp.node.active = false;
-        this.altarT = 100;
+        this.altarT = 55;
         for (const t of this.tornados) t.sp.node.destroy();
         this.tornados = [];
-        this.windT = 25;
+        this.windT = 20;
         this.windOn = 0;
         this.ultBuffT = 0;
         this.phoenixUsed = false;
-        this.dropT = 150;
-        this.showerT = 240 + Math.random() * 60;
+        this.dropT = 80;
+        this.showerT = 125 + Math.random() * 30;
         this.showerOn = 0;
-        this.mimicT = 300 + Math.random() * 40;
-        this.shrineT = 200;
+        this.mimicT = 160 + Math.random() * 25;
+        this.shrineT = 105;
         this.trial = null;
         this.trialsWon = 0;
         this.riftT = 25;
@@ -5830,12 +5939,12 @@ var init_Battle = __esm({
         this.overloadOn = 0;
         this.magstormT = 45;
         this.brazierT = 3;
-        this.goldratT = 50;
-        this.eliteT = 75;
+        this.goldratT = 35;
+        this.eliteT = 40;
         this.stage = STAGES.find((x) => x.id === stageId) || STAGES[0];
         this.daily = daily;
         this.ground.spriteFrame = Art.f(this.stage.ground);
-        this.hazardT = 30;
+        this.hazardT = 20;
         for (const [, nodes] of this.decorChunks) {
           for (const n of nodes) {
             n.active = false;
@@ -5865,7 +5974,7 @@ var init_Battle = __esm({
           this.garlicAura = null;
         }
         this.char = char;
-        this.traitT = char.id === "nun" ? 10 : char.id === "santa" ? 40 : 4;
+        this.traitT = char.id === "nun" ? 10 : char.id === "santa" ? 25 : 4;
         this.px = this.py = 0;
         this.time = 0;
         this.kills = 0;
@@ -6244,7 +6353,7 @@ var init_Battle = __esm({
         if (!this.endless && !this.bloodMoon && this.time >= BLOOD_MOON) {
           this.bloodMoon = true;
           this.ground.color = C_BLOODMOON;
-          this.onBanner("\u7EA2\u6708\u964D\u4E34! \u575A\u6301\u6700\u540E\u4E24\u5206\u949F!", new Color(255, 60, 60, 255));
+          this.onBanner("\u7EA2\u6708\u964D\u4E34! \u575A\u6301\u6700\u540E\u4E00\u5206\u949F!", new Color(255, 60, 60, 255));
           Sound.play("roar");
           Sound.playBgm("bgm_boss");
           this.bossMusic = false;
@@ -6257,10 +6366,10 @@ var init_Battle = __esm({
         this.updateSurge(wave);
         if (this.spawnTimer <= 0) {
           this.spawnTimer = wave.interval;
-          const count = Math.round((wave.batch + Math.floor(this.time / 120)) * (this.boss ? 0.6 : 1) * (this.hasB("greedpact") ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - 900) / 600 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod("horde") ? 1.4 : 1) * (this.trial ? 2 : 1));
+          const count = Math.round((wave.batch + Math.floor(this.time / 65)) * (this.boss ? 0.7 : 1) * (this.hasB("greedpact") ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - WIN_TIME) / 320 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod("horde") ? 1.4 : 1) * (this.trial ? 2 : 1));
           let imps = 0;
           for (const e of this.enemies) if (e.alive && e.def.ranged) imps++;
-          const impCap = 4 + Math.floor(Math.max(0, this.time - 540) / 120);
+          const impCap = 4 + Math.floor(Math.max(0, this.time - 285) / 70);
           for (let i = 0; i < count && this.enemies.length < (this.bloodMoon ? Save.data.lite ? 290 : 420 : this.enemyCap); i++) {
             let type = wave.types[Math.floor(Math.random() * wave.types.length)];
             if (ENEMIES[type].ranged) {
@@ -6329,7 +6438,7 @@ var init_Battle = __esm({
           this.onBanner(`${old.def.name} \u64A4\u9000\u4E86\u2026`, new Color(180, 180, 200, 255));
         }
         const b = this.spawnEnemy(id, this.px, this.py + this.vh / 2 + 80, true);
-        b.maxHp = b.hp = def.hp * (1 + 0.1 * this.level) * hpMul * this.stage.hpMul * (this.nightmare ? 1.5 : 1);
+        b.maxHp = b.hp = def.hp * (1 + 0.12 * this.level) * hpMul * this.stage.hpMul * (this.nightmare ? 1.5 : 1);
         b.ai = createBossAI(id, this, b);
         this.bosses.push(b);
         this.boss = b;
@@ -6355,28 +6464,28 @@ var init_Battle = __esm({
         this.onBanner(text, new Color(255, 140, 90, 255));
       }
       // 竖屏下按方向计算屏幕外的出生距离（椭圆），避免左右两侧离得太远
-      // 刷怪速度倍率：早期慢（0.45 → 1），之后按 60 秒周期在 0.5（波谷）~ 1.7（波峰）之间起伏
+      // 刷怪速度倍率：早期慢（0.5 → 1），之后按 45 秒周期在 0.45（波谷）~ 1.65（波峰）之间起伏
       spawnPace() {
         const t = this.time;
         if (this.daily && this.mod("horde")) return 1.2;
-        const early = Math.min(1, 0.5 + t / 240);
-        if (t < 45 || this.boss || this.bloodMoon || this.endless) return early;
-        const ph = (t - 45) % 60 / 60;
+        const early = Math.min(1, 0.5 + t / 120);
+        if (t < 25 || this.boss || this.bloodMoon || this.endless) return early;
+        const ph = (t - 25) % 45 / 45;
         const s = Math.sin(ph * Math.PI * 2 - Math.PI / 2);
         const shaped = Math.sign(s) * Math.pow(Math.abs(s), 0.6);
         return early * (1.05 + 0.6 * shaped);
       }
       updateSurge(wave) {
         const t = this.time;
-        if (t < 105 || this.boss || this.bloodMoon || this.endless) return;
-        const cycle = Math.floor((t - 45) / 60);
-        const ph = (t - 45) % 60 / 60;
+        if (t < 55 || this.boss || this.bloodMoon || this.endless) return;
+        const cycle = Math.floor((t - 25) / 45);
+        const ph = (t - 25) % 45 / 45;
         if (ph < 0.42 || ph > 0.5 || cycle === this.lastSurgeCycle) return;
         this.lastSurgeCycle = cycle;
         const types = wave.types.filter((k) => !ENEMIES[k].ranged);
         const pick = () => types[Math.floor(Math.random() * types.length)];
         const kind = this.surgeIdx++ % 3;
-        const n = Math.min(40, 14 + Math.floor(t / 30));
+        const n = Math.min(40, 14 + Math.floor(t / 16));
         if (kind === 0) {
           const R = Math.hypot(this.vw, this.vh) / 2 + 40, type = pick();
           for (let i = 0; i < n; i++) {
@@ -6429,7 +6538,7 @@ var init_Battle = __esm({
         e.x = x;
         e.y = y;
         e.kx = e.ky = e.sx = e.sy = 0;
-        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 240 + (this.time / 280) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod("xp2") ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
+        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 120 + (this.time / 138) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod("xp2") ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
         e.flash = 0;
         e.punch = 0;
         e.anim = Math.random() * def.anim;
@@ -6454,8 +6563,8 @@ var init_Battle = __esm({
         e.shadow.setPosition(0, flying ? -h - 8 : -h);
         e.shadow.setScale(PX * s * (def.boss ? 2 : 1.2), PX * s, 1);
         e.node.setPosition(x, y);
-        if (!force && !def.boss && !def.prop && !def.flee && this.time > 60 && this.eliteT <= 0) {
-          this.eliteT = this.mod("elites") ? 12 : (30 + Math.random() * 15) / (this.bloodMoon ? 3 : 1);
+        if (!force && !def.boss && !def.prop && !def.flee && this.time > 30 && this.eliteT <= 0) {
+          this.eliteT = this.mod("elites") ? 12 : (20 + Math.random() * 10) / (this.bloodMoon ? 3 : 1);
           this.eliteify(e);
         }
         this.enemies.push(e);
@@ -6542,7 +6651,7 @@ var init_Battle = __esm({
               e.y = py + (dy > 0 ? -1 : 1) * Math.min(Math.abs(dy), this.vh / 2 + 60);
             }
           } else {
-            const sp = def.speed * (e.flash > 0 ? 0.5 : 1) * (1 + Math.min(this.time, 900) / 3600) * (this.mod("fast") ? 1.25 : 1);
+            const sp = def.speed * (e.flash > 0 ? 0.5 : 1) * (1 + Math.min(this.time, WIN_TIME) / 1600) * (this.mod("fast") ? 1.25 : 1);
             e.modeT -= dt;
             if (def.mimic && e.mode === 0) {
               e.anim = 0;
@@ -6605,7 +6714,7 @@ var init_Battle = __esm({
               }
               if (e.shootT <= 0 && d2 < 420) {
                 e.shootT = 2.6 + Math.random() * 0.8;
-                this.fireBullet("fireball", e.x, e.y, Math.atan2(dy, dx), 140, 4 * this.dmgRamp(), { radius: 9 });
+                this.fireBullet("fireball", e.x, e.y, Math.atan2(dy, dx), 145, 4.5 * this.dmgRamp(), { radius: 9 });
               }
             } else if (this.decoyT > 0 && Math.abs(this.decoyX - e.x) + Math.abs(this.decoyY - e.y) < 700) {
               const ox = this.decoyX - e.x, oy = this.decoyY - e.y, od = Math.hypot(ox, oy) || 1;
@@ -6654,7 +6763,7 @@ var init_Battle = __esm({
             e.hits.set("crush", this.time + 0.3);
             this.chainBoomQueue.push(() => this.hurtEnemy(e, this.giantT > 0 ? this.skillDmg(20, 3) : this.skillDmg(15, 2.5), 520, px, py, null));
           }
-          if (d2 < def.radius + 12 && def.dmg > 0 && (!trample || def.boss) && (!e.ai || e.ai.touchable)) this.hurtPlayer(def.boss ? def.dmg * 1.3 : def.dmg * this.dmgRamp() * (e.elite ? 1.5 : 1));
+          if (d2 < def.radius + 12 && def.dmg > 0 && (!trample || def.boss) && (!e.ai || e.ai.touchable)) this.hurtPlayer(def.boss ? def.dmg * 1.45 : def.dmg * this.dmgRamp() * (e.elite ? 1.5 : 1));
           e.anim += dt;
           let frameDirty = false;
           if (e.anim >= def.anim) {
@@ -6704,21 +6813,21 @@ var init_Battle = __esm({
       updateFlow(dt) {
         this.sinceHurt += dt;
         const hpR = this.hp / this.stats.maxHp;
-        if (this.time < 30) return;
+        if (this.time < 20) return;
         if (hpR < 0.35) this.flow -= 0.03 * dt;
-        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.018 * dt;
-        else if (hpR > 0.5) this.flow += 3e-3 * dt;
-        this.flow = Math.max(0.8, Math.min(1.7, this.flow));
+        else if (hpR > 0.8 && this.sinceHurt > 6) this.flow += 0.02 * dt;
+        else if (hpR > 0.5) this.flow += 4e-3 * dt;
+        this.flow = Math.max(0.88, Math.min(1.85, this.flow));
       }
       // 心流对怪物血量的影响：低于 1 时线性减弱，高于 1 时超线性增强（只针对碾压中的玩家）
       flowHp() {
         return this.flow <= 1 ? 0.6 + 0.4 * this.flow : Math.pow(this.flow, 1.5);
       }
-      // 小怪接触伤害随时间的成长：前期平缓、后期陡峭（5 分钟 ×1.75，10 分钟 ×3.2，15 分钟 ×5.4）
+      // 小怪接触伤害随时间的成长：适配 8 分钟节奏并提高中后期压迫感
       dmgRamp() {
-        const m = this.time / 600;
-        const early = 1 + 1.2 * Math.max(0, 1 - this.time / 480);
-        return early * 1.3 * (1 + 0.5 * m + 0.85 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
+        const m = this.time / 330;
+        const early = 1 + 0.65 * Math.max(0, 1 - this.time / 180);
+        return early * 1.38 * (1 + 0.55 * m + 0.95 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
       }
       // 每日挑战规则
       mod(id) {
@@ -6764,7 +6873,7 @@ var init_Battle = __esm({
           f.sp.color = colorOf(6340688);
           this.burst(this.px, this.py, 6340688, 16, 300);
         } else if (id === "santa") {
-          this.traitT = 70;
+          this.traitT = 40;
           const a = Math.random() * Math.PI * 2;
           const kind = Math.random() < 0.2 ? "magnet" : BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)];
           this.spawnPickup(kind, this.px + Math.cos(a) * 70, this.py + Math.sin(a) * 70, 0, true);
@@ -6794,7 +6903,7 @@ var init_Battle = __esm({
           dmg = Math.round(dmg * this.stats.critDmg);
           if (this.hasB("vampkiss")) this.heal(1);
           if (this.isChar("prism") && Math.random() < 0.35) this.refract(e, dmg);
-          if (this.char.charge === "crit") this.chargeUlt(1 / (150 + this.time * 0.4));
+          if (this.char.charge === "crit") this.chargeUlt(1 / (150 + this.time * 0.7));
         }
         if (this.stats.fresh > 0 && e.hp >= e.maxHp) dmg = Math.round(dmg * (1 + this.stats.fresh));
         if ((e.elite || e.def.boss) && this.stats.eliteDmg > 0) dmg = Math.round(dmg * (1 + this.stats.eliteDmg));
@@ -6874,7 +6983,7 @@ var init_Battle = __esm({
         this.attackKills++;
         if (this.trial) this.trial.got++;
         const ch = this.char.charge;
-        if (ch === "kill" || ch === "combo") this.chargeUlt((ch === "combo" ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 0.8));
+        if (ch === "kill" || ch === "combo") this.chargeUlt((ch === "combo" ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 1.4));
         if (e.def.split) {
           const x = e.x, y = e.y, t = e.def.split;
           this.chainBoomQueue.push(() => {
@@ -6884,7 +6993,7 @@ var init_Battle = __esm({
         if (e.def.burst) {
           const x = e.x, y = e.y;
           this.warnCircle(x, y, 70, 0.7, 16724016, () => {
-            this.explode(x, y, 70, 5 + this.time / 90, 16736304);
+            this.explode(x, y, 70, 5 + this.time / 50, 16736304);
             this.explodeFriendly(x, y, 60, 12 + this.level, null, 160, 16736304, false);
           });
         }
@@ -6919,7 +7028,7 @@ var init_Battle = __esm({
           this.spawnFx("aura", e.x, e.y, 0.5, 2, 5);
           Sound.play("bigkill");
         }
-        this.spawnPickup("gem", e.x, e.y, e.def.xp * (this.time < 180 ? 1.5 : 1), true);
+        this.spawnPickup("gem", e.x, e.y, e.def.xp * (this.time < 100 ? 1.5 : 1), true);
         const r = Math.random();
         if (r < 25e-4) {
           if (!this.mod("gold3")) this.spawnPickup("chicken", e.x + 10, e.y, 0);
@@ -7901,8 +8010,8 @@ var init_Battle = __esm({
           const x = this.px + this.mx * 80 + Math.cos(a) * r, y = this.py + this.my * 80 + Math.sin(a) * r;
           if (hz.cloud) {
             this.warnCircle(x, y, R, fall, 16724016, () => {
-              this.explode(x, y, R * 0.6, 4 + this.time / 60, hz.color);
-              this.zone(x, y, R, 4, 2 + this.time / 150, 6340656);
+              this.explode(x, y, R * 0.6, 4 + this.time / 35, hz.color);
+              this.zone(x, y, R, 4, 2 + this.time / 85, 6340656);
               this.spawnPZone("poison", null, x, y, R, 4, 12 + this.level);
               Sound.play("splash");
             });
@@ -7913,7 +8022,7 @@ var init_Battle = __esm({
             continue;
           }
           this.warnCircle(x, y, R, fall, 16724016, () => {
-            this.explode(x, y, R, 8 + this.time / 40, hz.color);
+            this.explode(x, y, R, 8 + this.time / 22, hz.color);
             this.explodeFriendly(x, y, R, 30 + this.level * 2, null, 160, hz.color, false);
           });
           const f = this.spawnFx(hz.frame, x, y + 340, fall, PX * 1.5, 0);
@@ -7951,7 +8060,7 @@ var init_Battle = __esm({
           if (d2 < R) {
             this.px += (-dy / d2 * 260 + dx / d2 * 200) * dt;
             this.py += (dx / d2 * 260 + dy / d2 * 200) * dt;
-            this.hurtPlayer(6 + this.time / 60);
+            this.hurtPlayer(6 + this.time / 32);
           }
           if (Math.random() < 0.5) this.burst(t.x + (Math.random() - 0.5) * 50, t.y, 14205072, 1, 120);
           if (t.t <= 0) t.sp.node.destroy();
@@ -8002,16 +8111,16 @@ var init_Battle = __esm({
         this.eliteT -= dt;
         this.altarT -= dt;
         if (this.altarT <= 0) {
-          this.altarT = (140 + Math.random() * 30) * (this.hasB("epicfan") ? 0.6 : 1) / (1 + this.stats.finder);
+          this.altarT = (75 + Math.random() * 20) * (this.hasB("epicfan") ? 0.6 : 1) / (1 + this.stats.finder);
           const a = Math.random() * Math.PI * 2, r = 200 + Math.random() * 120;
           const al = this.spawnEnemy("altar", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
-          al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 120);
+          al.maxHp = al.hp = ENEMIES.altar.hp * (1 + this.time / 65);
           this.onBanner("\u795E\u5175\u796D\u575B\u51FA\u73B0\u4E86! \u6253\u788E\u5B83!", new Color(255, 220, 110, 255));
           Sound.play("power");
         }
         this.shrineT -= dt;
         if (this.shrineT <= 0 && !this.boss && !this.bloodMoon && !this.trial) {
-          this.shrineT = 140 + Math.random() * 30;
+          this.shrineT = 75 + Math.random() * 20;
           const a = Math.random() * Math.PI * 2, r = 220 + Math.random() * 80;
           this.spawnPickup("shrine", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, this.time + 45);
           this.onBanner("\u8BD5\u70BC\u77F3\u7891\u51FA\u73B0\u4E86! \u89E6\u78B0\u5F00\u542F\u6311\u6218", new Color(255, 120, 100, 255));
@@ -8022,10 +8131,10 @@ var init_Battle = __esm({
         this.updateRandomEvents(dt);
         this.goldratT -= dt;
         if (this.goldratT <= 0) {
-          this.goldratT = 100;
+          this.goldratT = 60;
           const a = Math.random() * Math.PI * 2, r = 260;
           const g2 = this.spawnEnemy("goldrat", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
-          g2.maxHp = g2.hp = ENEMIES.goldrat.hp * (1 + this.time / 120);
+          g2.maxHp = g2.hp = ENEMIES.goldrat.hp * (1 + this.time / 65);
           g2.sp.color = C_ELITE;
           this.onBanner("\u91D1\u9F20\u51FA\u73B0! \u5FEB\u8FFD!", new Color(255, 214, 90, 255));
           Sound.play("coin");
@@ -8718,7 +8827,7 @@ var init_Battle = __esm({
         Sound.play("card");
       }
       startTrial(x, y) {
-        const need = 40 + Math.floor(this.time / 12);
+        const need = 35 + Math.floor(this.time / 7);
         this.trial = { t: 20, need, got: 0 };
         this.spawnFx("aura", x, y, 0.5, 1.5, 6).sp.color = colorOf(16732224);
         this.burst(x, y, 16732224, 24, 320);
@@ -8757,7 +8866,7 @@ var init_Battle = __esm({
       updateRandomEvents(dt) {
         this.dropT -= dt;
         if (this.dropT <= 0) {
-          this.dropT = 120 + Math.random() * 25;
+          this.dropT = 65 + Math.random() * 15;
           const a = Math.random() * TAU2, r = 180 + Math.random() * 100;
           const x = this.px + Math.cos(a) * r, y = this.py + Math.sin(a) * r;
           this.warnCircle(x, y, 70, 3, 16764992, () => {
@@ -8790,7 +8899,7 @@ var init_Battle = __esm({
         } else {
           this.showerT -= dt;
           if (this.showerT <= 0 && !this.boss) {
-            this.showerT = 180 + Math.random() * 60;
+            this.showerT = 95 + Math.random() * 30;
             this.showerOn = 8;
             this.showerTick = 0.5;
             this.onBanner("\u6D41\u661F\u96E8! \u661F\u661F\u7838\u5411\u602A\u7269", new Color(255, 240, 160, 255));
@@ -8799,7 +8908,7 @@ var init_Battle = __esm({
         }
         this.mimicT -= dt;
         if (this.mimicT <= 0) {
-          this.mimicT = 170 + Math.random() * 40;
+          this.mimicT = 95 + Math.random() * 25;
           const a = Math.random() * TAU2, r = 230 + Math.random() * 80;
           const m = this.spawnEnemy("mimic", this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
           if (m) {
@@ -8817,13 +8926,20 @@ var init_Battle = __esm({
         let p = this.pickupPool.pop();
         if (!p) {
           p = new Pickup();
-          p.sp = mkSprite(this.pickupLayer, "gem_blue");
-          p.node = p.sp.node;
+          p.node = mkNode("pickup", this.pickupLayer);
+          p.sp = mkSprite(p.node, "gem_blue", 1);
         }
         let frame = kind;
         if (kind === "gem") frame = value >= 20 ? "gem_red" : value >= 3 ? "gem_green" : "gem_blue";
         p.node.setScale(PX, PX, 1);
         p.sp.spriteFrame = Art.f(frame);
+        const special = kind !== "gem" && kind !== "coin";
+        if (special && !p.glow) {
+          p.glow = mkSprite(p.node, "aura", 0.5, "pickup-glow");
+          p.glow.node.setSiblingIndex(0);
+          p.glow.color = new Color(255, 220, 120, 140);
+        }
+        if (p.glow) p.glow.node.active = special;
         p.kind = kind;
         p.value = value;
         p.x = x;
@@ -8864,6 +8980,10 @@ var init_Battle = __esm({
         }
         for (const p of this.pickups) {
           if (!p.alive) continue;
+          if (p.glow && p.glow.node.active) {
+            const pulse = 0.46 + 0.06 * Math.sin(this.time * 3 + p.x * 0.01);
+            p.glow.node.setScale(pulse, pulse, 1);
+          }
           if (p.vx !== 0 || p.vy !== 0) {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
@@ -9590,6 +9710,158 @@ var init_Battle = __esm({
   }
 });
 
+// ../../assets/scripts/SocialConfig.ts
+var SOCIAL_CONFIG;
+var init_SocialConfig = __esm({
+  "../../assets/scripts/SocialConfig.ts"() {
+    SOCIAL_CONFIG = {
+      // 微信云开发环境 ID（云开发控制台 → 设置 → 环境 ID，形如 cloud1-xxxxxx）；留空 = 不启用云存档，只存本地
+      cloudEnv: "",
+      // 云存档集合名（需在云开发控制台「数据库」中创建，权限选「仅创建者可读写」）
+      cloudCollection: "saves",
+      // 主菜单显示游戏圈按钮
+      gameClub: true,
+      // 好友排行榜（需要构建后运行 node tools/wechat-postbuild.mjs 放入开放数据域）
+      friendRank: true
+    };
+  }
+});
+
+// ../../assets/scripts/Legal.ts
+function paginate(text, cols, rows) {
+  const unit = (ch) => ch.charCodeAt(0) <= 255 ? 0.5 : 1;
+  const lines = [];
+  for (const para of text.split("\n")) {
+    if (!para) {
+      lines.push("");
+      continue;
+    }
+    let line = "";
+    let width = 0;
+    for (const ch of para) {
+      const u = unit(ch);
+      if (width + u > cols && line) {
+        lines.push(line);
+        line = ch;
+        width = u;
+      } else {
+        line += ch;
+        width += u;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  const pages = [];
+  for (let i = 0; i < lines.length; i += rows) pages.push(lines.slice(i, i + rows).join("\n"));
+  while (pages.length > 1 && !pages[pages.length - 1].trim()) pages.pop();
+  return pages.length ? pages : [""];
+}
+function privacySummary(gameName) {
+  const lines = [
+    `\u6B22\u8FCE\u6765\u5230\u300A${gameName}\u300B\uFF01`,
+    "",
+    "\u6211\u4EEC\u975E\u5E38\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\uFF1A",
+    "\xB7 \u4E0D\u6536\u96C6\u59D3\u540D\u3001\u624B\u673A\u53F7\u7B49\u4E2A\u4EBA\u4FE1\u606F\uFF1B",
+    SOCIAL_CONFIG.cloudEnv ? "\xB7 \u6E38\u620F\u8FDB\u5EA6\u4FDD\u5B58\u5728\u624B\u673A\u672C\u5730\uFF0C\n  \u5E76\u5907\u4EFD\u5230\u5FAE\u4FE1\u4E91\u5F00\u53D1\uFF1B" : "\xB7 \u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF1B",
+    "\xB7 \u901A\u8FC7\u5FAE\u4FE1\u7EDF\u8BA1\u533F\u540D\u7684\u6E38\u620F\u884C\u4E3A\uFF1B"
+  ];
+  if (SOCIAL_CONFIG.friendRank) lines.push("\xB7 \u597D\u53CB\u6392\u884C\u53EA\u63D0\u4EA4\u6E38\u620F\u6210\u7EE9\uFF1B");
+  lines.push(
+    "\xB7 \u5E7F\u544A\u7531\u5FAE\u4FE1\u5E73\u53F0\u63D0\u4F9B\uFF1B",
+    "\xB7 \u4F60\u53EF\u4EE5\u968F\u65F6\u5220\u9664\u672C\u5C0F\u6E38\u620F\u53CA\u6570\u636E\u3002",
+    "",
+    "\u8BF7\u5148\u70B9\u4E0B\u9762\u4E24\u4E2A\u6309\u94AE\uFF0C\u9605\u8BFB\u5B8C\u6574\u534F\u8BAE\u3002",
+    "\u70B9\u300C\u540C\u610F\u300D\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F\u3002"
+  );
+  return lines.join("\n");
+}
+function userTerms(gameName) {
+  return {
+    title: "\u7528\u6237\u534F\u8BAE",
+    body: [
+      `\u66F4\u65B0\u65E5\u671F\uFF1A${UPDATED}`,
+      "\u8FD0\u8425\u8005\uFF1A\u4E2A\u4EBA\u5F00\u53D1\u8005",
+      "",
+      "1. \u534F\u8BAE\u8303\u56F4",
+      `\u672C\u534F\u8BAE\u662F\u4F60\u4E0E\u5C0F\u6E38\u620F\u300A${gameName}\u300B\u8FD0\u8425\u8005\u4E4B\u95F4\u7684\u7EA6\u5B9A\u3002\u4F60\u70B9\u300C\u540C\u610F\u300D\u6216\u5F00\u59CB\u6E38\u620F\uFF0C\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F\u672C\u534F\u8BAE\u548C\u9690\u79C1\u653F\u7B56\u3002`,
+      "",
+      "2. \u670D\u52A1\u5185\u5BB9",
+      "\u672C\u6E38\u620F\u662F\u514D\u8D39\u7684\u4F11\u95F2\u5C0F\u6E38\u620F\uFF0C\u5728\u5FAE\u4FE1\u5185\u6253\u5F00\u5373\u53EF\u6E38\u73A9\uFF0C\u4E0D\u7528\u5355\u72EC\u4E0B\u8F7D\u5B89\u88C5\u3002\u6E38\u620F\u5185\u6CA1\u6709\u5145\u503C\uFF0C\u4E5F\u6CA1\u6709\u4ED8\u8D39\u8D2D\u4E70\u3002\u91D1\u5E01\u53EA\u80FD\u901A\u8FC7\u6E38\u73A9\u83B7\u5F97\uFF0C\u4E0D\u80FD\u4EA4\u6613\u6216\u63D0\u73B0\u3002",
+      "",
+      "3. \u5E7F\u544A",
+      "\u672C\u6E38\u620F\u901A\u8FC7\u5FAE\u4FE1\u63D0\u4F9B\u7684\u6FC0\u52B1\u89C6\u9891\u548C\u63D2\u5C4F\u5E7F\u544A\u83B7\u5F97\u6536\u5165\u3002\u6FC0\u52B1\u89C6\u9891\u7531\u4F60\u81EA\u613F\u89C2\u770B\uFF0C\u7528\u4E8E\u590D\u6D3B\u3001\u91D1\u5E01\u7FFB\u500D\u3001\u5237\u65B0\u9009\u9879\u7B49\u989D\u5916\u5956\u52B1\u3002\u4E0D\u770B\u5E7F\u544A\u4E5F\u53EF\u4EE5\u6B63\u5E38\u6E38\u73A9\u548C\u901A\u5173\u3002\u63D2\u5C4F\u5E7F\u544A\u53EA\u5728\u79BB\u5F00\u7ED3\u7B97\u9875\u65F6\u51FA\u73B0\u3002",
+      "",
+      "4. \u884C\u4E3A\u89C4\u8303",
+      "\u8BF7\u4E0D\u8981\u4F7F\u7528\u5916\u6302\u3001\u4FEE\u6539\u5668\u6216\u5176\u4ED6\u975E\u6B63\u5E38\u624B\u6BB5\u5F71\u54CD\u6E38\u620F\uFF0C\u4E5F\u4E0D\u8981\u5229\u7528\u672C\u6E38\u620F\u4ECE\u4E8B\u8FDD\u6CD5\u8FDD\u89C4\u6D3B\u52A8\u3002",
+      "",
+      "5. \u6E38\u620F\u6570\u636E",
+      "\u6E38\u620F\u8FDB\u5EA6\uFF08\u91D1\u5E01\u3001\u89D2\u8272\u3001\u5730\u56FE\u3001\u5F3A\u5316\u3001\u6210\u5C31\u3001\u7EAA\u5F55\u548C\u8BBE\u7F6E\uFF09\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\u3002\u5220\u9664\u5C0F\u6E38\u620F\u3001\u6E05\u7406\u5FAE\u4FE1\u7F13\u5B58\u6216\u66F4\u6362\u624B\u673A\uFF0C\u672C\u5730\u8FDB\u5EA6\u53EF\u80FD\u4E22\u5931\uFF0C\u8FD0\u8425\u8005\u65E0\u6CD5\u5E2E\u4F60\u627E\u56DE\u3002",
+      SOCIAL_CONFIG.friendRank ? "\u6700\u957F\u5B58\u6D3B\u3001\u51FB\u8D25\u6570\u91CF\u548C\u6BCF\u65E5\u6311\u6218\u6210\u7EE9\u4F1A\u63D0\u4EA4\u7ED9\u5FAE\u4FE1\uFF0C\u53EA\u7528\u4E8E\u597D\u53CB\u6392\u884C\u5C55\u793A\u3002" : "\u5F53\u524D\u7248\u672C\u4E0D\u4F1A\u628A\u6E38\u620F\u6210\u7EE9\u63D0\u4EA4\u5230\u7F51\u4E0A\u3002",
+      "",
+      "6. \u672A\u6210\u5E74\u4EBA\u4FDD\u62A4",
+      "\u672C\u6E38\u620F\u9002\u9F84\u63D0\u793A\u4E3A 12+\u3002\u672A\u6210\u5E74\u4EBA\u5E94\u5728\u76D1\u62A4\u4EBA\u6307\u5BFC\u4E0B\u4F7F\u7528\uFF0C\u5E76\u5408\u7406\u5B89\u6392\u6E38\u620F\u65F6\u95F4\u3002\u542F\u52A8\u9875\u5C55\u793A\u5065\u5EB7\u6E38\u620F\u5FE0\u544A\u3002\u9632\u6C89\u8FF7\u7531\u5FAE\u4FE1\u5C0F\u6E38\u620F\u5E73\u53F0\u7EDF\u4E00\u5904\u7406\u3002",
+      "",
+      "7. \u77E5\u8BC6\u4EA7\u6743",
+      "\u672C\u6E38\u620F\u7684\u7A0B\u5E8F\u3001\u7F8E\u672F\u3001\u97F3\u4E50\u548C\u6587\u5B57\u7684\u77E5\u8BC6\u4EA7\u6743\u5F52\u8FD0\u8425\u8005\u6240\u6709\u3002\u672A\u7ECF\u8BB8\u53EF\uFF0C\u4E0D\u8981\u590D\u5236\u3001\u4FEE\u6539\u6216\u4F20\u64AD\u3002",
+      "",
+      "8. \u514D\u8D23\u4E0E\u53D8\u66F4",
+      "\u56E0\u4E0D\u53EF\u6297\u529B\u3001\u5E73\u53F0\u653F\u7B56\u6216\u7F51\u7EDC\u539F\u56E0\u5BFC\u81F4\u65E0\u6CD5\u6E38\u620F\u7684\uFF0C\u8FD0\u8425\u8005\u4E0D\u627F\u62C5\u8D23\u4EFB\u3002\u534F\u8BAE\u66F4\u65B0\u540E\uFF0C\u4F1A\u5728\u6E38\u620F\u5185\u91CD\u65B0\u5C55\u793A\u3002\u4F60\u7EE7\u7EED\u6E38\u620F\uFF0C\u5373\u8868\u793A\u63A5\u53D7\u66F4\u65B0\u540E\u7684\u534F\u8BAE\u3002",
+      "",
+      "9. \u8054\u7CFB\u6211\u4EEC",
+      "\u5982\u6709\u7591\u95EE\u3001\u6295\u8BC9\u6216\u5EFA\u8BAE\uFF0C\u8BF7\u70B9\u5FAE\u4FE1\u5C0F\u6E38\u620F\u53F3\u4E0A\u89D2\u80F6\u56CA\u6309\u94AE\u91CC\u7684\u300C\u2026\u300D\uFF0C\u9009\u62E9\u300C\u53CD\u9988\u4E0E\u6295\u8BC9\u300D\u8054\u7CFB\u5F00\u53D1\u8005\u3002\u6211\u4EEC\u4F1A\u5728 15 \u4E2A\u5DE5\u4F5C\u65E5\u5185\u56DE\u590D\u3002"
+    ].join("\n")
+  };
+}
+function privacyPolicy(gameName) {
+  const cloud = SOCIAL_CONFIG.cloudEnv ? "\u4F60\u540C\u610F\u672C\u653F\u7B56\u4E4B\u540E\uFF0C\u6E38\u620F\u8FDB\u5EA6\u4F1A\u5907\u4EFD\u5230\u5FAE\u4FE1\u4E91\u5F00\u53D1\uFF0C\u53EA\u7528\u4E8E\u6362\u673A\u540E\u6062\u590D\u3002\u5907\u4EFD\u5185\u5BB9\u4E0E\u7B2C 2 \u6761\u76F8\u540C\uFF0C\u4E0D\u542B\u59D3\u540D\u548C\u624B\u673A\u53F7\u3002\u97F3\u4E50\u3001\u97F3\u6548\u7B49\u672C\u673A\u8BBE\u7F6E\u4E0D\u4F1A\u88AB\u4E91\u7AEF\u8986\u76D6\u3002" : "\u5F53\u524D\u7248\u672C\u7684\u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF0C\u4E0D\u4F1A\u4E0A\u4F20\u5230\u5F00\u53D1\u8005\u7684\u670D\u52A1\u5668\uFF0C\u4E5F\u6CA1\u6709\u5F00\u542F\u4E91\u7AEF\u5907\u4EFD\u3002";
+  const rank = SOCIAL_CONFIG.friendRank ? "\u672C\u6E38\u620F\u628A\u4F60\u7684\u6700\u957F\u5B58\u6D3B\u3001\u51FB\u8D25\u6570\u91CF\u3001\u80DC\u5229\u6B21\u6570\u548C\u5F53\u65E5\u6311\u6218\u6210\u7EE9\u5199\u5165\u5FAE\u4FE1\u7684\u597D\u53CB\u6570\u636E\u5B58\u50A8\uFF0C\u53EA\u7528\u4E8E\u597D\u53CB\u6392\u884C\u3002\u5FAE\u4FE1\u5728\u6392\u884C\u699C\u91CC\u5411\u4F60\u7684\u597D\u53CB\u5C55\u793A\u8FD9\u4E9B\u6210\u7EE9\u3002\u6E38\u620F\u4E3B\u7A0B\u5E8F\u62FF\u4E0D\u5230\u597D\u53CB\u7684\u6635\u79F0\u548C\u5934\u50CF\uFF0C\u5C55\u793A\u7531\u5FAE\u4FE1\u7684\u5F00\u653E\u6570\u636E\u57DF\u5B8C\u6210\u3002" : "\u5F53\u524D\u7248\u672C\u6CA1\u6709\u597D\u53CB\u6392\u884C\uFF0C\u4E0D\u4F1A\u628A\u6E38\u620F\u6210\u7EE9\u5199\u5165\u5FAE\u4FE1\u3002";
+  return {
+    title: "\u9690\u79C1\u653F\u7B56",
+    body: [
+      `\u66F4\u65B0\u65E5\u671F\uFF1A${UPDATED}`,
+      "\u8FD0\u8425\u8005\uFF1A\u4E2A\u4EBA\u5F00\u53D1\u8005",
+      "",
+      `\u6211\u4EEC\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\u3002\u8BF7\u9605\u8BFB\u672C\u653F\u7B56\u540E\u518D\u70B9\u300C\u540C\u610F\u300D\u3002\u672C\u653F\u7B56\u9002\u7528\u4E8E\u5C0F\u6E38\u620F\u300A${gameName}\u300B\u3002`,
+      "",
+      "1. \u6211\u4EEC\u4E0D\u6536\u96C6\u7684\u5185\u5BB9",
+      "\u672C\u6E38\u620F\u4E0D\u6536\u96C6\u4F60\u7684\u59D3\u540D\u3001\u8EAB\u4EFD\u8BC1\u53F7\u3001\u624B\u673A\u53F7\u3001\u7CBE\u786E\u4F4D\u7F6E\u3001\u76F8\u518C\u3001\u6444\u50CF\u5934\u3001\u9EA6\u514B\u98CE\u3001\u901A\u8BAF\u5F55\u3002\u4E0D\u8981\u6C42\u5355\u72EC\u6CE8\u518C\u8D26\u53F7\u3002\u6E38\u620F\u4E3B\u7A0B\u5E8F\u4E0D\u8BFB\u53D6\u5FAE\u4FE1\u6635\u79F0\u548C\u5934\u50CF\u3002",
+      "",
+      "2. \u4FDD\u5B58\u5728\u4F60\u624B\u673A\u91CC\u7684\u6570\u636E",
+      "\u4E3A\u4E86\u8BB0\u4F4F\u6E38\u620F\u8FDB\u5EA6\uFF0C\u672C\u6E38\u620F\u5728\u4F60\u7684\u8BBE\u5907\u672C\u5730\u4FDD\u5B58\uFF1A\u91D1\u5E01\u3001\u5DF2\u89E3\u9501\u7684\u89D2\u8272\u548C\u5730\u56FE\u3001\u6C38\u4E45\u5F3A\u5316\u3001\u6210\u5C31\u3001\u6700\u4F73\u7EAA\u5F55\u3001\u6BCF\u65E5\u6311\u6218\u3001\u7B7E\u5230\u3001\u97F3\u6548\u548C\u753B\u8D28\u8BBE\u7F6E\u3002",
+      "",
+      "3. \u5FAE\u4FE1\u5E73\u53F0\u4F1A\u5904\u7406\u7684\u4FE1\u606F",
+      "\uFF081\uFF09\u533F\u540D\u6E38\u620F\u884C\u4E3A\u3002\u4E3A\u6539\u8FDB\u6E38\u620F\uFF0C\u672C\u6E38\u620F\u901A\u8FC7\u5FAE\u4FE1\u7EDF\u8BA1\u901A\u5173\u3001\u5B58\u6D3B\u65F6\u95F4\u3001\u5E7F\u544A\u662F\u5426\u770B\u5B8C\u7B49\u884C\u4E3A\u6570\u636E\u3002\u7EDF\u8BA1\u91CC\u6CA1\u6709\u59D3\u540D\u3001\u5934\u50CF\u548C\u624B\u673A\u53F7\u3002",
+      "\uFF082\uFF09\u597D\u53CB\u6392\u884C\u3002" + rank,
+      "\uFF083\uFF09\u5E7F\u544A\u3002\u6FC0\u52B1\u89C6\u9891\u548C\u63D2\u5C4F\u7531\u5FAE\u4FE1\u5E7F\u544A\u5E73\u53F0\u63D0\u4F9B\u3002\u5E7F\u544A\u76F8\u5173\u7684\u4FE1\u606F\u7531\u5FAE\u4FE1\u6309\u5176\u9690\u79C1\u4FDD\u62A4\u6307\u5F15\u5904\u7406\uFF0C\u672C\u6E38\u620F\u65E0\u6CD5\u83B7\u53D6\u3002",
+      "\uFF084\uFF09\u5206\u4EAB\u3002\u53EA\u6709\u4F60\u4E3B\u52A8\u70B9\u5206\u4EAB\u65F6\uFF0C\u624D\u4F1A\u751F\u6210\u5206\u4EAB\u5361\u7247\u3002\u5361\u7247\u542B\u6709\u672C\u5C40\u6218\u7EE9\u6587\u5B57\uFF1B\u7ED3\u7B97\u9875\u5206\u4EAB\u53EF\u80FD\u9644\u5E26\u5F53\u524D\u753B\u9762\u622A\u56FE\u3002\u53D1\u4E0D\u53D1\u7ED9\u597D\u53CB\u7531\u4F60\u51B3\u5B9A\u3002\u5206\u4EAB\u6CA1\u6709\u6E38\u620F\u5956\u52B1\u3002",
+      "\uFF085\uFF09\u8BBE\u5907\u6027\u80FD\u3002\u9996\u6B21\u542F\u52A8\u4F1A\u8BFB\u53D6\u673A\u578B\u6027\u80FD\u7B49\u7EA7\uFF0C\u7528\u6765\u51B3\u5B9A\u662F\u5426\u81EA\u52A8\u6253\u5F00\u6027\u80FD\u6A21\u5F0F\u3002\u8BE5\u7B49\u7EA7\u4E0D\u80FD\u7528\u6765\u8BC6\u522B\u4F60\u662F\u8C01\u3002",
+      "",
+      "4. \u4E91\u7AEF\u5907\u4EFD",
+      cloud,
+      "",
+      "5. \u672A\u6210\u5E74\u4EBA",
+      "\u6211\u4EEC\u4E0D\u6536\u96C6\u672A\u6210\u5E74\u4EBA\u7684\u4E2A\u4EBA\u4FE1\u606F\u3002\u9002\u9F84\u63D0\u793A\u4E3A 12+\u3002\u8BF7\u76D1\u62A4\u4EBA\u6307\u5BFC\u672A\u6210\u5E74\u4EBA\u4F7F\u7528\uFF0C\u5E76\u63A7\u5236\u6E38\u620F\u65F6\u95F4\u3002",
+      "",
+      "6. \u4F60\u7684\u6743\u5229",
+      "\u4F60\u53EF\u4EE5\u968F\u65F6\u5728\u5FAE\u4FE1\u91CC\u5220\u9664\u672C\u5C0F\u6E38\u620F\uFF0C\u624B\u673A\u91CC\u7684\u672C\u5730\u6570\u636E\u4F1A\u4E00\u5E76\u6E05\u9664\u3002\u4E0D\u518D\u4F7F\u7528\u672C\u6E38\u620F\uFF0C\u5C31\u4E0D\u4F1A\u518D\u4EA7\u751F\u65B0\u7684\u6E38\u620F\u6570\u636E\u3002",
+      "",
+      "7. \u653F\u7B56\u66F4\u65B0",
+      "\u5982\u679C\u4EE5\u540E\u9700\u8981\u65B0\u7684\u4E2A\u4EBA\u4FE1\u606F\uFF0C\u4F1A\u5148\u66F4\u65B0\u672C\u653F\u7B56\uFF0C\u5E76\u5728\u6E38\u620F\u5185\u91CD\u65B0\u8BF7\u4F60\u786E\u8BA4\u3002\u4F60\u70B9\u300C\u540C\u610F\u300D\u4E4B\u540E\uFF0C\u65B0\u653F\u7B56\u624D\u751F\u6548\u3002",
+      "",
+      "8. \u8054\u7CFB\u6211\u4EEC",
+      "\u8BF7\u70B9\u5FAE\u4FE1\u5C0F\u6E38\u620F\u53F3\u4E0A\u89D2\u80F6\u56CA\u6309\u94AE\u91CC\u7684\u300C\u2026\u300D\uFF0C\u9009\u62E9\u300C\u53CD\u9988\u4E0E\u6295\u8BC9\u300D\u8054\u7CFB\u5F00\u53D1\u8005\u3002\u6211\u4EEC\u4F1A\u5728 15 \u4E2A\u5DE5\u4F5C\u65E5\u5185\u56DE\u590D\u3002"
+    ].join("\n")
+  };
+}
+var PRIVACY_VER, UPDATED;
+var init_Legal = __esm({
+  "../../assets/scripts/Legal.ts"() {
+    init_SocialConfig();
+    PRIVACY_VER = 1;
+    UPDATED = "2026\u5E7410\u670826\u65E5";
+  }
+});
+
 // ../../assets/scripts/Recorder.ts
 var Recorder;
 var init_Recorder = __esm({
@@ -9702,6 +9974,280 @@ var init_Recorder = __esm({
   }
 });
 
+// ../../assets/scripts/Social.ts
+function wxApi() {
+  return globalThis.wx || null;
+}
+var LOCAL_ONLY, Social;
+var init_Social = __esm({
+  "../../assets/scripts/Social.ts"() {
+    init_Analytics();
+    init_Save();
+    init_SocialConfig();
+    LOCAL_ONLY = ["music", "sfx", "vibrate", "lite", "liteChecked", "privacyOk", "privacyVer"];
+    Social = class {
+      static get isWx() {
+        return !!wxApi();
+      }
+      // 本地日期 YYYYMMDD（每日挑战按本地日期生成，分享与排行榜用它对齐）
+      static dateKey(d2 = /* @__PURE__ */ new Date()) {
+        return `${d2.getFullYear()}${String(d2.getMonth() + 1).padStart(2, "0")}${String(d2.getDate()).padStart(2, "0")}`;
+      }
+      static {
+        // ------------------------------------------------------------------ 版本更新
+        this.updater = null;
+      }
+      static {
+        this.updatePrompted = false;
+      }
+      // 新版本在后台下载完成后，等玩家回到主菜单再提示重启（不打断战斗）
+      static initUpdate() {
+        const w = wxApi();
+        if (!w || !w.getUpdateManager) return;
+        try {
+          const um = w.getUpdateManager();
+          um.onUpdateReady(() => {
+            this.updater = um;
+            Analytics.track("update", { action: "ready" });
+          });
+          if (um.onUpdateFailed) um.onUpdateFailed(() => Analytics.track("update", { action: "failed" }));
+        } catch (e) {
+        }
+      }
+      // 回到主菜单时调用；返回是否弹出了提示
+      static promptUpdate(beforeRestart) {
+        const w = wxApi();
+        if (!this.updater || this.updatePrompted || !w || !w.showModal) return false;
+        this.updatePrompted = true;
+        const um = this.updater;
+        w.showModal({
+          title: "\u53D1\u73B0\u65B0\u7248\u672C",
+          content: "\u65B0\u7248\u672C\u5DF2\u7ECF\u51C6\u5907\u597D\uFF0C\u91CD\u542F\u5373\u53EF\u4F53\u9A8C\uFF08\u6E38\u620F\u8FDB\u5EA6\u5DF2\u4FDD\u5B58\uFF09",
+          confirmText: "\u7ACB\u5373\u91CD\u542F",
+          cancelText: "\u7A0D\u540E",
+          success: (r) => {
+            Analytics.track("update", { action: r && r.confirm ? "apply" : "later" });
+            if (r && r.confirm) {
+              beforeRestart();
+              um.applyUpdate();
+            }
+          }
+        });
+        return true;
+      }
+      static {
+        // ------------------------------------------------------------------ 带参分享
+        this.pending = null;
+      }
+      static {
+        this.onChallenge = () => {
+        };
+      }
+      static shareQuery(c) {
+        return `ch=1&t=${Math.floor(c.time)}&k=${Math.floor(c.kills)}&w=${c.won ? 1 : 0}&d=${c.daily}`;
+      }
+      static parseQuery(q) {
+        if (!q || String(q.ch) !== "1") return null;
+        const num = (v, max) => {
+          const n = parseInt(v, 10);
+          return isFinite(n) ? Math.max(0, Math.min(max, n)) : 0;
+        };
+        const daily = /^\d{8}$/.test(String(q.d || "")) ? String(q.d) : "";
+        return { time: num(q.t, 99 * 60), kills: num(q.k, 999999), won: num(q.w, 1), daily };
+      }
+      // 冷启动读启动参数，热启动（点开好友卡片回到游戏）读 onShow 参数
+      static initLaunch() {
+        const w = wxApi();
+        if (!w) return;
+        try {
+          const o = w.getLaunchOptionsSync ? w.getLaunchOptionsSync() : null;
+          this.pending = this.parseQuery(o && o.query);
+          if (this.pending) Analytics.track("challenge_open", { daily: this.pending.daily ? 1 : 0, warm: 0 });
+          if (w.onShow) w.onShow((res2) => {
+            const c = this.parseQuery(res2 && res2.query);
+            if (!c) return;
+            this.pending = c;
+            Analytics.track("challenge_open", { daily: c.daily ? 1 : 0, warm: 1 });
+            this.onChallenge();
+          });
+        } catch (e) {
+        }
+      }
+      // 卡片里的每日挑战是否就是今天的（每日挑战按日期生成，隔天的挑战已不存在）
+      static challengeIsToday(c) {
+        return !!c.daily && c.daily === this.dateKey();
+      }
+      static {
+        // ------------------------------------------------------------------ 游戏圈
+        this.club = null;
+      }
+      // rect：屏幕像素坐标（左上角原点）
+      static showClub(left, top, size) {
+        const w = wxApi();
+        if (!SOCIAL_CONFIG.gameClub || !w || !w.createGameClubButton) return;
+        try {
+          if (!this.club) {
+            this.club = w.createGameClubButton({ type: "image", icon: "white", style: { left, top, width: size, height: size } });
+            if (this.club.onTap) this.club.onTap(() => Analytics.track("club_tap", { runs: Save.data.runs }));
+          } else {
+            this.club.style.left = left;
+            this.club.style.top = top;
+          }
+          this.club.show();
+        } catch (e) {
+          this.club = null;
+        }
+      }
+      static hideClub() {
+        try {
+          if (this.club) this.club.hide();
+        } catch (e) {
+        }
+      }
+      static get clubSupported() {
+        const w = wxApi();
+        return SOCIAL_CONFIG.gameClub && !!w && !!w.createGameClubButton;
+      }
+      // ------------------------------------------------------------------ 好友排行（开放数据域）
+      static get rankSupported() {
+        const w = wxApi();
+        return SOCIAL_CONFIG.friendRank && !!w && !!w.setUserCloudStorage && !!w.getOpenDataContext;
+      }
+      // 上报到好友可见的云端：最长存活（best）与今日每日挑战（daily，带日期，开放数据域只显示当天）
+      static reportScores() {
+        const w = wxApi();
+        if (!SOCIAL_CONFIG.friendRank || !w || !w.setUserCloudStorage) return;
+        const d2 = Save.data;
+        const now = Math.floor(Date.now() / 1e3);
+        const kv = [{ key: "best", value: JSON.stringify({ wxgame: { score: d2.bestTime, update_time: now }, kills: d2.bestKills, wins: d2.wins }) }];
+        if (d2.dailyBestDate === (/* @__PURE__ */ new Date()).toDateString()) {
+          kv.push({ key: "daily", value: JSON.stringify({ wxgame: { score: d2.dailyBest, update_time: now }, date: this.dateKey() }) });
+        }
+        try {
+          w.setUserCloudStorage({ KVDataList: kv, fail: () => {
+          } });
+        } catch (e) {
+        }
+      }
+      // 通知开放数据域绘制排行榜。kind：best 最长存活 / daily 今日挑战；scale：屏幕像素 → 画布像素
+      static showRank(kind, scale) {
+        const w = wxApi();
+        if (!this.rankSupported) return;
+        try {
+          w.getOpenDataContext().postMessage({ type: "rank", kind, date: this.dateKey(), scale });
+        } catch (e) {
+        }
+      }
+      static {
+        // ------------------------------------------------------------------ 云存档（微信云开发）
+        this.col = null;
+      }
+      static {
+        this.docId = "";
+      }
+      static {
+        this.cloudReady = false;
+      }
+      static {
+        this.pushing = false;
+      }
+      static {
+        this.dirty = false;
+      }
+      static {
+        this.timer = null;
+      }
+      static get cloudEnabled() {
+        return !!SOCIAL_CONFIG.cloudEnv && !!wxApi() && !!wxApi().cloud;
+      }
+      // 两份存档取哪份：局数多的优先（局数只增不减），局数相同取更新时间晚的
+      static preferRemote(remote, local) {
+        const rr = remote.runs || 0, lr = local.runs || 0;
+        if (rr !== lr) return rr > lr;
+        return (remote.updatedAt || 0) > (local.updatedAt || 0);
+      }
+      // 同意隐私政策后调用。拉取云端存档，云端更新则覆盖本地并回调；拉取成功前不上传，避免新设备的空存档覆盖云端
+      static initCloud(onPulled) {
+        if (!this.cloudEnabled || this.col) return;
+        const w = wxApi();
+        try {
+          w.cloud.init({ env: SOCIAL_CONFIG.cloudEnv, traceUser: false });
+          this.col = w.cloud.database().collection(SOCIAL_CONFIG.cloudCollection);
+        } catch (e) {
+          this.col = null;
+          return;
+        }
+        Save.onSaved = () => this.schedulePush();
+        this.col.limit(1).get().then((res2) => {
+          const doc = res2 && res2.data && res2.data[0];
+          let pulled = false;
+          if (doc) {
+            this.docId = doc._id;
+            let remote = null;
+            try {
+              remote = JSON.parse(doc.save);
+            } catch (e) {
+              remote = null;
+            }
+            if (remote && this.preferRemote(remote, Save.data)) {
+              const keep = {};
+              for (const k of LOCAL_ONLY) keep[k] = Save.data[k];
+              Save.replace(Object.assign(remote, keep));
+              pulled = true;
+            }
+          }
+          this.cloudReady = true;
+          Analytics.track("cloud_sync", { action: pulled ? "pull" : doc ? "keep" : "new", runs: Save.data.runs });
+          if (pulled) onPulled();
+          else this.push();
+        }).catch(() => {
+          this.col = null;
+          Save.onSaved = () => {
+          };
+          Analytics.track("cloud_sync", { action: "error", runs: Save.data.runs });
+        });
+      }
+      // 存档变更后 3 秒内合并上传一次
+      static schedulePush() {
+        if (!this.cloudReady) return;
+        if (this.timer) return;
+        this.timer = setTimeout(() => {
+          this.timer = null;
+          this.push();
+        }, 3e3);
+      }
+      // 立即上传（切后台、重启更新前调用）
+      static flushCloud() {
+        if (this.timer) {
+          clearTimeout(this.timer);
+          this.timer = null;
+        }
+        if (this.cloudReady) this.push();
+      }
+      static push() {
+        if (!this.col || !this.cloudReady) return;
+        if (this.pushing) {
+          this.dirty = true;
+          return;
+        }
+        this.pushing = true;
+        const data = { save: JSON.stringify(Save.data), runs: Save.data.runs, updatedAt: Save.data.updatedAt || 0 };
+        const done = () => {
+          this.pushing = false;
+          if (this.dirty) {
+            this.dirty = false;
+            this.push();
+          }
+        };
+        const p = this.docId ? this.col.doc(this.docId).update({ data }) : this.col.add({ data }).then((r) => {
+          this.docId = r._id;
+        });
+        p.then(done, done);
+      }
+    };
+  }
+});
+
 // ../../assets/scripts/GameRoot.ts
 var GameRoot_exports = {};
 __export(GameRoot_exports, {
@@ -9713,19 +10259,22 @@ __export(GameRoot_exports, {
   GAME_VERSION: () => GAME_VERSION,
   GameRoot: () => GameRoot
 });
-var ccclass, DESIGN_W, DESIGN_H, GAME_NAME, GAME_SUBTITLE, AGE_RATING, GAME_VERSION, FROG_LINES, AGE_TIP, HEALTH_TIP, C_AD, C_WHITE2, C_GOLD2, C_RED, C_GREY, C_GREEN, C_DIM, C_BORDER2, C_BTN_GREEN, C_BTN_BLUE, C_BTN_GREY, tmpV3, GameRoot;
+var ccclass, DESIGN_W, DESIGN_H, GAME_NAME, GAME_SUBTITLE, AGE_RATING, GAME_VERSION, UNLOCKS, FROG_LINES, AGE_TIP, HEALTH_TIP, C_AD, C_WHITE2, C_GOLD2, C_RED, C_GREY, C_GREEN, C_DIM, C_BORDER2, C_BTN_GREEN, C_BTN_BLUE, C_BTN_GREY, tmpV3, GameRoot;
 var init_GameRoot = __esm({
   "../../assets/scripts/GameRoot.ts"() {
     init_cc();
     init_env();
     init_AdConfig();
     init_Ads();
+    init_Analytics();
     init_Art();
     init_Backdrop();
     init_Battle();
     init_Defs();
+    init_Legal();
     init_Recorder();
     init_Save();
+    init_Social();
     init_Sound();
     init_UiKit();
     ({ ccclass } = _decorator);
@@ -9735,6 +10284,14 @@ var init_GameRoot = __esm({
     GAME_SUBTITLE = "MILKY  FROG  SURVIVORS";
     AGE_RATING = "12+";
     GAME_VERSION = "v1.0.0";
+    UNLOCKS = [
+      { id: "shop", name: "\u6C38\u4E45\u5F3A\u5316", runs: 1 },
+      { id: "achv", name: "\u6210\u5C31", runs: 1 },
+      { id: "codex", name: "\u56FE\u9274", runs: 1 },
+      { id: "signin", name: "\u7B7E\u5230", runs: 1 },
+      { id: "rank", name: "\u597D\u53CB\u6392\u884C", runs: 1 },
+      { id: "daily", name: "\u6BCF\u65E5\u6311\u6218", runs: 2 }
+    ];
     FROG_LINES = ["\u5471!", "\u5272\u8349\u53BB!", "\u5471\u5471\u5471~", "\u5976\u86D9\u51FA\u51FB!", "\u4ECA\u5929\u4E5F\u8981\u52AA\u529B\u5272\u8349", "\u7EA2\u6708? \u4E0D\u6015!", "\u518D\u6765\u4E00\u5C40\u5471", "\u522B\u6233\u4E86, \u75D2!"];
     AGE_TIP = [
       "1. \u672C\u6E38\u620F\u662F\u4E00\u6B3E\u4F11\u95F2\u52A8\u4F5C\u7C7B\u6E38\u620F\uFF0C\u9002\u7528\u4E8E\u5E74\u6EE1 12 \u5468\u5C81\u53CA\u4EE5\u4E0A\u7684\u7528\u6237\uFF0C",
@@ -9801,6 +10358,8 @@ var init_GameRoot = __esm({
         this.adRevived = false;
         this.adRerolls = 0;
         this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adGoldUsed = false;
         this.adChestUsed = false;
         this.adWatchedThisResult = false;
@@ -9817,10 +10376,20 @@ var init_GameRoot = __esm({
         this.winT = 0;
         // ------------------------------------------------------------------ 倒下动画
         this.dieT = 0;
+        this.legalPages = [""];
+        this.legalPage = 0;
+        this.legalKind = "terms";
+        this.legalFrom = "privacy";
+        this.clubPos = new Vec3();
+        this.activeChallenge = null;
         this.questMsg = "";
         // ------------------------------------------------------------------ 图鉴
         this.codexTab = "weapon";
         this.codexSel = null;
+        this.rankKind = "best";
+        this.rankBack = "menu";
+        // 排行画布。SubContextView 推迟到打开排行时再挂，避免启动时调用 wx.getOpenDataContext()
+        this.rankView = null;
       }
       onLoad() {
         view.setDesignResolutionSize(DESIGN_W, DESIGN_H, ResolutionPolicy.FIXED_WIDTH);
@@ -9830,6 +10399,15 @@ var init_GameRoot = __esm({
         Sound.init(this.node);
         Ads.init();
         Recorder.init();
+        Analytics.init();
+        Social.initUpdate();
+        Social.initLaunch();
+        Social.onChallenge = () => {
+          if (this.state === "menu") this.refreshAll();
+        };
+        if (!Save.data.unlockSeen && Save.data.runs > 0) Save.data.unlockSeen = Save.data.runs;
+        if (this.privacyAccepted()) this.startCloud();
+        Analytics.track("launch", { scene: Analytics.launchScene(), is_new: Save.data.runs === 0 ? 1 : 0, runs: Save.data.runs, day_n: Analytics.dayN(), ver: GAME_VERSION });
         Recorder.onReady = () => {
           if (this.state === "result") this.refreshAll();
         };
@@ -9882,9 +10460,12 @@ var init_GameRoot = __esm({
           if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) {
         }
-        const title = b.won ? `\u6211\u7684\u5976\u86D9\u5728\u300A${GAME_NAME}\u300B\u91CC\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08\uFF01\u4F60\u4E5F\u6765\u8BD5\u8BD5\uFF1F` : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F`;
+        const daily = this.dailyRun ? Social.dateKey() : "";
+        const title = daily ? `\u4ECA\u5929\u7684\u6BCF\u65E5\u6311\u6218\u6211\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u540C\u4E00\u5173\u5361\uFF0C\u6562\u6765\u6BD4\u6BD4\u5417\uFF1F` : b.won ? `\u6211\u7684\u5976\u86D9\u5728\u300A${GAME_NAME}\u300B\u91CC\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08\uFF01\u4F60\u4E5F\u6765\u8BD5\u8BD5\uFF1F` : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F`;
+        const query = Social.shareQuery({ time: b.time, kills: b.kills, won: b.won ? 1 : 0, daily });
+        Analytics.track("share", { from: daily ? "daily" : "result", won: b.won ? 1 : 0 });
         try {
-          w.shareAppMessage({ title, imageUrl });
+          w.shareAppMessage({ title, imageUrl, query });
         } catch (e) {
         }
       }
@@ -9893,7 +10474,12 @@ var init_GameRoot = __esm({
         if (!w) return;
         try {
           if (w.showShareMenu) w.showShareMenu({ withShareTicket: true, menus: ["shareAppMessage", "shareTimeline"] });
-          const msg = () => ({ title: Save.data.bestTime ? `${GAME_NAME}\uFF1A\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(Save.data.bestTime)}\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F` : `${GAME_NAME}\uFF1A\u80D6\u5976\u86D9\u5272\u8349\uFF0C\u5728\u7EA2\u6708\u4E0B\u575A\u6301 15 \u5206\u949F\uFF01` });
+          const msg = () => {
+            Analytics.track("share", { from: "menu", won: 0 });
+            const d2 = Save.data;
+            const query = d2.bestTime ? Social.shareQuery({ time: d2.bestTime, kills: d2.bestKills, won: d2.wins > 0 ? 1 : 0, daily: "" }) : "";
+            return { title: d2.bestTime ? `${GAME_NAME}\uFF1A\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(d2.bestTime)}\uFF0C\u4F60\u80FD\u6491\u591A\u4E45\uFF1F` : `${GAME_NAME}\uFF1A\u80D6\u5976\u86D9\u5272\u8349\uFF0C\u5728\u7EA2\u6708\u4E0B\u575A\u6301 8 \u5206\u949F\uFF01`, query };
+          };
           if (w.onShareAppMessage) w.onShareAppMessage(msg);
           if (w.onShareTimeline) w.onShareTimeline(msg);
         } catch (e) {
@@ -9901,7 +10487,49 @@ var init_GameRoot = __esm({
       }
       // 切到后台自动暂停
       onHide() {
+        const st = this.state;
+        const inRun = st === "play" || st === "levelup" || st === "chest" || st === "pause" || st === "revive" || st === "dying" || st === "victory";
+        Analytics.track("app_hide", { state: st, run_no: Save.data.runs + (inRun ? 1 : 0), run_sec: inRun ? Math.floor(this.battle.time) : 0 });
         if (this.state === "play") this.setState("pause");
+        Social.flushCloud();
+      }
+      // 云存档：同意隐私政策后启动；云端进度更新时覆盖本地并刷新界面
+      startCloud() {
+        Social.initCloud(() => {
+          const st = this.state;
+          if (st === "menu" || st === "chars" || st === "shop" || st === "daily" || st === "privacy" || st === "legal" || st === "splash" || st === "signin") {
+            this.battle.reset(this.selectedChar());
+            this.battle.setPlayerVisible(false);
+          }
+          this.refreshAll();
+          this.showToast("\u5DF2\u4ECE\u4E91\u7AEF\u6062\u590D\u6E38\u620F\u8FDB\u5EA6");
+        });
+      }
+      // 新手渐进解锁
+      locked(id) {
+        const u = UNLOCKS.find((x) => x.id === id);
+        return !!u && Save.data.runs < u.runs;
+      }
+      // 主菜单入口按钮：未解锁时点击提示还差几局
+      gated(id, fn) {
+        return () => {
+          const u = UNLOCKS.find((x) => x.id === id);
+          if (u && Save.data.runs < u.runs) {
+            this.showToast(`\u518D\u73A9 ${u.runs - Save.data.runs} \u5C40\u5373\u53EF\u5F00\u653E\u300C${u.name}\u300D`);
+            return;
+          }
+          fn();
+        };
+      }
+      // 未解锁的按钮变暗并加锁
+      gateLook(btn, id) {
+        const lock = mkSprite(btn.node, "icon_lock", 2);
+        lock.node.setPosition(0, 0);
+        this.refreshers.push(() => {
+          const l = this.locked(id);
+          lock.node.active = l;
+          btn.label.node.active = !l;
+        });
       }
       selectedChar() {
         return CHARACTERS.find((c) => c.id === Save.data.selected) || CHARACTERS[0];
@@ -9976,6 +10604,7 @@ var init_GameRoot = __esm({
         this.buildResult();
         this.buildAchievements();
         this.buildDaily();
+        this.buildRank();
         this.buildCodex();
         this.buildVictory();
         this.buildDying();
@@ -9983,6 +10612,7 @@ var init_GameRoot = __esm({
         this.buildRevive();
         this.buildSplash();
         this.buildPrivacy();
+        this.buildLegal();
         this.buildTutorial();
         this.ageNode = mkPanel(this.ui, 680, 420).node;
         this.ageNode.setPosition(0, this.vh * 0.05);
@@ -10078,7 +10708,7 @@ var init_GameRoot = __esm({
       startVictory() {
         const b = this.battle;
         this.winT = 0;
-        this.winSub.string = b.daily ? "\u6BCF\u65E5\u6311\u6218\u6210\u529F!" : b.bossKills.includes("reaper") ? "\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08!" : "\u575A\u6301\u4E86 15 \u5206\u949F!";
+        this.winSub.string = b.daily ? "\u6BCF\u65E5\u6311\u6218\u6210\u529F!" : b.bossKills.includes("reaper") ? "\u51FB\u8D25\u4E86\u6697\u591C\u9B54\u672F\u5E08!" : "\u575A\u6301\u4E86 8 \u5206\u949F!";
         this.onJoyEnd();
         Sound.pauseBgm();
         Sound.play("achieve");
@@ -10149,6 +10779,7 @@ var init_GameRoot = __esm({
       tutNext() {
         this.tutStep++;
         this.tutT = 0;
+        Analytics.track("tut_step", { step: this.tutStep, sec: Math.floor(this.battle.time) });
         if (this.tutStep === 4) this.battle.pendingBlessings++;
         if (this.tutStep >= GameRoot.TUT_TEXT.length) this.tutFinish();
       }
@@ -10281,31 +10912,78 @@ var init_GameRoot = __esm({
         best.node.setPosition(0, this.bottom + 46);
         mkLabel(s, GAME_VERSION, 16, new Color(120, 110, 140, 255), "left", 2).node.setPosition(-this.vw / 2 + 12, this.bottom + 14);
         mkButton(s, "\u5F00\u59CB\u6E38\u620F", 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
-        const sbtn = mkButton(s, "\u7B7E\u5230", 120, 60, () => this.setState("signin"), new Color(150, 60, 30, 255), 26);
+        const sbtn = mkButton(s, "\u7B7E\u5230", 120, 60, this.gated("signin", () => this.setState("signin")), new Color(150, 60, 30, 255), 26);
+        this.gateLook(sbtn, "signin");
         sbtn.node.setPosition(this.vw / 2 - 80, this.top - 110);
         const sdot = mkRect(sbtn.node, 16, 16, new Color(240, 60, 60, 255), "dot");
         sdot.node.setPosition(52, 22);
         this.refreshers.push(() => {
-          sdot.node.active = this.signDue();
+          sdot.node.active = this.signDue() && !this.locked("signin");
         });
-        const dbtn = mkButton(s, "\u6BCF\u65E5\u6311\u6218", 212, 84, () => this.setState("daily"), new Color(150, 60, 30, 255), 32);
+        const dbtn = mkButton(s, "\u6BCF\u65E5\u6311\u6218", 212, 84, this.gated("daily", () => this.setState("daily")), new Color(150, 60, 30, 255), 32);
+        this.gateLook(dbtn, "daily");
         dbtn.node.setPosition(-114, btnTop - 104);
         const ddot = mkRect(dbtn.node, 18, 18, new Color(240, 60, 60, 255), "dot");
         ddot.node.setPosition(94, 30);
         this.refreshers.push(() => {
-          ddot.node.active = Save.data.dailyDone !== this.today;
+          ddot.node.active = Save.data.dailyDone !== this.today && !this.locked("daily");
         });
         mkButton(s, "\u9009\u62E9\u89D2\u8272", 212, 84, () => this.setState("chars"), C_BTN_BLUE, 32).node.setPosition(114, btnTop - 104);
-        mkButton(s, "\u6C38\u4E45\u5F3A\u5316", 440, 84, () => this.setState("shop"), C_BTN_BLUE, 34).node.setPosition(0, btnTop - 200);
-        mkButton(s, "\u6210\u5C31", 140, 80, () => this.setState("achv"), C_BTN_BLUE, 30).node.setPosition(-150, btnTop - 296);
-        const cb = mkButton(s, "\u56FE\u9274", 140, 80, () => this.setState("codex"), C_BTN_BLUE, 30);
-        cb.node.setPosition(0, btnTop - 296);
+        const shopBtn = mkButton(s, "\u6C38\u4E45\u5F3A\u5316", 440, 84, this.gated("shop", () => this.setState("shop")), C_BTN_BLUE, 34);
+        shopBtn.node.setPosition(0, btnTop - 200);
+        this.gateLook(shopBtn, "shop");
+        const ab = mkButton(s, "\u6210\u5C31", 126, 80, this.gated("achv", () => this.setState("achv")), C_BTN_BLUE, 28);
+        ab.node.setPosition(-201, btnTop - 296);
+        this.gateLook(ab, "achv");
+        const cb = mkButton(s, "\u56FE\u9274", 126, 80, this.gated("codex", () => this.setState("codex")), C_BTN_BLUE, 28);
+        cb.node.setPosition(-67, btnTop - 296);
+        this.gateLook(cb, "codex");
+        const rb = mkButton(s, "\u6392\u884C", 126, 80, this.gated("rank", () => this.openRank("menu")), C_BTN_BLUE, 28);
+        rb.node.setPosition(67, btnTop - 296);
+        this.gateLook(rb, "rank");
         const dot = mkRect(cb.node, 18, 18, new Color(240, 60, 60, 255), "dot");
         dot.node.setPosition(58, 28);
         this.refreshers.push(() => {
-          dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0);
+          dot.node.active = Save.data.codex.length > (Save.data.codexSeen || 0) && !this.locked("codex");
         });
-        mkButton(s, "\u8BBE\u7F6E", 140, 80, () => this.setState("settings"), C_BTN_GREY, 30).node.setPosition(150, btnTop - 296);
+        mkButton(s, "\u8BBE\u7F6E", 126, 80, () => this.setState("settings"), C_BTN_GREY, 28).node.setPosition(201, btnTop - 296);
+        this.clubPos.set(-this.vw / 2 + 56, top - 122, 0);
+        const clubLabel = mkLabel(s, "\u6E38\u620F\u5708", 18, C_WHITE2, "center", 2);
+        clubLabel.node.setPosition(this.clubPos.x, this.clubPos.y - 38);
+        clubLabel.node.active = Social.clubSupported;
+        const chal = mkPanel(s, 600, 250, new Color(20, 40, 70, 248), new Color(120, 220, 255, 255));
+        chal.node.setPosition(0, horizon + 40);
+        blockTouches(chal.node);
+        mkLabel(chal.node, "\u597D\u53CB\u7684\u6311\u6218", 32, new Color(120, 220, 255, 255), "center", 3).node.setPosition(0, 85);
+        const chalText = mkLabel(chal.node, "", 23, C_WHITE2, "center", 2);
+        chalText.node.setPosition(0, 22);
+        mkButton(chal.node, "\u7A0D\u540E", 200, 72, () => {
+          Social.pending = null;
+          this.refreshAll();
+        }, C_BTN_GREY, 26).node.setPosition(-120, -78);
+        mkButton(chal.node, "\u63A5\u53D7\u6311\u6218", 240, 72, () => this.acceptChallenge(), C_BTN_GREEN, 28).node.setPosition(120, -78);
+        this.refreshers.push(() => {
+          const c = Social.pending;
+          chal.node.active = !!c && this.state === "menu";
+          if (!c) return;
+          const daily2 = Social.challengeIsToday(c);
+          chalText.string = `\u597D\u53CB\u5728${daily2 ? "\u4ECA\u5929\u7684\u6BCF\u65E5\u6311\u6218" : "\u5976\u86D9\u5272\u8349"}\u4E2D\u575A\u6301\u4E86 ${this.fmtTime(c.time)}
+\u51FB\u8D25 ${c.kills} \u53EA\u602A\u7269${c.won ? "\uFF0C\u6210\u529F\u901A\u5173" : ""}
+\u4F60\u80FD\u8D85\u8FC7\u5417\uFF1F` + (c.daily && !daily2 ? "\uFF08\u90A3\u5929\u7684\u6BCF\u65E5\u6311\u6218\u5DF2\u7ED3\u675F\uFF0C\u6539\u4E3A\u666E\u901A\u5C40\uFF09" : "");
+        });
+        const add = mkPanel(s, 420, 150, new Color(255, 250, 235, 250), new Color(60, 40, 20, 255));
+        add.node.setPosition(this.vw / 2 - 230, this.vh / 2 - this.safeTop - 70);
+        mkLabel(add.node, "\u25B2", 30, new Color(60, 40, 20, 255), "center", 0).node.setPosition(150, 92);
+        mkLabel(add.node, "\u70B9\u53F3\u4E0A\u89D2\u300C\xB7\xB7\xB7\u300D\u9009\u62E9\n\u300C\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F\u300D\n\u4E0B\u6B21\u5728\u5FAE\u4FE1\u9996\u9875\u4E0B\u62C9\u5C31\u80FD\u627E\u5230\u5976\u86D9", 21, new Color(60, 40, 20, 255), "center", 0).node.setPosition(0, 6);
+        add.node.on(Node.EventType.TOUCH_END, () => {
+          Save.data.addTipShown = true;
+          Save.save();
+          Analytics.track("add_tip", { wins: Save.data.wins });
+          this.refreshAll();
+        });
+        this.refreshers.push(() => {
+          add.node.active = this.state === "menu" && Social.isWx && Save.data.wins > 0 && !Save.data.addTipShown && !Social.pending;
+        });
         this.refreshers.push(() => {
           const c = this.selectedChar();
           this.menuHero.spriteFrame = Art.f(c.sprite + "_0");
@@ -10313,7 +10991,7 @@ var init_GameRoot = __esm({
           gold.string = String(Save.data.gold);
           daily.node.active = Save.data.bonusDay !== (/* @__PURE__ */ new Date()).toDateString();
           const d2 = Save.data;
-          best.string = (d2.runs ? `\u6700\u4F73\uFF1A\u5B58\u6D3B ${this.fmtTime(d2.bestTime)}  \xB7  \u51FB\u8D25 ${d2.bestKills}  \xB7  \u7B49\u7EA7 ${d2.bestLevel}` : "\u5B58\u6D3B 15 \u5206\u949F\u5373\u53EF\u83B7\u80DC") + (d2.endlessBest ? `
+          best.string = (d2.runs ? `\u6700\u4F73\uFF1A\u5B58\u6D3B ${this.fmtTime(d2.bestTime)}  \xB7  \u51FB\u8D25 ${d2.bestKills}  \xB7  \u7B49\u7EA7 ${d2.bestLevel}` : "\u5B58\u6D3B 8 \u5206\u949F\u5373\u53EF\u83B7\u80DC") + (d2.endlessBest ? `
 \u65E0\u5C3D\u6A21\u5F0F\u6700\u4F73 ${this.fmtTime(d2.endlessBest)}` : "") + `   \u6210\u5C31 ${d2.achievements.length}/${ACHIEVEMENTS.length}`;
         });
       }
@@ -10384,6 +11062,25 @@ var init_GameRoot = __esm({
           mkSprite(lock.node, "icon_lock", 3).node.setPosition(0, 20);
           const evOf = EVENTS.find((e) => e.char === c.id);
           mkLabel(lock.node, c.cost < 0 ? evOf ? evOf.lockText : "\u6D3B\u52A8\u9650\u5B9A" : `${c.cost} \u91D1\u5E01\u89E3\u9501`, 22, C_GOLD2, "center", 3).node.setPosition(0, -34);
+          const adUnlock = mkRect(lock.node, 184, 42, C_AD, "ad-character");
+          adUnlock.node.setPosition(0, -ch / 2 + 27);
+          mkLabel(adUnlock.node, "\u25B6 \u770B\u5E7F\u544A\u89E3\u9501", 19, C_WHITE2, "center", 2);
+          adUnlock.node.on(Node.EventType.TOUCH_END, (event) => {
+            event.propagationStopped = true;
+            if (this.state !== "chars" || c.cost <= 0 || Save.data.chars.includes(c.id) || !Ads.canReward("character")) return;
+            Sound.play("click");
+            this.watchAd("character", () => {
+              const d2 = Save.data;
+              if (!d2.chars.includes(c.id)) {
+                d2.chars.push(c.id);
+                Analytics.track("char_unlock", { char: c.id, cost: 0, runs: d2.runs });
+              }
+              d2.selected = c.id;
+              Save.save();
+              Sound.play("chest");
+              this.showToast(`\u89E3\u9501 ${c.name}!`);
+            });
+          });
           card.node.on(Node.EventType.TOUCH_END, () => {
             Sound.play("click");
             const d2 = Save.data;
@@ -10398,6 +11095,7 @@ var init_GameRoot = __esm({
               }
               d2.gold -= c.cost;
               d2.chars.push(c.id);
+              Analytics.track("char_unlock", { char: c.id, cost: c.cost, runs: d2.runs });
               Sound.play("chest");
               this.showToast(`\u89E3\u9501 ${c.name}!`);
             }
@@ -10407,6 +11105,7 @@ var init_GameRoot = __esm({
           });
           this.refreshers.push(() => {
             lock.node.active = !Save.data.chars.includes(c.id);
+            adUnlock.node.active = c.cost > 0 && Ads.canReward("character");
             const sel = Save.data.selected === c.id;
             card.border.color = sel ? C_GREEN : C_BORDER2;
             card.fill.color = sel ? new Color(36, 64, 60, 250) : new Color(36, 30, 64, 245);
@@ -10454,7 +11153,7 @@ var init_GameRoot = __esm({
         this.refreshers.push(() => {
           const locked = Save.data.wins <= 0;
           const e = this.endlessMode, n = this.nightmareMode;
-          mode.label.string = locked ? "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u65E0\u5C3D / \u5669\u68A6 \u9996\u80DC\u89E3\u9501\uFF09" : e ? "\u6A21\u5F0F\uFF1A\u65E0\u5C3D\uFF08Boss \u5FAA\u73AF\uFF0C\u8D8A\u6765\u8D8A\u5F3A\uFF09" : n ? "\u6A21\u5F0F\uFF1A\u5669\u68A6\uFF08\u751F\u547D +60% \u4F24\u5BB3 +30% \u91D1\u5E01 +60%\uFF09" : "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u5B58\u6D3B 15 \u5206\u949F\u80DC\u5229\uFF09";
+          mode.label.string = locked ? "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u65E0\u5C3D / \u5669\u68A6 \u9996\u80DC\u89E3\u9501\uFF09" : e ? "\u6A21\u5F0F\uFF1A\u65E0\u5C3D\uFF08Boss \u5FAA\u73AF\uFF0C\u8D8A\u6765\u8D8A\u5F3A\uFF09" : n ? "\u6A21\u5F0F\uFF1A\u5669\u68A6\uFF08\u751F\u547D +60% \u4F24\u5BB3 +30% \u91D1\u5E01 +60%\uFF09" : "\u6A21\u5F0F\uFF1A\u666E\u901A\uFF08\u5B58\u6D3B 8 \u5206\u949F\u80DC\u5229\uFF09";
           mode.bg.color = e ? new Color(110, 40, 120, 255) : n ? new Color(140, 30, 40, 255) : C_BTN_GREY;
         });
       }
@@ -10497,6 +11196,7 @@ var init_GameRoot = __esm({
             Save.data.gold -= c;
             Save.data.power[p.id] = r + 1;
             Save.save();
+            Analytics.track("shop_buy", { item: p.id, level: r + 1, cost: c, runs: Save.data.runs });
             Sound.play("coin");
             this.refreshAll();
           });
@@ -10563,7 +11263,7 @@ var init_GameRoot = __esm({
         this.toggleRow(p.node, -165, "icon_chain", "\u6027\u80FD\u6A21\u5F0F", "lite");
         mkLabel(s, "\u6027\u80FD\u6A21\u5F0F\uFF1A\u51CF\u5C11\u540C\u5C4F\u602A\u7269\u4E0E\u7279\u6548\uFF0C\u9002\u5408\u8F83\u65E7\u7684\u624B\u673A", 20, C_GREY, "center", 2).node.setPosition(0, this.vh * 0.14 - 265);
         const stats = mkLabel(s, "", 26, C_GREY, "center", 3);
-        stats.node.setPosition(0, -this.vh * 0.2);
+        stats.node.setPosition(0, -this.vh * 0.15);
         this.refreshers.push(() => {
           const d2 = Save.data;
           stats.string = `\u6E38\u620F\u6B21\u6570  ${d2.runs}
@@ -10571,6 +11271,9 @@ var init_GameRoot = __esm({
 \u7D2F\u8BA1\u51FB\u8D25  ${d2.totalKills}
 \u6700\u957F\u5B58\u6D3B  ${this.fmtTime(d2.bestTime)}`;
         });
+        const docY = this.bottom + 188;
+        mkButton(s, "\u300A\u7528\u6237\u534F\u8BAE\u300B", 250, 72, () => this.openDoc("terms"), C_BTN_GREY, 24).node.setPosition(-140, docY);
+        mkButton(s, "\u300A\u9690\u79C1\u653F\u7B56\u300B", 250, 72, () => this.openDoc("privacy"), C_BTN_GREY, 24).node.setPosition(140, docY);
         mkButton(s, "\u8FD4\u56DE", 300, 88, () => this.setState("menu"), C_BTN_BLUE).node.setPosition(0, this.bottom + 80);
       }
       buildPause() {
@@ -10611,7 +11314,7 @@ var init_GameRoot = __esm({
           music.label.string = "\u97F3\u4E50\uFF1A" + (Save.data.music ? "\u5F00" : "\u5173");
           sfx.label.string = "\u97F3\u6548\uFF1A" + (Save.data.sfx ? "\u5F00" : "\u5173");
         });
-        mkButton(s, "\u653E\u5F03\u672C\u5C40", 420, 88, () => this.endRun(false), new Color(120, 30, 40, 255), 30).node.setPosition(0, y0 - 240);
+        mkButton(s, "\u653E\u5F03\u672C\u5C40", 420, 88, () => this.endRun(false, true), new Color(120, 30, 40, 255), 30).node.setPosition(0, y0 - 240);
       }
       buildLevelUp() {
         const s = this.screen("levelup");
@@ -10648,6 +11351,16 @@ var init_GameRoot = __esm({
           this.showToast("\u9009\u5B8C\u8FD9\u5F20\u540E\u8FD8\u80FD\u518D\u9009\u4E00\u5F20!");
         }), C_AD, 26);
         this.adBlessBtn.node.setPosition(0, adY);
+        this.adLevelBonusBtn = mkButton(s, "\u25B6 \u770B\u5E7F\u544A\u591A\u9009\u4E00\u6B21", 310, 80, () => {
+          if (this.state !== "levelup" || this.cardMode !== "level" || this.adLevelBonusPending || this.battle.time < this.nextAdLevelBonus) return;
+          this.watchAd("level_bonus", () => {
+            this.adLevelBonusPending = true;
+            this.nextAdLevelBonus = this.battle.time + AD_CONFIG.levelBonusInterval;
+            this.fillCards();
+            this.showToast("\u9009\u5B8C\u540E\u518D\u9009\u4E00\u6B21!");
+          });
+        }, C_AD, 23);
+        this.adLevelBonusBtn.node.setPosition(0, adY);
       }
       buildChest() {
         const s = this.screen("chest");
@@ -10692,11 +11405,11 @@ var init_GameRoot = __esm({
         this.resultList.setPosition(0, this.top - 520);
         const by = this.bottom + 80;
         mkButton(s, "\u4E3B\u83DC\u5355", 260, 88, () => {
-          Ads.afterRun(this.adWatchedThisResult);
+          this.leaveResult("menu");
           this.toMenu();
         }, C_BTN_GREY).node.setPosition(-150, by);
         mkButton(s, "\u518D\u6765\u4E00\u5C40", 260, 88, () => {
-          Ads.afterRun(this.adWatchedThisResult);
+          this.leaveResult("replay");
           this.replay();
         }, C_BTN_GREEN).node.setPosition(150, by);
         this.goldAdBtn = mkButton(s, "", 380, 80, () => this.watchAd("gold", () => {
@@ -10710,7 +11423,7 @@ var init_GameRoot = __esm({
         this.shareBtn = mkButton(s, "\u5206\u4EAB\u6218\u7EE9", 200, 80, () => this.shareResult(), C_BTN_BLUE, 26);
         this.recBtn = mkButton(s, "\u5206\u4EAB\u672C\u5C40\u5F55\u5C4F", 300, 72, () => {
           const b = this.battle;
-          Recorder.share(b.won ? "\u6211\u7684\u5976\u86D9\u6D3B\u8FC7\u4E86 15 \u5206\u949F\uFF01" : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269`, (ok) => {
+          Recorder.share(b.won ? "\u6211\u7684\u5976\u86D9\u6D3B\u8FC7\u4E86 8 \u5206\u949F\uFF01" : `\u6211\u7684\u5976\u86D9\u575A\u6301\u4E86 ${this.fmtTime(b.time)}\uFF0C\u5272\u5012 ${b.kills} \u53EA\u602A\u7269`, (ok) => {
             if (!ok) this.showToast("\u5206\u4EAB\u672A\u5B8C\u6210");
           });
         }, new Color(200, 40, 90, 255), 26);
@@ -10728,10 +11441,17 @@ var init_GameRoot = __esm({
         });
       }
       // 死亡复活（每局一次，看广告满血复活）
+      // 离开结算页：插屏广告 + 记录玩家是再来一局还是回主菜单
+      leaveResult(next) {
+        const inter = Ads.afterRun(this.adWatchedThisResult);
+        Analytics.track("result_next", { next, run_no: Save.data.runs, inter: inter ? 1 : 0 });
+      }
       buildRevive() {
         const s = this.screen("revive");
-        mkLabel(s, "\u4F60\u5012\u4E0B\u4E86\u2026", 64, C_RED, "center", 5).node.setPosition(0, this.vh * 0.2);
-        mkLabel(s, "\u770B\u4E00\u6BB5\u5E7F\u544A\uFF0C\u6EE1\u72B6\u6001\u539F\u5730\u590D\u6D3B?", 30, C_WHITE2, "center", 3).node.setPosition(0, this.vh * 0.1);
+        mkLabel(s, "\u4F60\u5012\u4E0B\u4E86\u2026", 64, C_RED, "center", 5).node.setPosition(0, this.vh * 0.22);
+        this.reviveHint = mkLabel(s, "\u6EE1\u72B6\u6001\u539F\u5730\u590D\u6D3B\uFF0C\u4FDD\u7559\u5168\u90E8\u88C5\u5907!", 26, C_GOLD2, "center", 3);
+        this.reviveHint.node.setPosition(0, this.vh * 0.14);
+        mkLabel(s, "\u770B\u4E00\u6BB5\u5E7F\u544A\uFF0C\u6EE1\u8840\u590D\u6D3B + \u6E05\u573A\u51B2\u51FB\u6CE2", 26, C_WHITE2, "center", 3).node.setPosition(0, this.vh * 0.08);
         this.reviveCount = mkLabel(s, "", 72, C_GOLD2, "center", 5, true);
         this.reviveCount.node.setPosition(0, 0);
         mkButton(s, "\u25B6 \u770B\u5E7F\u544A\u590D\u6D3B", 420, 100, () => this.watchAd("revive", () => {
@@ -10742,6 +11462,18 @@ var init_GameRoot = __esm({
           this.reviveT = Math.max(this.reviveT, 3);
         }), C_AD, 36).node.setPosition(0, -this.vh * 0.1);
         mkButton(s, "\u653E\u5F03", 260, 80, () => this.endRun(false), C_BTN_GREY, 28).node.setPosition(0, -this.vh * 0.2);
+        this.refreshers.push(() => {
+          if (this.state !== "revive") return;
+          const b = this.battle;
+          const goal = this.dailyRun ? DAILY_GOAL : WIN_TIME;
+          if (b.boss && b.boss.alive) {
+            const pct = Math.max(1, Math.round(b.boss.hp / b.boss.maxHp * 100));
+            this.reviveHint.string = `${b.boss.def.name} \u53EA\u5269 ${pct}% \u751F\u547D \xB7 \u590D\u6D3B\u76F4\u63A5\u7FFB\u76D8!`;
+          } else {
+            const left = Math.max(1, Math.ceil(goal - b.time));
+            this.reviveHint.string = `\u5DF2\u575A\u6301 ${this.fmtTime(b.time)}\uFF08LV ${b.level}\uFF09\xB7 \u8DDD\u80DC\u5229\u53EA\u5DEE ${this.fmtTime(left)}!`;
+          }
+        });
       }
       // 启动页：动态夜景 + Logo 弹出 + 加载条 + 健康游戏忠告 + 适龄提示（法规要求）
       buildSplash() {
@@ -10792,39 +11524,89 @@ var init_GameRoot = __esm({
       }
       afterSplash() {
         if (this.state !== "splash") return;
-        this.setState(Save.data.privacyOk ? "menu" : "privacy");
+        this.setState(this.privacyAccepted() ? "menu" : "privacy");
       }
-      // 首次启动：用户协议与隐私政策
+      // 首次启动：摘要 + 两个可点开的全文按钮。协议在游戏内展示，不跳外链。
       buildPrivacy() {
         const s = this.screen("privacy");
-        const p = mkPanel(s, 640, 620);
-        p.node.setPosition(0, this.vh * 0.04);
-        mkLabel(p.node, "\u7528\u6237\u534F\u8BAE\u4E0E\u9690\u79C1\u653F\u7B56", 34, C_GOLD2, "center", 3).node.setPosition(0, 250);
-        mkLabel(p.node, `\u6B22\u8FCE\u6765\u5230\u300A${GAME_NAME}\u300B\uFF01
-
-\u6211\u4EEC\u975E\u5E38\u91CD\u89C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\u4FDD\u62A4\uFF1A
-\xB7 \u672C\u6E38\u620F\u4E0D\u6536\u96C6\u4F60\u7684\u4E2A\u4EBA\u4FE1\u606F\uFF1B
-\xB7 \u6E38\u620F\u8FDB\u5EA6\u53EA\u4FDD\u5B58\u5728\u4F60\u7684\u624B\u673A\u672C\u5730\uFF1B
-\xB7 \u6E38\u620F\u4E2D\u7684\u5E7F\u544A\u7531\u5FAE\u4FE1\u5E73\u53F0\u63D0\u4F9B\uFF0C
-  \u76F8\u5173\u4FE1\u606F\u5904\u7406\u9075\u5FAA\u300A\u5FAE\u4FE1\u9690\u79C1\u4FDD\u62A4\u6307\u5F15\u300B\uFF1B
-\xB7 \u4F60\u53EF\u4EE5\u968F\u65F6\u5728\u5FAE\u4FE1\u4E2D\u5220\u9664\u672C\u5C0F\u6E38\u620F\u53CA\u5176\u6570\u636E\u3002
-
-\u70B9\u51FB\u201C\u540C\u610F\u201D\u5373\u8868\u793A\u4F60\u5DF2\u9605\u8BFB\u5E76\u540C\u610F
-\u300A\u7528\u6237\u534F\u8BAE\u300B\u548C\u300A\u9690\u79C1\u653F\u7B56\u300B\u3002`, 22, C_WHITE2, "center", 2).node.setPosition(0, 10);
-        mkButton(p.node, "\u4E0D\u540C\u610F", 220, 80, () => {
+        mkLabel(s, "\u7528\u6237\u534F\u8BAE\u4E0E\u9690\u79C1\u653F\u7B56", 40, C_GOLD2, "center", 4).node.setPosition(0, this.top - 70);
+        const summary = mkLabel(s, privacySummary(GAME_NAME), 22, C_WHITE2, "center", 2);
+        const sut = summary.node.getComponent(UITransform);
+        sut.setAnchorPoint(0.5, 1);
+        summary.node.setPosition(0, this.top - 130);
+        const linkY = this.bottom + 250;
+        mkLabel(s, "\u70B9\u6B64\u9605\u8BFB\u5168\u6587", 22, C_GOLD2, "center", 2).node.setPosition(0, linkY + 70);
+        mkButton(s, "\u300A\u7528\u6237\u534F\u8BAE\u300B", 280, 84, () => this.openDoc("terms"), C_BTN_BLUE, 28).node.setPosition(-155, linkY);
+        mkButton(s, "\u300A\u9690\u79C1\u653F\u7B56\u300B", 280, 84, () => this.openDoc("privacy"), C_BTN_BLUE, 28).node.setPosition(155, linkY);
+        const by = this.bottom + 120;
+        mkButton(s, "\u4E0D\u540C\u610F", 260, 84, () => {
+          Analytics.track("privacy", { agree: 0 });
           const w = mgApi();
           if (w && w.exitMiniProgram) w.exitMiniProgram({});
           else this.showToast("\u9700\u8981\u540C\u610F\u540E\u624D\u80FD\u5F00\u59CB\u6E38\u620F");
-        }, C_BTN_GREY, 28).node.setPosition(-130, -250);
-        mkButton(p.node, "\u540C\u610F", 220, 80, () => {
+        }, C_BTN_GREY, 28).node.setPosition(-150, by);
+        mkButton(s, "\u540C\u610F", 260, 84, () => {
           Save.data.privacyOk = true;
+          Save.data.privacyVer = PRIVACY_VER;
           Save.save();
+          Analytics.track("privacy", { agree: 1 });
+          this.startCloud();
           this.setState("menu");
-        }, C_BTN_GREEN, 30).node.setPosition(130, -250);
+        }, C_BTN_GREEN, 30).node.setPosition(150, by);
+      }
+      buildLegal() {
+        const s = this.screen("legal");
+        this.legalTitle = mkLabel(s, "", 40, C_GOLD2, "center", 4);
+        this.legalTitle.node.setPosition(0, this.top - 56);
+        this.legalBody = mkLabel(s, "", 22, C_WHITE2, "left", 2);
+        this.legalBody.node.getComponent(UITransform).setAnchorPoint(0, 1);
+        this.legalBody.node.setPosition(-300, this.top - 120);
+        const by = this.bottom + 64;
+        this.legalPageLabel = mkLabel(s, "", 22, C_GREY, "center", 2);
+        this.legalPageLabel.node.setPosition(0, by + 156);
+        mkButton(s, "\u4E0A\u4E00\u9875", 200, 72, () => this.turnLegal(-1), C_BTN_GREY, 26).node.setPosition(-160, by + 96);
+        mkButton(s, "\u4E0B\u4E00\u9875", 200, 72, () => this.turnLegal(1), C_BTN_GREY, 26).node.setPosition(160, by + 96);
+        mkButton(s, "\u8FD4\u56DE", 280, 76, () => this.setState(this.legalFrom), C_BTN_BLUE, 28).node.setPosition(0, by);
+      }
+      privacyAccepted() {
+        return Save.data.privacyOk && (Save.data.privacyVer || 0) >= PRIVACY_VER;
+      }
+      openDoc(kind) {
+        if (this.state !== "legal") this.legalFrom = this.state;
+        this.legalKind = kind;
+        this.legalPage = 0;
+        this.setState("legal");
+      }
+      legalRows() {
+        const line = 28;
+        const bodyTop = this.top - 120;
+        const footerTop = this.bottom + 250;
+        return Math.max(8, Math.min(22, Math.floor((bodyTop - footerTop) / line)));
+      }
+      applyLegal() {
+        const doc = this.legalKind === "terms" ? userTerms(GAME_NAME) : privacyPolicy(GAME_NAME);
+        this.legalTitle.string = doc.title;
+        this.legalPages = paginate(doc.body, 20, this.legalRows());
+        if (this.legalPage >= this.legalPages.length) this.legalPage = 0;
+        this.showLegalPage();
+      }
+      showLegalPage() {
+        this.legalBody.string = this.legalPages[this.legalPage] || "";
+        this.legalPageLabel.string = `\u7B2C ${this.legalPage + 1} / ${this.legalPages.length} \u9875`;
+      }
+      turnLegal(dir) {
+        const n = this.legalPage + dir;
+        if (n < 0 || n >= this.legalPages.length) {
+          this.showToast(n < 0 ? "\u5DF2\u7ECF\u662F\u7B2C\u4E00\u9875" : "\u5DF2\u7ECF\u662F\u6700\u540E\u4E00\u9875");
+          return;
+        }
+        this.legalPage = n;
+        this.showLegalPage();
       }
       // 看激励视频：看完发奖；没看完或失败给出提示
       watchAd(place, onReward, onFail) {
         Ads.showReward(place, (r) => {
+          Analytics.track("ad_reward", { place, result: r.ok ? "ok" : r.reason || "error", run_no: Save.data.runs });
           if (r.ok) {
             this.adWatchedThisResult = true;
             onReward();
@@ -10850,11 +11632,15 @@ var init_GameRoot = __esm({
         this.overlay.color = inRun || s === "result" ? C_DIM : new Color(0, 0, 0, s === "menu" ? 90 : 190);
         this.touchLayer.active = s === "play";
         if (s !== "play") this.onJoyEnd();
-        if (s === "menu" || s === "chars" || s === "shop" || s === "settings" || s === "achv" || s === "codex" || s === "signin" || s === "privacy" || s === "daily") Sound.playBgm("bgm_menu");
+        if (s === "menu" || s === "chars" || s === "shop" || s === "settings" || s === "achv" || s === "codex" || s === "signin" || s === "privacy" || s === "legal" || s === "daily" || s === "rank") Sound.playBgm("bgm_menu");
+        if (s === "legal") this.applyLegal();
+        if (s === "menu") this.onMenuEnter();
+        else Social.hideClub();
         if (s === "codex") {
           Save.data.codexSeen = Save.data.codex.length;
           Save.save();
         }
+        if (s === "rank") this.ensureRankView();
         if (s === "revive") {
           this.reviveT = 8;
           Sound.pauseBgm();
@@ -10867,6 +11653,41 @@ var init_GameRoot = __esm({
         if (prev === "pause" && s === "play") Recorder.resume();
         if (prev === "pause" && s === "play") Sound.resumeBgm();
         this.refreshAll();
+      }
+      // 回到主菜单：版本更新提示、新开放功能提示、游戏圈按钮
+      onMenuEnter() {
+        Social.promptUpdate(() => {
+          Save.save();
+          Social.flushCloud();
+        });
+        const d2 = Save.data;
+        const fresh = UNLOCKS.filter((u) => u.runs > (d2.unlockSeen || 0) && u.runs <= d2.runs);
+        if (d2.runs > (d2.unlockSeen || 0)) {
+          d2.unlockSeen = d2.runs;
+          Save.save();
+        }
+        if (fresh.length) {
+          this.showToast(`\u65B0\u529F\u80FD\u5F00\u653E\uFF1A${fresh.map((u) => u.name).join("\u3001")}`);
+          Analytics.track("unlock", { runs: d2.runs, n: fresh.length });
+        }
+        if (Social.clubSupported) {
+          const info = globalThis.wx.getSystemInfoSync();
+          const k = info.windowWidth / this.vw;
+          const size = 44;
+          Social.showClub((this.clubPos.x + this.vw / 2) * k - size / 2, (this.vh / 2 - this.clubPos.y) * k - size / 2, size);
+        }
+      }
+      // 接受好友挑战：同一天的每日挑战直接进入同一关卡，否则开普通局；新玩家先走新手局
+      acceptChallenge() {
+        const c = Social.pending;
+        if (!c) return;
+        Social.pending = null;
+        this.activeChallenge = c;
+        const daily = Social.challengeIsToday(c) && Save.data.runs > 0;
+        Analytics.track("challenge_accept", { daily: daily ? 1 : 0, runs: Save.data.runs });
+        if (daily) this.startDaily();
+        else this.startGame();
+        this.banner(`\u597D\u53CB\u6311\u6218 \xB7 \u76EE\u6807 ${this.fmtTime(c.time)}`, new Color(120, 220, 255, 255));
       }
       refreshAll() {
         for (const f of this.refreshers) f();
@@ -10899,13 +11720,15 @@ var init_GameRoot = __esm({
       get today() {
         return (/* @__PURE__ */ new Date()).toDateString();
       }
-      // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 10 分钟
+      // 每日挑战：固定试玩角色、地图、规则与命运卡牌，存活 6 分钟
       startDaily() {
         const ds = dailySetup(this.today);
         const ch = CHARACTERS.find((c) => c.id === ds.char) || CHARACTERS[0];
         this.dailyRun = true;
         this.tutStep = -1;
         this.adRevived = this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(ch, false, ds.stage, { mod: ds.mod, blessing: ds.blessing });
         this.battle.nightmare = false;
@@ -10916,6 +11739,7 @@ var init_GameRoot = __esm({
         Sound.playBgm("bgm_battle");
         Recorder.start();
         this.setState("play");
+        this.trackRun("run_start", {});
         this.banner(`\u6BCF\u65E5\u6311\u6218 \xB7 ${ds.mod.name}`, new Color(255, 170, 80, 255));
       }
       replay() {
@@ -10926,6 +11750,8 @@ var init_GameRoot = __esm({
         this.dailyRun = false;
         this.ultHinted = false;
         this.adRevived = this.adBlessUsed = false;
+        this.adLevelBonusPending = false;
+        this.nextAdLevelBonus = AD_CONFIG.levelBonusInterval;
         this.adRerolls = AD_CONFIG.rerollPerRun;
         this.battle.reset(this.selectedChar(), this.endlessMode, this.currentStage.id);
         this.battle.nightmare = this.nightmareMode;
@@ -10938,17 +11764,25 @@ var init_GameRoot = __esm({
         Recorder.start();
         this.setState("play");
         this.tutStart();
+        this.trackRun("run_start", {});
         const st = this.battle.streak;
         this.banner(this.endlessMode ? "\u65E0\u5C3D\u4E4B\u591C \xB7 \u80FD\u6491\u591A\u4E45?" : this.nightmareMode ? `\u5669\u68A6\u96BE\u5EA6 \xB7 ${this.currentStage.name}` : st > 0 ? `\u4E0D\u5C48\u610F\u5FD7 \xB7 \u4F24\u5BB3\u4E0E\u751F\u547D +${st * 5}%` : `${this.currentStage.name} \xB7 \u751F\u5B58\u4E0B\u53BB!`, new Color(255, 230, 120, 255));
       }
-      // 结算：发放金币、记录最佳成绩
-      endRun(win) {
+      // 开局 / 结算埋点的公共字段（run_no：开局时为即将进行的第几局，结算时为刚结束的这一局）
+      trackRun(id, extra) {
+        const b = this.battle;
+        const mode = this.dailyRun ? "daily" : b.endless ? "endless" : b.nightmare ? "nightmare" : "normal";
+        const runNo = Save.data.runs + (id === "run_start" ? 1 : 0);
+        Analytics.track(id, { run_no: runNo, char: b.char.id, stage: b.stage.id, mode, day_n: Analytics.dayN(), ...extra });
+      }
+      // 结算：发放金币、记录最佳成绩（quit：从暂停菜单主动放弃）
+      endRun(win, quit = false) {
         Recorder.stop();
         if (this.tutStep >= 0) this.tutFinish();
         this.tutNode.active = false;
         const b = this.battle;
         const d2 = Save.data;
-        const bonus = Math.round((Math.floor(b.time / 60) * 25 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
+        const bonus = Math.round((Math.floor(b.time / 60) * 45 + (win ? 500 : 0)) * b.stats.greed * b.stage.goldMul * (b.nightmare ? 1.6 : 1));
         let total = b.gold + bonus;
         const today = (/* @__PURE__ */ new Date()).toDateString();
         const daily = d2.bonusDay !== today;
@@ -11006,6 +11840,18 @@ var init_GameRoot = __esm({
         for (const a of got) achGold += a.gold;
         d2.gold += achGold;
         Save.save();
+        this.trackRun("run_end", {
+          result: win ? "win" : quit ? "quit" : "lose",
+          time_sec: Math.floor(b.time),
+          level: b.level,
+          kills: b.kills,
+          boss_kills: b.bossKills.length,
+          evolved: b.weapons.filter((w) => w.evolved).length,
+          revived: this.adRevived ? 1 : 0,
+          gold: total + achGold,
+          achv: got.length
+        });
+        Social.reportScores();
         this.resultTitle.string = this.dailyRun ? win ? "\u6311\u6218\u6210\u529F!" : "\u6311\u6218\u5931\u8D25" : win ? "\u80DC\u5229!" : b.endless ? "\u65E0\u5C3D\u4E4B\u591C\u7ED3\u675F" : "\u4F60\u5012\u4E0B\u4E86";
         this.resultTitle.color = win ? C_GOLD2 : C_RED;
         this.resultStats.string = `\u5B58\u6D3B\u65F6\u95F4  ${this.fmtTime(b.time)}
@@ -11015,6 +11861,13 @@ var init_GameRoot = __esm({
 \u672C\u5C40\u83B7\u5F97  ${total + achGold} \u91D1\u5E01` + (got.length ? `
 \u65B0\u6210\u5C31\uFF1A${got.map((a) => a.name).join("\u3001")}  (+${achGold})` : "");
         this.resultHint.string = this.nearMiss(win, daily);
+        const ch = this.activeChallenge;
+        if (ch) {
+          const beat = b.time > ch.time || win && !ch.won;
+          this.resultHint.string = (beat ? `\u4F60\u8D85\u8FC7\u4E86\u597D\u53CB\u7684 ${this.fmtTime(ch.time)}\uFF01\u5206\u4EAB\u7ED9\u597D\u53CB\u770B\u770B\u5427` : `\u79BB\u597D\u53CB\u7684 ${this.fmtTime(ch.time)} \u8FD8\u5DEE ${this.fmtTime(ch.time - b.time)}`) + (this.resultHint.string ? "\n" + this.resultHint.string : "");
+          Analytics.track("challenge_result", { beat: beat ? 1 : 0, daily: ch.daily ? 1 : 0, time_sec: Math.floor(b.time) });
+          this.activeChallenge = null;
+        }
         const statLines = this.resultStats.string.split("\n").length, hintLines = this.resultHint.string ? this.resultHint.string.split("\n").length : 0;
         const statTop = this.top - 200;
         this.resultStats.node.setPosition(0, statTop - statLines * 34 / 2);
@@ -11120,13 +11973,13 @@ var init_GameRoot = __esm({
         const ok = {
           win1: win,
           kill1k: b.kills >= 1e3,
-          kill5k: b.kills >= 5e3,
+          kill5k: b.kills >= 3e3,
           combo500: b.maxCombo >= 500,
           lv50: b.level >= 50,
           evo1: b.evolvedCount >= 1,
           evo3: b.evolvedCount >= 3,
           goldrat: b.goldRats > 0,
-          endless20: b.endless && b.time >= 1200,
+          endless20: b.endless && b.time >= 720,
           allchars: CHARACTERS.every((c) => c.cost < 0 || d2.chars.includes(c.id)),
           daily1: this.dailyRun && win,
           stage_snow: win && !b.endless && !this.dailyRun && b.stage.id === "snow",
@@ -11138,7 +11991,7 @@ var init_GameRoot = __esm({
           codex_full: this.codexCount() >= codexEntries().length,
           epic3: b.epicsUsed >= 3,
           trial2: b.trialsWon >= 2,
-          ult10: b.ultCasts >= 10
+          ult10: b.ultCasts >= 6
         };
         for (const id of b.bossKills) ok["boss_" + id] = true;
         const got = ACHIEVEMENTS.filter((a) => ok[a.id] && !d2.achievements.includes(a.id));
@@ -11158,6 +12011,7 @@ var init_GameRoot = __esm({
         d2.signCount++;
         d2.signDate = this.today;
         Save.save();
+        Analytics.track("sign_in", { day: day + 1, mul, day_n: Analytics.dayN() });
         Sound.play(day === 6 ? "achieve" : "coin");
         this.showToast(`\u7B7E\u5230\u6210\u529F +${g2} \u91D1\u5E01` + (mul > 1 ? "\uFF08\u53CC\u500D\uFF09" : ""));
         this.refreshAll();
@@ -11355,8 +12209,9 @@ var init_GameRoot = __esm({
           });
         });
         const by = this.bottom + 80;
-        mkButton(s, "\u8FD4\u56DE", 260, 88, () => this.setState("menu"), C_BTN_GREY).node.setPosition(-150, by);
-        mkButton(s, "\u5F00\u59CB\u6311\u6218", 260, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(150, by);
+        mkButton(s, "\u8FD4\u56DE", 200, 88, () => this.setState("menu"), C_BTN_GREY).node.setPosition(-230, by);
+        mkButton(s, "\u597D\u53CB\u6392\u884C", 200, 88, () => this.openRank("daily"), C_BTN_BLUE, 30).node.setPosition(0, by);
+        mkButton(s, "\u5F00\u59CB\u6311\u6218", 220, 88, () => this.startDaily(), new Color(150, 60, 30, 255), 34).node.setPosition(225, by);
         this.refreshers.push(() => {
           if (this.state !== "daily") return;
           const ds = dailySetup(this.today);
@@ -11379,6 +12234,63 @@ var init_GameRoot = __esm({
           const best = d2.dailyBestDate === this.today ? d2.dailyBest : 0;
           status.string = d2.dailyDone === this.today ? "\u4ECA\u65E5\u5DF2\u5B8C\u6210\uFF01\u660E\u5929\u518D\u6765\u5471" : best ? `\u4ECA\u65E5\u6700\u4F73 ${this.fmtTime(best)} \xB7 \u8FD8\u6CA1\u5B8C\u6210` : "\u4ECA\u65E5\u5C1A\u672A\u6311\u6218";
         });
+      }
+      openRank(from) {
+        this.rankBack = from;
+        this.rankKind = from === "daily" ? "daily" : "best";
+        Analytics.track("rank_open", { from, kind: this.rankKind });
+        this.setState("rank");
+        this.drawRank();
+      }
+      drawRank() {
+        const w = globalThis.wx;
+        if (!Social.rankSupported) return;
+        Social.reportScores();
+        const info = w.getSystemInfoSync();
+        Social.showRank(this.rankKind, this.vw / info.windowWidth);
+      }
+      // 好友排行：开放数据域把排行画在共享画布上，SubContextView 显示到这里
+      buildRank() {
+        const s = this.screen("rank");
+        this.header(s, "\u597D\u53CB\u6392\u884C", false);
+        const tabs = [["best", "\u6700\u957F\u5B58\u6D3B"], ["daily", "\u4ECA\u65E5\u6311\u6218"]];
+        const tabBtns = [];
+        tabs.forEach(([k, name], i) => {
+          const b = mkButton(s, name, 250, 72, () => {
+            this.rankKind = k;
+            this.refreshAll();
+            this.drawRank();
+          }, C_BTN_BLUE, 28);
+          b.node.setPosition(i === 0 ? -135 : 135, this.top - 130);
+          tabBtns.push(b);
+        });
+        const areaTop = this.top - 186, areaBottom = this.bottom + 140;
+        const aw = 640, ah = Math.max(300, areaTop - areaBottom);
+        const area = mkPanel(s, aw + 8, ah + 8);
+        area.node.setPosition(0, (areaTop + areaBottom) / 2);
+        if (Social.rankSupported) {
+          const view2 = mkNode("subctx", area.node);
+          view2.addComponent(UITransform).setContentSize(aw, ah);
+          this.rankView = view2;
+        } else {
+          this.rankView = null;
+          mkLabel(area.node, "\u5728\u5FAE\u4FE1\u4E2D\u6253\u5F00\u5373\u53EF\u67E5\u770B\u597D\u53CB\u6392\u884C", 26, C_GREY, "center", 2);
+        }
+        this.refreshers.push(() => {
+          tabs.forEach(([k], i) => tabBtns[i].node.setScale(this.rankKind === k ? 1.06 : 0.94, this.rankKind === k ? 1.06 : 0.94, 1));
+        });
+        mkLabel(s, "\u53EA\u663E\u793A\u540C\u6837\u5728\u73A9\u300A\u5976\u86D9\u5272\u8349\u300B\u7684\u5FAE\u4FE1\u597D\u53CB", 20, C_GREY, "center", 2).node.setPosition(0, this.bottom + 136 - 24);
+        mkButton(s, "\u8FD4\u56DE", 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
+      }
+      // 打开排行榜时才挂上。SubContextView.onLoad 会立刻 wx.getOpenDataContext()，
+      // 若在 buildUI 里挂，一进游戏就会报 getOpenDataContext:fail。
+      ensureRankView() {
+        const view2 = this.rankView;
+        if (!view2 || !view2.isValid || view2.getComponent(SubContextView)) return;
+        const ui = view2.getComponent(UITransform);
+        const sub = view2.addComponent(SubContextView);
+        sub.designResolutionSize = new Size(ui ? ui.width : 640, ui ? ui.height : 300);
+        sub.fps = 30;
       }
       buildAchievements() {
         const s = this.screen("achv");
@@ -11441,6 +12353,7 @@ var init_GameRoot = __esm({
         }
         this.rerollBtn.node.active = false;
         this.adRerollBtn.node.active = false;
+        this.adLevelBonusBtn.node.active = false;
         this.adBlessBtn.node.active = !this.adBlessUsed && this.battle.time < 1 && Ads.canReward("blessing");
         Sound.play("card");
         this.setState("levelup");
@@ -11462,6 +12375,11 @@ var init_GameRoot = __esm({
         this.rerollBtn.node.active = this.battle.rerolls > 0;
         this.adBlessBtn.node.active = false;
         this.adRerollBtn.node.active = this.battle.rerolls <= 0 && this.adRerolls > 0 && Ads.canReward("reroll");
+        this.adLevelBonusBtn.node.active = !this.adLevelBonusPending && this.options.length > 0 && this.battle.time >= this.nextAdLevelBonus && Ads.canReward("level_bonus");
+        const hasReroll = this.rerollBtn.node.active || this.adRerollBtn.node.active;
+        this.rerollBtn.node.setPosition(this.adLevelBonusBtn.node.active ? -180 : 0, this.rerollBtn.node.position.y);
+        this.adRerollBtn.node.setPosition(this.adLevelBonusBtn.node.active ? -180 : 0, this.adRerollBtn.node.position.y);
+        this.adLevelBonusBtn.node.setPosition(hasReroll ? 185 : 0, this.adLevelBonusBtn.node.position.y);
         this.adRerollBtn.label.string = `\u25B6 \u770B\u5E7F\u544A\u91CD\u62BD (${this.adRerolls})`;
         this.rerollBtn.label.string = `\u91CD\u62BD (${this.battle.rerolls})`;
       }
@@ -11472,7 +12390,7 @@ var init_GameRoot = __esm({
         this.fillCards();
       }
       choose(i) {
-        if (this.state !== "levelup") return;
+        if (this.state !== "levelup" || Ads.showing) return;
         if (this.cardMode === "blessing") {
           const b = this.blessOpts[i];
           if (!b) return;
@@ -11485,7 +12403,8 @@ var init_GameRoot = __esm({
         if (!o) return;
         Sound.play("click");
         this.battle.applyOption(o);
-        this.battle.pendingLevels--;
+        if (this.adLevelBonusPending) this.adLevelBonusPending = false;
+        else this.battle.pendingLevels--;
         this.afterReward();
         if (this.state === "play") this.battle.levelBlast();
       }
@@ -11615,7 +12534,7 @@ var init_GameRoot = __esm({
           if (b.dead) this.startDying();
           else if (b.won) this.startVictory();
           else this.checkRewards();
-        } else if (this.state === "menu" || this.state === "chars" || this.state === "shop" || this.state === "settings" || this.state === "achv" || this.state === "codex" || this.state === "signin" || this.state === "privacy" || this.state === "splash" || this.state === "daily") {
+        } else if (this.state === "menu" || this.state === "chars" || this.state === "shop" || this.state === "settings" || this.state === "achv" || this.state === "codex" || this.state === "signin" || this.state === "privacy" || this.state === "legal" || this.state === "splash" || this.state === "daily" || this.state === "rank") {
           b.idle(dt);
           if (this.state === "menu") this.updateMenuFx(dt);
         }
@@ -11738,7 +12657,7 @@ var init_GameRoot = __esm({
       "\u6B66\u5668\u4F1A\u81EA\u52A8\u653B\u51FB \u9760\u8FD1\u5C0F\u602A\u8BD5\u8BD5!",
       "\u6361\u8D77\u84DD\u8272\u5B9D\u77F3 \u6512\u6EE1\u7ECF\u9A8C\u5C31\u80FD\u5347\u7EA7",
       "\u4E09\u9009\u4E00\uFF1A\u65B0\u6B66\u5668 \u6216 \u5F3A\u5316\u9053\u5177",
-      "\u8EB2\u5F00\u602A\u7269 \u575A\u6301 15 \u5206\u949F\u5C31\u80DC\u5229!",
+      "\u8EB2\u5F00\u602A\u7269 \u575A\u6301 8 \u5206\u949F\u5C31\u80DC\u5229!",
       "Boss \u8981\u6765\u4E86! \u770B\u5230\u7EA2\u5708\u7EA2\u7EBF\u7ACB\u523B\u8EB2\u5F00"
     ];
     GameRoot = __decorateClass([
@@ -11780,7 +12699,7 @@ for (const wd of D.WEAPONS) for (const evo of [false, true]) {
     B.pendingBlessings = 0;
     B.pendingLevels = 0;
     g.setState("play");
-    B.time = 420;
+    B.time = 240;
     B.bossIdx = 3;
     B.weapons = [];
     B.applyOption({ kind: "weapon", wdef: wd, level: 1 });

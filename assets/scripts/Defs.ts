@@ -46,33 +46,33 @@ export const ENEMIES: Record<string, EnemyDef> = {
     mimic:    { frames: ['mimic_0', 'mimic_1'], hp: 70, speed: 115, dmg: 7, xp: 30, radius: 16, anim: 0.12, scale: 1.2, knockRes: 0.8, color: 0xa85a28, mimic: true },
     fox:      { frames: ['fox_0', 'fox_1'], hp: 30, speed: 70, dmg: 6, xp: 4, radius: 12, anim: 0.18, color: 0x7a50d0, blink: true },
     // ---- Boss
-    slimeking: { frames: ['slimeking_0', 'slimeking_1'], hp: 340, speed: 46, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 0x4fc24f, name: '史莱姆王' },
-    bonelord:  { frames: ['bonelord_0', 'bonelord_1'], hp: 650, speed: 58, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0xeee8d4, name: '铁甲将军' },
-    vampire:   { frames: ['vampire_0', 'vampire_1'], hp: 1100, speed: 70, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0xa01828, name: '蝙蝠伯爵' },
-    lich:      { frames: ['lich_0', 'lich_1'], hp: 1400, speed: 48, dmg: 14, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 0x80e0ff, name: '冰霜巫师' },
-    eye:       { frames: ['eye_0', 'eye_1'], hp: 1700, speed: 55, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0x8a3a7a, name: '水晶魔眼' },
-    toad:      { frames: ['toad_0', 'toad_1'], hp: 1300, speed: 52, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 0x5a7a3a, name: '毒沼巨蟾' },
-    yeti:      { frames: ['yeti_0', 'yeti_1'], hp: 950, speed: 70, dmg: 9, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 0xe8f0ff, name: '雪怪王' },
-    worm:      { frames: ['worm_0', 'worm_1'], hp: 1800, speed: 60, dmg: 15, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 0xc8905a, name: '沙漠巨蠕' },
-    nian:      { frames: ['nian_0', 'nian_1'], hp: 950, speed: 76, dmg: 9, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 0xd8402a, name: '年兽' },
-    reaper:    { frames: ['reaper_0', 'reaper_1'], hp: 3000, speed: 82, dmg: 17, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 0x8a60c0, name: '暗夜魔术师', final: true },
+    slimeking: { frames: ['slimeking_0', 'slimeking_1'], hp: 420, speed: 48, dmg: 7, xp: 120, radius: 36, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 0x4fc24f, name: '史莱姆王' },
+    bonelord:  { frames: ['bonelord_0', 'bonelord_1'], hp: 800, speed: 60, dmg: 10, xp: 180, radius: 32, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0xeee8d4, name: '铁甲将军' },
+    vampire:   { frames: ['vampire_0', 'vampire_1'], hp: 1350, speed: 72, dmg: 13, xp: 240, radius: 30, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0xa01828, name: '蝙蝠伯爵' },
+    lich:      { frames: ['lich_0', 'lich_1'], hp: 1750, speed: 50, dmg: 15, xp: 300, radius: 30, anim: 0.35, scale: 1.5, knockRes: 1, boss: true, color: 0x80e0ff, name: '冰霜巫师' },
+    eye:       { frames: ['eye_0', 'eye_1'], hp: 2200, speed: 58, dmg: 16, xp: 360, radius: 34, anim: 0.3, scale: 1.5, knockRes: 1, boss: true, color: 0x8a3a7a, name: '水晶魔眼' },
+    toad:      { frames: ['toad_0', 'toad_1'], hp: 1600, speed: 54, dmg: 13, xp: 260, radius: 34, anim: 0.4, scale: 1.6, knockRes: 1, boss: true, color: 0x5a7a3a, name: '毒沼巨蟾' },
+    yeti:      { frames: ['yeti_0', 'yeti_1'], hp: 1200, speed: 72, dmg: 10, xp: 200, radius: 34, anim: 0.35, scale: 1.6, knockRes: 1, boss: true, color: 0xe8f0ff, name: '雪怪王' },
+    worm:      { frames: ['worm_0', 'worm_1'], hp: 2300, speed: 62, dmg: 16, xp: 360, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 0xc8905a, name: '沙漠巨蠕' },
+    nian:      { frames: ['nian_0', 'nian_1'], hp: 1200, speed: 78, dmg: 10, xp: 200, radius: 34, anim: 0.3, scale: 1.6, knockRes: 1, boss: true, color: 0xd8402a, name: '年兽' },
+    reaper:    { frames: ['reaper_0', 'reaper_1'], hp: 4500, speed: 86, dmg: 18, xp: 500, radius: 30, anim: 0.4, scale: 1.7, knockRes: 1, boss: true, color: 0x8a60c0, name: '暗夜魔术师', final: true },
 };
 
 // 按时间（秒）出现的怪物组合；interval 为刷怪间隔，batch 为每次刷怪数量
 export interface Wave { t: number; types: string[]; interval: number; batch: number; }
 export const WAVES: Wave[] = [
-    { t: 0,   types: ['rat', 'rat', 'rat', 'bat'], interval: 0.45, batch: 3 },
-    { t: 40,  types: ['rat', 'rat', 'bat', 'slime'], interval: 0.5, batch: 4 },
-    { t: 90,  types: ['rat', 'bat', 'slime', 'zombie'], interval: 0.55, batch: 4 },
-    { t: 150, types: ['bat', 'slime', 'zombie', 'rat'], interval: 0.6, batch: 5 },
-    { t: 210, types: ['skeleton', 'zombie', 'bat', 'rat', 'jelly'], interval: 0.6, batch: 5 },
-    { t: 300, types: ['skeleton', 'zombie', 'bat', 'rat', 'jelly'], interval: 0.55, batch: 5 },
-    { t: 420, types: ['ghost', 'skeleton', 'bat', 'zombie', 'shroom', 'boar'], interval: 0.5, batch: 6 },
-    { t: 540, types: ['ghost', 'skeleton', 'skeleton', 'zombie', 'imp', 'fox'], interval: 0.45, batch: 6 },
-    { t: 660, types: ['ghost', 'skeleton', 'mummy', 'bat', 'imp', 'boar'], interval: 0.4, batch: 7 },
-    { t: 780, types: ['ghost', 'skeleton', 'mummy', 'ghost', 'imp', 'fox'], interval: 0.35, batch: 8 },
+    { t: 0,   types: ['rat', 'rat', 'rat', 'bat'], interval: 0.42, batch: 3 },
+    { t: 25,  types: ['rat', 'rat', 'bat', 'slime'], interval: 0.46, batch: 4 },
+    { t: 50,  types: ['rat', 'bat', 'slime', 'zombie'], interval: 0.50, batch: 4 },
+    { t: 80,  types: ['bat', 'slime', 'zombie', 'rat'], interval: 0.52, batch: 5 },
+    { t: 115, types: ['skeleton', 'zombie', 'bat', 'rat', 'jelly'], interval: 0.52, batch: 5 },
+    { t: 165, types: ['skeleton', 'zombie', 'bat', 'rat', 'jelly'], interval: 0.48, batch: 5 },
+    { t: 225, types: ['ghost', 'skeleton', 'bat', 'zombie', 'shroom', 'boar'], interval: 0.45, batch: 6 },
+    { t: 285, types: ['ghost', 'skeleton', 'skeleton', 'zombie', 'imp', 'fox'], interval: 0.42, batch: 6 },
+    { t: 345, types: ['ghost', 'skeleton', 'mummy', 'bat', 'imp', 'boar'], interval: 0.38, batch: 7 },
+    { t: 420, types: ['ghost', 'skeleton', 'mummy', 'ghost', 'imp', 'fox'], interval: 0.33, batch: 8 },
 ];
-// Boss 出场时间表（秒）；Boss 实际血量 = hp × (1 + 0.06 × 玩家等级)
+// Boss 出场时间表（秒）；Boss 实际生命 = hp × (1 + 0.12 × 玩家等级)
 // 图鉴：普通怪物名称与介绍（Boss 名称见 ENEMIES.name）
 export const MONSTER_INFO: Record<string, { name: string; desc: string }> = {
     rat: { name: '灰鼠', desc: '最弱小的怪物，一碰就倒，是前期经验的主要来源。' },
@@ -80,38 +80,38 @@ export const MONSTER_INFO: Record<string, { name: string; desc: string }> = {
     slime: { name: '史莱姆', desc: '黏糊糊的小家伙，史莱姆王的子民。' },
     zombie: { name: '泥巴怪', desc: '圆滚滚的泥团，走得慢但很结实，不容易被击退。' },
     skeleton: { name: '木偶兵', desc: '木头做的小兵，速度和力气都不小，中期主力。' },
-    ghost: { name: '云朵精', desc: '7 分钟后出现，飘得飞快，抗击退。' },
-    shroom: { name: '爆炸蘑菇', desc: '7 分钟后出现。被击败后会在红圈里爆炸——别站在旁边，但可以用它炸掉怪群！' },
-    imp: { name: '小火灵', desc: '会远程发射小火球，优先清理！' },
+    ghost: { name: '云朵精', desc: '3:45 后出现，飘得飞快，抗击退。' },
+    shroom: { name: '爆炸蘑菇', desc: '3:45 后出现。被击败后会在红圈里爆炸——别站在旁边，但可以用它炸掉怪群！' },
+    imp: { name: '小火灵', desc: '4:45 后出现，会远程发射小火球，优先清理！' },
     mummy: { name: '稻草人', desc: '后期出现的大块头，生命值极高。' },
-    jelly: { name: '果冻怪', desc: '3:30 后出现。被击败时会分裂成两只跑得更快的小果冻。' },
+    jelly: { name: '果冻怪', desc: '1:55 后出现。被击败时会分裂成两只跑得更快的小果冻。' },
     jellet: { name: '小果冻', desc: '果冻怪分裂出来的小家伙，又快又脆。' },
-    boar: { name: '冲锋野猪', desc: '7:00 后出现。靠近时会停下蓄力，沿红线高速冲撞——看到红线就侧身躲开！' },
-    fox: { name: '闪现狐', desc: '9:00 后出现。会突然闪现到你身边，紫圈就是它的落点。' },
-    mimic: { name: '宝箱怪', desc: '5:00 后偶尔出现，伪装成宝箱。靠近就会张开大嘴扑过来——击败它必掉神兵！' },
+    boar: { name: '冲锋野猪', desc: '3:45 后出现。靠近时会停下蓄力，沿红线高速冲撞——看到红线就侧身躲开！' },
+    fox: { name: '闪现狐', desc: '4:45 后出现。会突然闪现到你身边，紫圈就是它的落点。' },
+    mimic: { name: '宝箱怪', desc: '2:40 后偶尔出现，伪装成宝箱。靠近就会张开大嘴扑过来——击败它必掉神兵！' },
     goldrat: { name: '金鼠', desc: '稀有！跑得飞快，击败可获得大量金币。' },
-    slimeking: { name: '史莱姆王', desc: '跳跃砸地、召唤史莱姆、体力减半时分裂。2:00 登场。' },
-    bonelord: { name: '铁甲将军', desc: '钢刺环、预警冲锋、召唤木偶兵。4:30 登场。' },
-    vampire: { name: '蝙蝠伯爵', desc: '魔法弹扇射、瞬移魔法环、蝙蝠风暴。7:00 登场。' },
-    lich: { name: '冰霜巫师', desc: '冰霜螺旋弹幕、冰锥阵、减速冰域。9:30 登场。' },
-    eye: { name: '水晶魔眼', desc: '魔法光束扫射、追踪光球、双层弹环。12:00 登场。' },
-    reaper: { name: '暗夜魔术师', desc: '最终 Boss：回旋飞牌、连续冲刺、幻影召唤。击败即胜利。' },
-    worm: { name: '沙漠巨蠕', desc: '流沙荒漠 12:00 登场：钻入沙中追踪、破土而出掀起沙弹环、喷吐沙流、召唤冲锋野猪。' },
-    toad: { name: '毒沼巨蟾', desc: '毒雾沼泽 7:00 登场：毒液喷吐、长舌突刺、跳跃砸地、召唤史莱姆。' },
+    slimeking: { name: '史莱姆王', desc: '跳跃砸地、召唤史莱姆、体力减半时分裂。1:05 登场。' },
+    bonelord: { name: '铁甲将军', desc: '钢刺环、预警冲锋、召唤木偶兵。2:20 登场。' },
+    vampire: { name: '蝙蝠伯爵', desc: '魔法弹扇射、瞬移魔法环、蝙蝠风暴。3:35 登场。' },
+    lich: { name: '冰霜巫师', desc: '冰霜螺旋弹幕、冰锥阵、减速冰域。4:50 登场。' },
+    eye: { name: '水晶魔眼', desc: '魔法光束扫射、追踪光球、双层弹环。6:05 登场。' },
+    reaper: { name: '暗夜魔术师', desc: '最终 Boss：回旋飞牌、连续冲刺、幻影召唤。7:20 登场，击败即胜利。' },
+    worm: { name: '沙漠巨蠕', desc: '流沙荒漠 6:05 登场：钻入沙中追踪、破土而出掀起沙弹环、喷吐沙流、召唤冲锋野猪。' },
+    toad: { name: '毒沼巨蟾', desc: '毒雾沼泽 3:35 登场：毒液喷吐、长舌突刺、跳跃砸地、召唤史莱姆。' },
     yeti: { name: '雪怪王', desc: '圣诞限定：雪球连射、冰锥阵、冲锋撞击、召唤云朵精。' },
     nian: { name: '年兽', desc: '新春限定：爆竹乱射、连续冲撞、烟花齐放、怒吼召唤。' },
 };
 
 export const BOSS_SCHEDULE: { t: number; id: string }[] = [
-    { t: 120, id: 'slimeking' },
-    { t: 270, id: 'bonelord' },
-    { t: 420, id: 'vampire' },
-    { t: 570, id: 'lich' },
-    { t: 720, id: 'eye' },
-    { t: 840, id: 'reaper' },
+    { t: 65, id: 'slimeking' },
+    { t: 140, id: 'bonelord' },
+    { t: 215, id: 'vampire' },
+    { t: 290, id: 'lich' },
+    { t: 365, id: 'eye' },
+    { t: 440, id: 'reaper' },
 ];
-export const SWARM_TIMES = [75, 200, 360, 500, 650]; // 蝙蝠群横穿屏幕
-export const WIN_TIME = 900; // 存活 15 分钟胜利
+export const SWARM_TIMES = [40, 110, 190, 270, 350]; // 蝙蝠群横穿屏幕
+export const WIN_TIME = 480; // 存活 8 分钟胜利
 
 // ---------------------------------------------------------------- 地图（关卡）
 // 依次解锁：在上一张地图胜利后解锁下一张；难度与收益同步提高
@@ -182,7 +182,7 @@ export function activeEvent(now = new Date()): EventDef | null {
     return EVENTS.find(e => d >= e.start && d <= e.end) || null;
 }
 export function eventActive(now = new Date()) { return !!activeEvent(now); }
-export const BLOOD_MOON = 780; // 13:00 起「血月」终局冲刺：刷怪 ×1.8、精英 ×3、怪物血量 ×1.3
+export const BLOOD_MOON = 420; // 7:00 起「血月」终局冲刺：刷怪 ×1.8、精英 ×3、怪物血量 ×1.3
 export const MAX_ENEMIES = 340;
 
 export interface WeaponStats {
@@ -550,7 +550,7 @@ export interface PlayerStats {
 }
 
 export const BASE_STATS: PlayerStats = {
-    maxHp: 90, might: 1, armor: 0, recovery: 0, cooldown: 1, area: 1,
+    maxHp: 72, might: 1, armor: 0, recovery: 0, cooldown: 1, area: 1,
     speed: 1, moveSpeed: 1, magnet: 70, amount: 0, duration: 1, growth: 1,
     greed: 1, revival: 0, reroll: 0,
     crit: 0.1, critDmg: 2, lifesteal: 0, thorns: 0, ultCharge: 0, buffTime: 1, eliteDmg: 0, dodge: 0, pierce: 0, fresh: 0, finder: 0, calm: 0,
@@ -598,16 +598,16 @@ export const MAX_WEAPONS = 6;
 export const MAX_PASSIVES = 6;
 export const WEAPON_MAX_LEVEL = 8;
 
-// 升级经验曲线（四段式）：
-//   1~9 级   每级 +5   → 开局 8~12 秒一级，快速成型
-//   10~29 级 每级 +14  → 中期 15~20 秒一级，选择更有分量
-//   30~49 级 每级 +26  → 后期 20~30 秒一级
-//   50 级起  每级 +45  → 胜利局约 60~65 级：构筑接近完成但不完美，留下下一局的目标
+// 升级经验曲线（四段式，适配 8 分钟节奏）：
+//   1~9 级   每级 +5   → 开局 5~7 秒一级，快速成型
+//   10~29 级 每级 +10  → 中期 7~10 秒一级，每次选择更有分量
+//   30~49 级 每级 +18  → 后期放缓
+//   50 级起  每级 +32  → 胜利局约 54~64 级：构筑接近完成但不完美，留下看广告补强与下一局的动力
 export function xpForLevel(lv: number) {
-    if (lv < 10) return 5 + (lv - 1) * 5;
-    if (lv < 30) return 60 + (lv - 10) * 14;
-    if (lv < 50) return 340 + (lv - 30) * 26;
-    return 860 + (lv - 50) * 45;
+    if (lv < 10) return 4 + (lv - 1) * 5;
+    if (lv < 30) return 46 + (lv - 10) * 10;
+    if (lv < 50) return 246 + (lv - 30) * 18;
+    return 606 + (lv - 50) * 32;
 }
 
 
@@ -692,7 +692,7 @@ export const CHARACTERS: CharDef[] = [
     { id: 'sage', name: '长老蛙', title: '老贤者', sprite: 'hero_sage', weapon: 'lightning', desc: '冷却 -10%，范围 +10%', bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: '天雷', trait: '每 7 秒召唤 3 道落雷劈向屏幕内敌人', ultName: '雷暴天罚', ult: '4 秒雷暴，落雷不断劈向屏幕内的敌人', charge: 'time' },
     { id: 'druid', name: '德鲁伊蛙', title: '森林守护者', sprite: 'hero_druid', weapon: 'spikes', desc: '每秒恢复 +0.4，范围 +10%', bonus: { recovery: 0.4, area: 0.1 }, cost: 3000, traitName: '藤蔓缠绕', trait: '每 9 秒用藤蔓定住身边的敌人 1.5 秒', ultName: '万木回春', ult: '藤蔓把周围敌人拉到身边缠住 2.5 秒，回复 15% 生命', charge: 'still' },
     { id: 'prism', name: '棱镜蛙', title: '光学怪才', sprite: 'hero_prism', weapon: 'laser', desc: '暴击率 +8%，伤害 +10%', bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: '折射', trait: '暴击时 35% 几率折射到附近敌人（50% 伤害）', ultName: '光谱爆发', ult: '向四面八方连射三轮彩虹光束', charge: 'crit' },
-    { id: 'fu', name: '福蛙', title: '新春限定', sprite: 'hero_fu', weapon: 'bomb', desc: '金币 +30%，最大生命 +20', bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: '招财进宝', trait: '拾取金币时 20% 几率翻倍', ultName: '财神到', ult: '身边的小怪全部变成金币，精英怪受重创', charge: 'gold' },
+    { id: 'fu', name: '福蛙', title: '新春限定', sprite: 'hero_fu', weapon: 'cross', desc: '金币 +30%，最大生命 +20', bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: '招财进宝', trait: '拾取金币时 20% 几率翻倍', ultName: '财神到', ult: '身边的小怪全部变成金币，精英怪受重创', charge: 'gold' },
     { id: 'santa', name: '圣诞蛙', title: '圣诞限定', sprite: 'hero_santa', weapon: 'frost', desc: '金币 +20%，冷却 -8%', bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: '圣诞礼物', trait: '每 70 秒身边掉落一个随机增益道具', ultName: '圣诞雪橇', ult: '雪橇飞过投下一串礼物炸弹，并送出一个增益道具', charge: 'time' },
 ];
 
@@ -764,7 +764,7 @@ export interface AchDef { id: string; name: string; desc: string; gold: number; 
 export const ACHIEVEMENTS: AchDef[] = [
     { id: 'win1', name: '初次胜利', desc: '赢得一局游戏', gold: 500 },
     { id: 'kill1k', name: '割草能手', desc: '单局击败 1000 个敌人', gold: 200 },
-    { id: 'kill5k', name: '割草大师', desc: '单局击败 5000 个敌人', gold: 600 },
+    { id: 'kill5k', name: '割草大师', desc: '单局击败 3000 个敌人', gold: 600 },
     { id: 'combo500', name: '无双', desc: '达成 500 连击', gold: 300 },
     { id: 'lv50', name: '登峰造极', desc: '单局达到 50 级', gold: 300 },
     { id: 'evo1', name: '进化', desc: '进化一把武器', gold: 300 },
@@ -776,7 +776,7 @@ export const ACHIEVEMENTS: AchDef[] = [
     { id: 'boss_eye', name: '闭目', desc: '击败水晶魔眼', gold: 350 },
     { id: 'boss_reaper', name: '谢幕', desc: '击败暗夜魔术师', gold: 800 },
     { id: 'goldrat', name: '捕鼠达人', desc: '抓住一只金鼠', gold: 150 },
-    { id: 'endless20', name: '永夜行者', desc: '无尽模式存活 20 分钟', gold: 1000 },
+    { id: 'endless20', name: '永夜行者', desc: '无尽模式存活 12 分钟', gold: 1000 },
     { id: 'allchars', name: '全员集结', desc: '解锁全部角色', gold: 1000 },
     { id: 'nightmare1', name: '噩梦征服者', desc: '在噩梦难度下取得胜利', gold: 1500 },
     { id: 'codex_half', name: '收藏家', desc: '图鉴收集达到 50%', gold: 300 },
@@ -792,14 +792,14 @@ export const ACHIEVEMENTS: AchDef[] = [
     { id: 'boss_nian', name: '驱逐年兽', desc: '击败新春限定 Boss 年兽', gold: 600 },
     { id: 'epic3', name: '神兵收藏家', desc: '单局使用 3 把神兵', gold: 300 },
     { id: 'trial2', name: '试炼勇者', desc: '单局完成 2 次试炼', gold: 400 },
-    { id: 'ult10', name: '大招狂魔', desc: '单局释放 10 次大招', gold: 300 },
+    { id: 'ult10', name: '大招狂魔', desc: '单局释放 6 次大招', gold: 300 },
 ];
 
-// 无尽模式：15 分钟后 Boss 循环出现，每轮更强
-export const ENDLESS_BOSS_INTERVAL = 150;
+// 无尽模式：8 分钟后 Boss 循环出现，每轮更强
+export const ENDLESS_BOSS_INTERVAL = 90;
 
 // ---------------------------------------------------------------- 每日挑战
-// 按日期生成：所有玩家同一天的挑战相同（试玩角色 + 地图 + 特殊规则 + 强制命运卡牌），存活 10 分钟获得奖励
+// 按日期生成：所有玩家同一天的挑战相同（试玩角色 + 地图 + 特殊规则 + 强制命运卡牌），存活 6 分钟获得奖励
 export interface DailyMod { id: string; name: string; desc: string; }
 
 export const DAILY_MODS: DailyMod[] = [
@@ -810,7 +810,7 @@ export const DAILY_MODS: DailyMod[] = [
     { id: 'horde', name: '无尽怪潮', desc: '怪物数量 +40%' },
     { id: 'glass', name: '易碎奶蛙', desc: '受到伤害 ×1.5，造成伤害 +40%' },
 ];
-export const DAILY_GOAL = 600;    // 存活 10 分钟
+export const DAILY_GOAL = 360;    // 存活 6 分钟
 export const DAILY_REWARD = 400;  // 每日首次成功奖励
 
 export interface DailySetup { date: string; char: string; stage: string; mod: DailyMod; blessing: string; }
@@ -864,7 +864,7 @@ export const BRAZIER_DROPS: [string, number][] = [
 export const BUFF_DROPS = ['potion', 'shield', 'haste', 'clover', 'firering', 'giant', 'boots', 'decoy'];
 
 // ---------------------------------------------------------------- 神兵（30 秒限时史诗武器）
-// 来源：神兵祭坛（1:40 起约每 150 秒在附近出现，打碎掉落）、试炼石碑奖励、Boss（40%）、精英怪（4%）、火盆（极小概率）
+// 来源：神兵祭坛（0:55 起约每 85 秒在附近出现，打碎掉落）、试炼石碑奖励、Boss（40%）、精英怪（4%）、火盆（极小概率）
 // 同一时间只能持有一把，拾取新的会替换旧的
 export interface EpicDef { id: string; name: string; desc: string; color: number; }
 export const EPIC_TIME = 30;
@@ -909,10 +909,10 @@ export const ENEMY_IDS = new Map<EnemyDef, string>(Object.keys(ENEMIES).map(k =>
 export type QuestStat = 'kills' | 'time' | 'boss' | 'evolve' | 'gold' | 'chest' | 'runs' | 'level' | 'combo';
 export interface QuestDef { id: string; stat: QuestStat; n: number; name: string; gold: number; best?: boolean }
 export const QUEST_POOL: QuestDef[] = [
-    { id: 'kills1', stat: 'kills', n: 1500, name: '累计击败 1500 只怪物', gold: 120 },
-    { id: 'kills2', stat: 'kills', n: 4000, name: '累计击败 4000 只怪物', gold: 200 },
-    { id: 'time1', stat: 'time', n: 300, name: '单局存活 5 分钟', gold: 100, best: true },
-    { id: 'time2', stat: 'time', n: 540, name: '单局存活 9 分钟', gold: 180, best: true },
+    { id: 'kills1', stat: 'kills', n: 1000, name: '累计击败 1000 只怪物', gold: 120 },
+    { id: 'kills2', stat: 'kills', n: 2500, name: '累计击败 2500 只怪物', gold: 200 },
+    { id: 'time1', stat: 'time', n: 180, name: '单局存活 3 分钟', gold: 100, best: true },
+    { id: 'time2', stat: 'time', n: 360, name: '单局存活 6 分钟', gold: 180, best: true },
     { id: 'boss', stat: 'boss', n: 3, name: '累计击败 3 个 Boss', gold: 150 },
     { id: 'evolve', stat: 'evolve', n: 1, name: '进化 1 把武器', gold: 180 },
     { id: 'gold', stat: 'gold', n: 300, name: '累计拾取 300 金币', gold: 100 },

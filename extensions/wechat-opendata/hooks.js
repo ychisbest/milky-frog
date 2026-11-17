@@ -10,7 +10,7 @@ exports.onAfterBuild = async function (options, result) {
     const root = path.resolve(__dirname, "../..");
     const script = path.join(root, "tools/wechat-postbuild.mjs");
     const dest = result && result.dest;
-    const r = spawnSync(process.execPath, dest ? [script, dest] : [script], { encoding: "utf8" });
+    const r = spawnSync(process.execPath, dest ? [script, dest] : [script], { encoding: "utf8", env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }, timeout: 30000 });
     const out = `${r.stdout || ""}${r.stderr || ""}`.trim();
     if (r.status !== 0) console.error("[wechat-opendata] " + (out || "postbuild failed"));
     else if (out) console.log(out);

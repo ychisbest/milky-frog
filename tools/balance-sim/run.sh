@@ -13,19 +13,19 @@ skill,n=sys.argv[1],int(sys.argv[2])
 players=[json.load(open(f'out/{skill}_{i}.json')) for i in range(1,n+1)]
 R=max(len(p) for p in players)
 print(f'== {skill}: {n} 名玩家')
-print('局  胜率   中位存活  中位等级  Boss击杀  首次进化  升级间隔(0-2/2-6/6-15分)  商店等级')
+print('局  胜率   中位存活  中位等级  Boss击杀  首次进化  升级间隔(0-1.5/1.5-4.5/4.5-8分)  商店等级')
 for r in range(R):
     rs=[p[r] for p in players if len(p)>r]
     f=lambda k:[x[k] for x in rs if x.get(k) not in (None,0)]
     md=lambda k:(round(st.median(f(k)),1) if f(k) else '-')
-    print(f"{r+1:>2} {sum(x['win'] for x in rs)/len(rs)*100:5.0f}%  {md('t'):>8}s {md('lv'):>8} {md('bosses'):>8} {md('firstEvo'):>8}s   {md('gap0_2')}/{md('gap2_6')}/{md('gap6_15')}s {md('powerAfter'):>8}")
+    print(f"{r+1:>2} {sum(x['win'] for x in rs)/len(rs)*100:5.0f}%  {md('t'):>8}s {md('lv'):>8} {md('bosses'):>8} {md('firstEvo'):>8}s   {md('gap0_2')}/{md('gap2_5')}/{md('gap5_8')}s {md('powerAfter'):>8}")
 print('首胜所需局数：', [next((x['run'] for x in p if x['win']),None) for p in players])
 PY
 python3 - "$SKILL" "$N" <<'PY'
 import json,sys,statistics as st
 skill,n=sys.argv[1],int(sys.argv[2])
 rs=[x for i in range(1,n+1) for x in json.load(open(f'out/{skill}_{i}.json'))]
-print('前 6 分钟最低生命%（中位，第1局/全部）：', round(st.median([p['minHpEarly'] for p in rs if p['run']==1])*100), '/', round(st.median([p['minHpEarly'] for p in rs])*100))
+print('前 3 分钟最低生命%（中位，第1局/全部）：', round(st.median([p['minHpEarly'] for p in rs if p['run']==1])*100), '/', round(st.median([p['minHpEarly'] for p in rs])*100))
 bf={}
 for x in rs:
     for k,v in x.get('bossFight',{}).items(): bf.setdefault(k,[]).append(v)

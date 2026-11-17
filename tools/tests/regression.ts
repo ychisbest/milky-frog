@@ -5,7 +5,7 @@ const MODE = process.env.MODE || 'A';
 const G = globalThis as any;
 if (MODE === 'B') {
     G.wx = {
-        createRewardedVideoAd: () => { let close: any; return { onLoad() {}, onError() {}, onClose(cb: any) { close = cb; }, load: () => Promise.resolve(), show: () => { setTimeout(() => close({ isEnded: true }), 0); return Promise.resolve(); } }; },
+        createRewardedVideoAd: () => { let close: any; return { onLoad() {}, onError() {}, onClose(cb: any) { close = cb; }, load: () => G.__adFail ? Promise.reject(new Error('load failed')) : Promise.resolve(), show: () => { if (G.__adFail) return Promise.reject(new Error('show failed')); setTimeout(() => close(G.__adMalformed ? {} : { isEnded: !G.__adSkip }), 0); return Promise.resolve(); } }; },
         shareAppMessage: (o: any) => { G.__share = o; },
         getLaunchOptionsSync: () => ({ scene: 1007, query: {} }),
         reportEvent: (id: string, data: any) => { (G.__events = G.__events || []).push({ id, data }); },
@@ -114,11 +114,11 @@ if (MODE === 'C') {
     section('刷怪节奏');
     base(); start();
     B().time = 0; const p0 = B().spawnPace();
-    B().time = 300; let lo = 9, hi = 0; for (let t = 300; t < 360; t += 1) { B().time = t; const p = B().spawnPace(); lo = Math.min(lo, p); hi = Math.max(hi, p); }
+    B().time = 200; let lo = 9, hi = 0; for (let t = 200; t < 260; t += 1) { B().time = t; const p = B().spawnPace(); lo = Math.min(lo, p); hi = Math.max(hi, p); }
     ok(p0 < 0.6, `开局刷怪速度低（${p0.toFixed(2)} 倍）`);
-    ok(hi / lo > 2.5, `5 分钟后有波峰波谷（${lo.toFixed(2)} ~ ${hi.toFixed(2)}）`);
-    // 跳过史莱姆王（Boss 战期间不出特殊怪潮），在 2:40 ~ 3:40 之间观察波峰
-    B().bossIdx = 1; B().time = 160; play(60 * 60);
+    ok(hi / lo > 2.5, `中期有波峰波谷（${lo.toFixed(2)} ~ ${hi.toFixed(2)}）`);
+    // 跳过铁甲将军（Boss 战期间不出特殊怪潮），在 2:30 ~ 3:20 之间观察波峰
+    B().bossIdx = 2; B().time = 150; play(60 * 50);
     ok(B().lastSurgeCycle >= 0, '波峰出现特殊出怪（包围 / 冲锋 / 怪潮）');
     g.endRun(false);
 
@@ -143,14 +143,77 @@ if (MODE === 'C') {
     step(110);
     ok(g.state === (MODE === 'B' ? 'revive' : 'result'), MODE === 'B' ? '动画后出现复活界面' : '动画后直接结算（无广告）');
     if (MODE === 'B') {
+        G.__adSkip = true;
         findButton('▶ 看广告复活').emit('te'); await wait();
-        ok(g.state === 'play' && !B().dead && B().playerBody.active, '看广告复活，奶蛙外观恢复');
+        ok(g.state === 'revive' && B().dead && !g.adRevived, '提前关闭广告不会复活');
+        G.__adSkip = false; G.__adMalformed = true;
+        findButton('▶ 看广告复活').emit('te'); await wait();
+        ok(g.state === 'revive' && B().dead && !g.adRevived, '缺失完成标记的广告回调不会发奖');
+        G.__adMalformed = false; G.__adFail = true;
+        findButton('▶ 看广告复活').emit('te'); await wait();
+        ok(g.state === 'revive' && B().dead && !g.adRevived, '广告加载失败不会复活');
+        ok(g.reviveHint && g.reviveHint.string.includes('距胜利只差'), '复活界面显示激励提示');
+        G.__adFail = false;
+        findButton('▶ 看广告复活').emit('te'); await wait();
+        ok(g.state === 'play' && !B().dead && B().playerBody.active && B().hp === B().stats.maxHp, '完整看广告后满血复活，奶蛙外观恢复');
         B().gold = 50; B().iframe = 0; B().hp = 1; B().hurtPlayer(999); step(120);
         ok(g.state === 'result', '每局只能复活一次');
         const gold0 = Save.data.gold;
         ok(g.goldAdBtn.node.active, '结算页显示「看广告 金币×2」');
         g.goldAdBtn.node.emit('te'); await wait();
         ok(Save.data.gold > gold0, '看广告金币翻倍');
+    }
+
+    section('8 分钟节奏与数值配置');
+    ok(D.WIN_TIME === 480 && D.BLOOD_MOON === 420 && D.DAILY_GOAL === 360, '8 分钟单局、7 分钟红月与 6 分钟每日挑战配置生效');
+    ok(D.BOSS_SCHEDULE[D.BOSS_SCHEDULE.length - 1].t === 440 && AD_CONFIG.levelBonusInterval === 90, '最终 Boss 7:20 登场，升级额外选择广告间隔 90 秒');
+
+    section('角色生命、初始武器与掉落光效');
+    base(); Save.data.lossStreak = 0; Save.data.power.maxhp = 0; start();
+    ok(D.BASE_STATS.maxHp === 72 && B().stats.maxHp === 92, '基础生命降低且角色生命加成仍生效');
+    ok(new Set(D.CHARACTERS.map((c: any) => c.weapon)).size === D.CHARACTERS.length && D.CHARACTERS.every((c: any) => D.WEAPONS.some((w: any) => w.id === c.weapon)), '每个角色拥有不同的有效初始武器');
+    B().spawnPickup('chicken', 500, 500, 1);
+    const special = B().pickups[B().pickups.length - 1];
+    ok(!!special.glow && special.glow.node.active, '特殊掉落显示光效');
+    B().pickups.pop(); B().freePickup(special);
+    B().spawnPickup('gem', 500, 500, 1);
+    const reused = B().pickups[B().pickups.length - 1];
+    ok(reused === special && !reused.glow.node.active, '对象池复用为宝石时隐藏光效');
+    g.endRun(false);
+
+    section('额外升级与广告解锁角色');
+    base(); start();
+    const lbInt = AD_CONFIG.levelBonusInterval;
+    B().time = lbInt - 1; B().pendingLevels = 1; g.openLevelUp();
+    ok(!g.adLevelBonusBtn.node.active, '到达间隔前不显示额外选择广告');
+    B().time = lbInt; g.fillCards();
+    ok(g.adLevelBonusBtn.node.active === (MODE === 'B'), '到达间隔后仅在广告可用时显示额外选择');
+    if (MODE === 'B') {
+        G.__adSkip = true; g.adLevelBonusBtn.node.emit('te'); await wait();
+        ok(!g.adLevelBonusPending && B().pendingLevels === 1, '未看完不会获得额外选择');
+        G.__adSkip = false; g.adLevelBonusBtn.node.emit('te'); await wait();
+        ok(g.adLevelBonusPending && !g.adLevelBonusBtn.node.active, '完整观看后获得一次额外选择');
+        g.choose(0);
+        ok(g.state === 'levelup' && B().pendingLevels === 1 && !g.adLevelBonusPending, '额外选择不消耗原升级机会');
+        g.choose(0);
+        ok(B().pendingLevels === 0 && g.state === 'play', '两次选择完成后恢复游戏');
+        B().time = lbInt * 2 - 1; B().pendingLevels = 1; g.openLevelUp();
+        ok(!g.adLevelBonusBtn.node.active, '广告奖励有冷却间隔');
+        B().time = lbInt * 2; g.fillCards();
+        ok(g.adLevelBonusBtn.node.active, '间隔结束后可再次看广告');
+    }
+    g.endRun(false);
+    base(); Save.data.chars = ['hunter', 'mage']; Save.data.gold = 0; g.setState('chars');
+    const card = g.screens.chars.children.find((n: any) => n.children.some((c: any) => (c.comps || []).some((x: any) => x.string === '游侠蛙')));
+    const lock = card.children.find((n: any) => n.name === 'lock');
+    const unlockAd = lock.children.find((n: any) => n.name === 'ad-character');
+    ok(unlockAd.active === (MODE === 'B'), '角色广告入口按可用性显示');
+    if (MODE === 'B') {
+        G.__adSkip = true; const evt: any = {}; unlockAd.emit('te', evt); await wait();
+        ok(evt.propagationStopped && !Save.data.chars.includes('rogue'), '提前关闭广告不解锁且不会触发金币购买');
+        G.__adSkip = false; unlockAd.emit('te', {}); await wait();
+        ok(Save.data.chars.includes('rogue') && Save.data.selected === 'rogue' && Save.data.gold === 0, '完整观看后永久解锁并选中角色，不扣金币');
+        ok(!lock.active, '解锁后角色卡移除锁定遮罩');
     }
 
     section('棱镜激光音效');
@@ -167,9 +230,9 @@ if (MODE === 'C') {
     base(); Save.data.dailyDone = '';
     g.startDaily(); step(1); clearCards();
     ok(!!B().daily && !B().nightmare, '每日挑战开局（不受噩梦影响）');
-    B().time = 599.9; B().hp = B().stats.maxHp;
+    B().time = D.DAILY_GOAL - 0.1; B().hp = B().stats.maxHp;
     play(30); until('result', 400);
-    ok(Save.data.dailyDone === today && g.resultHint.string.includes('+400'), '存活 10 分钟领取 400 金币');
+    ok(Save.data.dailyDone === today && g.resultHint.string.includes('+400'), '存活 6 分钟领取 400 金币');
 
     section('限时活动');
     const at = (s: string) => D.activeEvent(new Date(s + 'T12:00:00'));
@@ -178,7 +241,7 @@ if (MODE === 'C') {
     ok(bad === 0, '每日挑战不使用活动内容');
     for (const [force, stage, boss, char] of [['xmas', 'xmas', 'yeti', 'santa'], [true, 'fest', 'nian', 'fu']] as [any, string, string, string][]) {
         base(); D.EVENT.force = force; Save.data.stage = stage; Save.data.chars = Save.data.chars.filter(c => c !== char);
-        start(); B().time = 262;
+        start(); B().bossIdx = 1; B().time = 132;
         let killed = false;
         for (let i = 0; i < 60 * 40 && !killed; i++) { B().hp = B().stats.maxHp; g.update(1 / 60); if (g.state === 'levelup') g.choose(0); if (g.state === 'chest') g.afterReward(); if (B().boss && i % 120 === 0) B().boss.hp = 1; killed = B().bossKills.includes(boss); }
         clearCards(); g.endRun(false);
@@ -207,12 +270,12 @@ if (MODE === 'C') {
 
     section('毒雾沼泽 / 毒沼巨蟾 / 爆炸蘑菇');
     base(); Save.data.stages = ['grass', 'snow', 'lava', 'swamp']; Save.data.stage = 'swamp';
-    start(); B().time = 300; B().hazardT = 0.1;
+    start(); B().bossIdx = 2; B().time = 180; B().hazardT = 0.1;
     let clouds = 0; for (let i = 0; i < 60 * 25; i++) { B().hp = B().stats.maxHp; g.update(1 / 60); if (g.state === 'levelup') g.choose(0); if (g.state === 'chest') g.afterReward(); clouds = Math.max(clouds, B().pzones.filter((z: any) => z.alive && z.kind === 'poison').length); }
     ok(clouds > 0, '毒泡喷发留下毒云');
-    ok(B().nextBoss()?.name === '毒沼巨蟾' || B().bossKills.length > 0, '沼泽 7:00 的 Boss 换成毒沼巨蟾');
+    ok(B().nextBoss()?.name === '毒沼巨蟾' || B().bossKills.length > 0, '沼泽 3:35 的 Boss 换成毒沼巨蟾');
     clearCards(); g.endRun(false);
-    base(); start(); B().time = 430;
+    base(); start(); B().bossIdx = 3; B().time = 230;
     for (const e of B().enemies) e.alive = false;
     B().summon('shroom', B().px + 30, B().py);
     const sh = B().enemies.find((e: any) => e.alive && e.def.burst);
@@ -263,7 +326,7 @@ if (MODE === 'C') {
     ok(D.CHARACTERS.every((c: any) => c.ultName && c.ult && D.CHARGE_DESC[c.charge]) && new Set(D.CHARACTERS.map((c: any) => c.ultName)).size === D.CHARACTERS.length, '每个角色都有独立的大招与充能方式');
     ok(new Set(D.CHARACTERS.map((c: any) => c.charge)).size >= 10, `充能方式各不相同（${new Set(D.CHARACTERS.map((c: any) => c.charge)).size} 种）`);
     for (const id of allIds) {
-        base(); Save.data.chars = allIds; Save.data.selected = id; start(); B().time = 300;
+        base(); Save.data.chars = allIds; Save.data.selected = id; start(); B().time = 150; B().bossIdx = 2;
         play(60 * 3);
         const k0 = B().kills, hp0 = B().hp;
         B().ult = 1;
@@ -309,8 +372,8 @@ if (MODE === 'C') {
     section('神兵 / 新道具 / 祭坛 / 试炼');
     ok(D.EPICS.every((e: any) => !!Art.f('epic_' + e.id)) && D.EPICS.length >= 7, `${D.EPICS.length} 把神兵都有图标`);
     for (const ep of D.EPICS) {
-        // 跳到 6:00，并跳过已经错过的 Boss（Boss 会掉落神兵，干扰计时）
-        base(); start(); B().time = 360; B().bossIdx = 3;
+        // 跳到 3:50，并跳过已经错过的 Boss（Boss 会掉落神兵，干扰计时）
+        base(); start(); B().time = 230; B().bossIdx = 3;
         play(60 * 2);
         B().spawnPickup('epic_' + ep.id, B().px, B().py, 0);
         play(10);
@@ -355,7 +418,7 @@ if (MODE === 'C') {
     play(60 * 2); ok(!!B().epic, '神兵自动飞向奶蛙并生效');
     clearCards(); g.endRun(false);
     // 试炼石碑：触碰开启，击败足够数量获得宝箱 + 神兵
-    base(); start(); B().time = 100; B().shrineT = 0.01; step(2);
+    base(); start(); B().time = 100; B().bossIdx = 2; B().shrineT = 0.01; step(2);
     const shrine = B().pickups.find((p: any) => p.alive && p.kind === 'shrine');
     ok(!!shrine, '试炼石碑出现');
     B().px = shrine.x; B().py = shrine.y; step(2);
@@ -372,15 +435,15 @@ if (MODE === 'C') {
 
     section('流沙荒漠 / 新怪物 / 新命运卡牌');
     base(); Save.data.stages = ['grass', 'snow', 'lava', 'swamp', 'desert']; Save.data.stage = 'desert';
-    start(); B().time = 330; B().bossIdx = 2; B().hazardT = 0.1; B().windT = 0.1;
+    start(); B().time = 320; B().bossIdx = 4; B().hazardT = 0.1; B().windT = 0.1;
     let tor = 0, wind = 0, threwD = '';
     try { for (let i = 0; i < 60 * 20; i++) { B().hp = B().stats.maxHp; g.update(1 / 60); if (g.state === 'levelup') g.choose(0); if (g.state === 'chest') g.afterReward(); tor = Math.max(tor, B().tornados.length); if (B().windOn > 0) wind++; } } catch (e: any) { threwD = e.message; }
     ok(!threwD && tor > 0, '流沙荒漠：龙卷风出现' + threwD);
     ok(wind > 60, '流沙荒漠：狂风持续数秒');
-    ok(D.ENEMIES.worm.boss && B().stage.bossSwap.eye === 'worm', '流沙荒漠 12:00 的 Boss 换成沙漠巨蠕');
+    ok(D.ENEMIES.worm.boss && B().stage.bossSwap.eye === 'worm', '流沙荒漠 6:05 的 Boss 换成沙漠巨蠕');
     clearCards(); g.endRun(false);
     base(); Save.data.stages = ['grass', 'snow', 'lava', 'swamp', 'desert']; Save.data.stage = 'desert';
-    start(); B().time = 715; B().bossIdx = 4;
+    start(); B().time = 360; B().bossIdx = 4;
     let wormSeen = false, wormKilled = false, under = false, threwW = '';
     try {
         for (let i = 0; i < 60 * 45 && !wormKilled; i++) {
@@ -392,7 +455,7 @@ if (MODE === 'C') {
     ok(!threwW && wormSeen && under, '沙漠巨蠕登场并钻入沙中' + threwW);
     ok(wormKilled, '沙漠巨蠕可以被击败');
     clearCards(); g.endRun(false);
-    base(); start(); B().time = 600; B().bossIdx = 5; play(30);
+    base(); start(); B().time = 300; B().bossIdx = 5; play(30);
     for (const e of B().enemies) e.alive = false;
     B().summon('boar', B().px + 200, B().py);
     const boar = B().enemies.find((e: any) => e.alive && e.def.charger);
@@ -430,7 +493,7 @@ if (MODE === 'C') {
     section('新武器：弹弹锯 / 音波喇叭；新道具：能量核心 / 时之沙');
     for (const id of ['saw', 'sonic', 'tadpole', 'whirl', 'mirror', 'tongue', 'turret', 'mine']) {
         for (const evo of [false, true]) {
-            base(); start(); B().time = 300; B().bossIdx = 2;
+            base(); start(); B().time = 240; B().bossIdx = 3;
             B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === id), level: 1 });
             const w = B().weapons[0]; w.level = 8; w.recalc(); if (evo) B().evolve(w);
             let err = ''; try { play(60 * 10); } catch (e: any) { err = e.message; }
@@ -450,7 +513,7 @@ if (MODE === 'C') {
     clearCards(); g.endRun(false);
 
     section('随机事件：补给空投 / 流星雨 / 宝箱怪 / 大招提示');
-    base(); Save.data.runs = 0; Save.data.tutDone = true; start(); B().time = 200; B().bossIdx = 1;
+    base(); Save.data.runs = 0; Save.data.tutDone = true; start(); B().time = 160; B().bossIdx = 3;
     B().dropT = 0.01; step(2);
     const pk0 = B().pickups.filter((p: any) => p.alive && p.kind !== 'gem' && p.kind !== 'coin').length;
     for (let i = 0; i < 60 * 3.2; i++) { B().hp = B().stats.maxHp; g.joyX = 0; g.joyY = 0; g.update(1 / 60); if (g.state === 'levelup') g.choose(0); }
@@ -463,7 +526,7 @@ if (MODE === 'C') {
     B().ult = 1; step(2);
     ok(g.ultHinted && g.toast.node.active, '新玩家第一次大招充满时提示');
     clearCards(); g.endRun(false);
-    base(); start(); B().time = 330; B().bossIdx = 2; play(10);
+    base(); start(); B().time = 240; B().bossIdx = 3; play(10);
     B().mimicT = 0.01; step(2);
     const mim = B().enemies.find((e: any) => e.alive && e.def.mimic);
     ok(!!mim && mim.mode === 0, '宝箱怪伪装成宝箱');
@@ -476,7 +539,7 @@ if (MODE === 'C') {
     clearCards(); g.endRun(false);
 
     section('镜盾 / 猎王徽章 / 羽毛披风 / 穿甲箭头');
-    base(); start(); B().time = 300; B().bossIdx = 2;
+    base(); start(); B().time = 240; B().bossIdx = 3;
     B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'mirror'), level: 1 });
     step(2);
     const mr = B().mirrors[0];
@@ -504,7 +567,7 @@ if (MODE === 'C') {
     clearCards(); g.endRun(false);
 
     section('蛙舌 / 蘑菇炮台 / 荷叶地雷 / 先手符 / 寻宝罗盘 / 苔藓护甲');
-    base(); start(); B().time = 300; B().bossIdx = 2; play(10);
+    base(); start(); B().time = 240; B().bossIdx = 3; play(10);
     for (const e of B().enemies) e.alive = false; step(1);
     B().weapons = []; B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'tongue'), level: 1 });
     B().summon('mummy', B().px + 200, B().py);
