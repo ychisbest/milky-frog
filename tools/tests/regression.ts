@@ -412,7 +412,7 @@ if (MODE === 'C') {
     // 神兵祭坛：计时到后出现，碰一下就碎，掉落神兵
     base(); start(); B().altarT = 0.01; step(2);
     const altar = B().enemies.find((e: any) => e.alive && e.def === D.ENEMIES.altar);
-    ok(!!altar, '神兵祭坛出现');
+    ok(!!altar && B().activePoiCount >= 1 && !!altar.beacon?.node.active, '神兵祭坛出现并发光显示方位路标');
     B().px = altar.x; B().py = altar.y - 10; step(2);
     ok(!altar.alive && (!!B().epic || B().pickups.some((p: any) => p.alive && p.kind.startsWith('epic_'))), '触碰祭坛掉落神兵');
     play(60 * 2); ok(!!B().epic, '神兵自动飞向奶蛙并生效');
@@ -689,13 +689,17 @@ if (MODE === 'C') {
         ok(cs.left >= 0 && cs.left < 80 && cs.top > 0 && cs.top < 200, `游戏圈按钮位于左上角（${Math.round(cs.left)}, ${Math.round(cs.top)}）`);
         g.setState('chars');
         ok(!G.__club.shown, '离开主菜单隐藏游戏圈按钮');
-        Save.data.wins = 1; Save.data.addTipShown = false; g.toMenu();
         const findPanelText = (t: string) => { const walk = (n: any): any => { for (const c of n.children) { if (!c.active) continue; if ((c.comps || []).some((x: any) => typeof x.string === 'string' && x.string.includes(t))) return c; const r = walk(c); if (r) return r; } return null; }; return walk(g.screens.menu); };
+        Save.data.wins = 0; Save.data.runs = 1; Save.data.bestTime = 30; Save.data.addTipShown = false; g.toMenu();
+        ok(!findPanelText('添加到我的小程序'), '首局未满 90 秒且未通关不弹「添加到我的小程序」');
+        Save.data.bestTime = 120; g.toMenu();
+        ok(!!findPanelText('添加到我的小程序'), '玩满 1 局且存活 90 秒以上即提示「添加到我的小程序」');
+        Save.data.wins = 1; Save.data.addTipShown = false; g.toMenu();
         const tip = findPanelText('添加到我的小程序');
         ok(!!tip, '首胜后主菜单提示「添加到我的小程序」');
         tip.parent.emit('te');
         ok(Save.data.addTipShown && !findPanelText('添加到我的小程序'), '点击后关闭且不再提示');
-        Save.data.wins = 0;
+        Save.data.wins = 0; Save.data.runs = 0; Save.data.bestTime = 0;
 
         section('好友排行');
         base(); start(); play(30); g.endRun(false);

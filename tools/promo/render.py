@@ -13,9 +13,12 @@ import sys
 from multiprocessing import Pool
 from PIL import Image, ImageDraw, ImageFont
 
-FONT = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
-if not os.path.exists(FONT):
-    FONT = '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc'
+FONT = next((p for p in (
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    '/System/Library/Fonts/STHeiti Medium.ttc',
+    '/System/Library/Fonts/Hiragino Sans GB.ttc',
+) if os.path.exists(p)), '/System/Library/Fonts/STHeiti Medium.ttc')
 
 _atlas = None
 _rects = None

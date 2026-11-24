@@ -835,7 +835,7 @@ export class GameRoot extends Component {
             chalText.string = `好友在${daily ? '今天的每日挑战' : '奶蛙割草'}中坚持了 ${this.fmtTime(c.time)}\n击败 ${c.kills} 只怪物${c.won ? '，成功通关' : ''}\n你能超过吗？` + (c.daily && !daily ? '（那天的每日挑战已结束，改为普通局）' : '');
         });
 
-        // 首胜后提示一次「添加到我的小程序」（指向右上角胶囊）
+        // 首胜后，或至少玩满 1 局且存活达 90 秒后提示一次「添加到我的小程序」（指向右上角胶囊）
         const add = mkPanel(s, 420, 150, new Color(255, 250, 235, 250), new Color(60, 40, 20, 255));
         add.node.setPosition(this.vw / 2 - 230, this.vh / 2 - this.safeTop - 70);
         mkLabel(add.node, '▲', 30, new Color(60, 40, 20, 255), 'center', 0).node.setPosition(150, 92);
@@ -843,10 +843,13 @@ export class GameRoot extends Component {
         add.node.on(Node.EventType.TOUCH_END, () => {
             Save.data.addTipShown = true;
             Save.save();
-            Analytics.track('add_tip', { wins: Save.data.wins });
+            Analytics.track('add_tip', { wins: Save.data.wins, runs: Save.data.runs, best_sec: Save.data.bestTime });
             this.refreshAll();
         });
-        this.refreshers.push(() => { add.node.active = this.state === 'menu' && Social.isWx && Save.data.wins > 0 && !Save.data.addTipShown && !Social.pending; });
+        this.refreshers.push(() => {
+            const canTipAdd = Save.data.wins > 0 || (Save.data.runs >= 1 && Save.data.bestTime >= 90);
+            add.node.active = this.state === 'menu' && Social.isWx && canTipAdd && !Save.data.addTipShown && !Social.pending;
+        });
 
         // 适龄提示面板（最后创建，位于最上层）
 

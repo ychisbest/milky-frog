@@ -5403,7 +5403,7 @@ function pickWeighted(table) {
   }
   return table[0][0];
 }
-var Enemy, Proj, Fx, Pickup, DmgText, Particle, PZone, LineFx, Bullet, Hazard, WeaponInst, Grid, C_WHITE, C_HURT, C_HEAL, C_GOLD, C_CRIT, C_ELITE, C_BLOODMOON, C_FROZEN, C_POTION, C_SHIELD, C_FIRERING, colorCache, C_EVO, C_GOLDEN, TAU2, C_EVO_RED, tmpColor, Battle;
+var Enemy, Proj, Fx, Pickup, DmgText, Particle, PZone, LineFx, Bullet, Hazard, WeaponInst, Grid, C_WHITE, C_HURT, C_HEAL, C_GOLD, C_CRIT, C_ELITE, C_BLOODMOON, C_FROZEN, C_POTION, C_SHIELD, C_FIRERING, colorCache, C_EVO, C_GOLDEN, TAU2, C_EVO_RED, C_POI_GOLD, C_POI_SHRINE, C_POI_DROP, C_GLOW_SHRINE, C_GLOW_GOLD, C_GLOW_ITEM, C_ALTAR_BEACON, POI_ARROWS, tmpColor, Battle;
 var init_Battle = __esm({
   "../../assets/scripts/Battle.ts"() {
     init_cc();
@@ -5449,8 +5449,10 @@ var init_Battle = __esm({
         // 冲撞速度
         this.cvy = 0;
         this.uid = 0;
+        // 每次出生递增，延时回调用来确认还是同一只怪（对象池复用）
+        this.beacon = null;
       }
-      // 每次出生递增，延时回调用来确认还是同一只怪（对象池复用）
+      // 祭坛底座发光圈
     };
     Proj = class {
       constructor() {
@@ -5675,6 +5677,14 @@ var init_Battle = __esm({
     C_GOLDEN = new Color(255, 225, 130, 255);
     TAU2 = Math.PI * 2;
     C_EVO_RED = new Color(255, 110, 110, 255);
+    C_POI_GOLD = new Color(255, 225, 95, 255);
+    C_POI_SHRINE = new Color(255, 110, 120, 255);
+    C_POI_DROP = new Color(255, 215, 90, 255);
+    C_GLOW_SHRINE = new Color(255, 95, 120, 220);
+    C_GLOW_GOLD = new Color(255, 225, 85, 230);
+    C_GLOW_ITEM = new Color(120, 240, 255, 200);
+    C_ALTAR_BEACON = new Color(255, 220, 90, 190);
+    POI_ARROWS = ["\u2192", "\u2197", "\u2191", "\u2196", "\u2190", "\u2199", "\u2193", "\u2198"];
     tmpColor = new Color();
     Battle = class {
       constructor(parent) {
@@ -5867,6 +5877,7 @@ var init_Battle = __esm({
         this.bulletPool = [];
         this.hazards = [];
         this.hazardPool = [];
+        this.poiMarkers = [];
         // 地图装饰
         this.decorChunks = /* @__PURE__ */ new Map();
         this.decorPool = /* @__PURE__ */ new Map();
@@ -5948,6 +5959,7 @@ var init_Battle = __esm({
         this.bullets.length = 0;
         for (const h of this.hazards) this.freeHazard(h);
         this.hazards.length = 0;
+        for (const m of this.poiMarkers) m.node.active = false;
         this.bosses.length = 0;
         this.bossWarned = false;
         this.victoryT = 0;
@@ -6136,6 +6148,7 @@ var init_Battle = __esm({
         this.updateParticles(dt);
         this.updateTexts(dt);
         this.compact();
+        this.updatePoiMarkers();
         if (this.hp <= 0) this.onDeath();
         if (this.time >= (this.daily ? DAILY_GOAL : WIN_TIME) && !this.dead && !this.endless) this.won = true;
         if (this.victoryT > 0) {
@@ -6163,6 +6176,7 @@ var init_Battle = __esm({
           z.alive = false;
           z.node.active = false;
         }
+        for (const m of this.poiMarkers) m.node.active = false;
         this.endEpic();
         for (const t of this.tornados) t.sp.node.destroy();
         this.tornados = [];
@@ -6185,6 +6199,7 @@ var init_Battle = __esm({
         this.dieT += dt;
         const t = this.dieT;
         for (const b of this.bullets) b.alive = false;
+        for (const m of this.poiMarkers) m.node.active = false;
         if (t < 0.55) {
           this.playerSp.color = Math.floor(t * 16) % 2 ? C_WHITE : new Color(255, 255, 255, 120);
           const k = 1 - t * 0.6;
@@ -6633,6 +6648,17 @@ var init_Battle = __esm({
         e.shadow.setPosition(0, flying ? -h - 8 : -h);
         e.shadow.setScale(PX * s * (def.boss ? 2 : 1.2), PX * s, 1);
         e.node.setPosition(x, y);
+        if (def === ENEMIES.altar && !e.beacon) {
+          e.beacon = mkSprite(e.node, "aura", 2.2, "altar-glow");
+          e.beacon.node.setSiblingIndex(0);
+        }
+        if (e.beacon) {
+          e.beacon.node.active = def === ENEMIES.altar;
+          if (def === ENEMIES.altar) {
+            e.beacon.color = C_ALTAR_BEACON;
+            e.beacon.node.setScale(2.2, 2.2, 1);
+          }
+        }
         if (!force && !def.boss && !def.prop && !def.flee && this.time > 30 && this.eliteT <= 0) {
           this.eliteT = this.mod("elites") ? 12 : (20 + Math.random() * 10) / (this.bloodMoon ? 3 : 1);
           this.eliteify(e);
@@ -6651,6 +6677,7 @@ var init_Battle = __esm({
       freeEnemy(e) {
         e.alive = false;
         e.node.active = false;
+        if (e.beacon) e.beacon.node.active = false;
         this.enemyPool.push(e);
       }
       updateEnemies(dt) {
@@ -6669,9 +6696,15 @@ var init_Battle = __esm({
               e.alive = false;
               continue;
             }
-            if (def === ENEMIES.altar && d < def.radius + 22) {
-              this.killEnemy(e);
-              continue;
+            if (def === ENEMIES.altar) {
+              if (d < def.radius + 22) {
+                this.killEnemy(e);
+                continue;
+              }
+              if (e.beacon) {
+                const bs = 2 + 0.3 * Math.sin(this.time * 5);
+                e.beacon.node.setScale(bs, bs, 1);
+              }
             }
             this.animEnemy(e, dt, 1, 0);
             continue;
@@ -9005,11 +9038,15 @@ var init_Battle = __esm({
         p.sp.spriteFrame = Art.f(frame);
         const special = kind !== "gem" && kind !== "coin";
         if (special && !p.glow) {
-          p.glow = mkSprite(p.node, "aura", 0.5, "pickup-glow");
+          p.glow = mkSprite(p.node, "aura", 0.68, "pickup-glow");
           p.glow.node.setSiblingIndex(0);
-          p.glow.color = new Color(255, 220, 120, 140);
         }
-        if (p.glow) p.glow.node.active = special;
+        if (p.glow) {
+          p.glow.node.active = special;
+          if (special) {
+            p.glow.color = kind === "shrine" ? C_GLOW_SHRINE : kind === "chest" || kind.startsWith("epic_") ? C_GLOW_GOLD : C_GLOW_ITEM;
+          }
+        }
         p.kind = kind;
         p.value = value;
         p.x = x;
@@ -9051,7 +9088,7 @@ var init_Battle = __esm({
         for (const p of this.pickups) {
           if (!p.alive) continue;
           if (p.glow && p.glow.node.active) {
-            const pulse = 0.46 + 0.06 * Math.sin(this.time * 3 + p.x * 0.01);
+            const pulse = 0.68 + 0.16 * Math.sin(this.time * 6 + p.x * 0.01);
             p.glow.node.setScale(pulse, pulse, 1);
           }
           if (p.vx !== 0 || p.vy !== 0) {
@@ -9319,6 +9356,66 @@ var init_Battle = __esm({
             t.label.color = tmpColor;
           }
         }
+      }
+      get activePoiCount() {
+        let n = 0;
+        for (const m of this.poiMarkers) if (m.node.active) n++;
+        return n;
+      }
+      // 在最上层为重要事件（祭坛/试炼/空投/屏外宝箱神兵）显示方位路标，防止被怪潮淹没
+      updatePoiMarkers() {
+        const halfW = this.vw / 2 - 56, halfH = this.vh / 2 - 96;
+        const targets = [];
+        for (const e of this.enemies) {
+          if (!e.alive || e.def !== ENEMIES.altar) continue;
+          targets.push({ x: e.x, y: e.y, tag: "\u796D\u575B", color: C_POI_GOLD, showOnScreen: true });
+          if (targets.length >= 4) break;
+        }
+        if (targets.length < 4) {
+          for (const p of this.pickups) {
+            if (!p.alive) continue;
+            if (p.kind === "shrine") {
+              targets.push({ x: p.x, y: p.y, tag: "\u8BD5\u70BC", color: C_POI_SHRINE, showOnScreen: true });
+            } else if ((p.kind === "chest" || p.kind.startsWith("epic_")) && (Math.abs(p.x - this.px) > halfW || Math.abs(p.y - this.py) > halfH)) {
+              targets.push({ x: p.x, y: p.y, tag: p.kind === "chest" ? "\u5B9D\u7BB1" : "\u795E\u5175", color: C_POI_GOLD, showOnScreen: false });
+            }
+            if (targets.length >= 4) break;
+          }
+        }
+        if (targets.length < 4) {
+          for (const h of this.hazards) {
+            if (!h.alive || h.kind !== "circle" || h.r !== 70 || h.max !== 3) continue;
+            targets.push({ x: h.x, y: h.y, tag: "\u7A7A\u6295", color: C_POI_DROP, showOnScreen: true });
+            if (targets.length >= 4) break;
+          }
+        }
+        const bob = Math.sin(this.time * 6) * 5;
+        for (let i = 0; i < targets.length; i++) {
+          let m = this.poiMarkers[i];
+          if (!m) {
+            const label = mkLabel(this.textLayer, "", 22, C_WHITE, "center", 4);
+            m = { node: label.node, label };
+            this.poiMarkers.push(m);
+          }
+          const t = targets[i];
+          const dx = t.x - this.px, dy = t.y - this.py;
+          const outX = Math.abs(dx) > halfW, outY = Math.abs(dy) > halfH;
+          m.label.color = t.color;
+          if (outX || outY) {
+            const k = Math.min(halfW / (Math.abs(dx) || 1), halfH / (Math.abs(dy) || 1));
+            m.node.active = true;
+            m.node.setPosition(this.px + dx * k, this.py + dy * k);
+            const dirIdx = (Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8 + 8) % 8;
+            m.label.string = `${POI_ARROWS[dirIdx]} ${t.tag}`;
+          } else if (t.showOnScreen) {
+            m.node.active = true;
+            m.node.setPosition(t.x, t.y + 54 + bob);
+            m.label.string = `\u25BC ${t.tag}`;
+          } else {
+            m.node.active = false;
+          }
+        }
+        for (let i = targets.length; i < this.poiMarkers.length; i++) this.poiMarkers[i].node.active = false;
       }
       // ------------------------------------------------------------------ 粒子 / 震屏 / 连杀
       burst(x, y, color, n, speed) {
@@ -11060,11 +11157,12 @@ var init_GameRoot = __esm({
         add.node.on(Node.EventType.TOUCH_END, () => {
           Save.data.addTipShown = true;
           Save.save();
-          Analytics.track("add_tip", { wins: Save.data.wins });
+          Analytics.track("add_tip", { wins: Save.data.wins, runs: Save.data.runs, best_sec: Save.data.bestTime });
           this.refreshAll();
         });
         this.refreshers.push(() => {
-          add.node.active = this.state === "menu" && Social.isWx && Save.data.wins > 0 && !Save.data.addTipShown && !Social.pending;
+          const canTipAdd = Save.data.wins > 0 || Save.data.runs >= 1 && Save.data.bestTime >= 90;
+          add.node.active = this.state === "menu" && Social.isWx && canTipAdd && !Save.data.addTipShown && !Social.pending;
         });
         this.refreshers.push(() => {
           const c = this.selectedChar();
@@ -13502,7 +13600,7 @@ if (MODE === "C") {
   B().altarT = 0.01;
   step(2);
   const altar = B().enemies.find((e) => e.alive && e.def === D.ENEMIES.altar);
-  ok(!!altar, "\u795E\u5175\u796D\u575B\u51FA\u73B0");
+  ok(!!altar && B().activePoiCount >= 1 && !!altar.beacon?.node.active, "\u795E\u5175\u796D\u575B\u51FA\u73B0\u5E76\u53D1\u5149\u663E\u793A\u65B9\u4F4D\u8DEF\u6807");
   B().px = altar.x;
   B().py = altar.y - 10;
   step(2);
@@ -14015,9 +14113,6 @@ if (MODE === "C") {
     ok(cs.left >= 0 && cs.left < 80 && cs.top > 0 && cs.top < 200, `\u6E38\u620F\u5708\u6309\u94AE\u4F4D\u4E8E\u5DE6\u4E0A\u89D2\uFF08${Math.round(cs.left)}, ${Math.round(cs.top)}\uFF09`);
     g.setState("chars");
     ok(!G.__club.shown, "\u79BB\u5F00\u4E3B\u83DC\u5355\u9690\u85CF\u6E38\u620F\u5708\u6309\u94AE");
-    Save2.data.wins = 1;
-    Save2.data.addTipShown = false;
-    g.toMenu();
     const findPanelText = (t) => {
       const walk = (n) => {
         for (const c of n.children) {
@@ -14030,11 +14125,25 @@ if (MODE === "C") {
       };
       return walk(g.screens.menu);
     };
+    Save2.data.wins = 0;
+    Save2.data.runs = 1;
+    Save2.data.bestTime = 30;
+    Save2.data.addTipShown = false;
+    g.toMenu();
+    ok(!findPanelText("\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F"), "\u9996\u5C40\u672A\u6EE1 90 \u79D2\u4E14\u672A\u901A\u5173\u4E0D\u5F39\u300C\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F\u300D");
+    Save2.data.bestTime = 120;
+    g.toMenu();
+    ok(!!findPanelText("\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F"), "\u73A9\u6EE1 1 \u5C40\u4E14\u5B58\u6D3B 90 \u79D2\u4EE5\u4E0A\u5373\u63D0\u793A\u300C\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F\u300D");
+    Save2.data.wins = 1;
+    Save2.data.addTipShown = false;
+    g.toMenu();
     const tip = findPanelText("\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F");
     ok(!!tip, "\u9996\u80DC\u540E\u4E3B\u83DC\u5355\u63D0\u793A\u300C\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F\u300D");
     tip.parent.emit("te");
     ok(Save2.data.addTipShown && !findPanelText("\u6DFB\u52A0\u5230\u6211\u7684\u5C0F\u7A0B\u5E8F"), "\u70B9\u51FB\u540E\u5173\u95ED\u4E14\u4E0D\u518D\u63D0\u793A");
     Save2.data.wins = 0;
+    Save2.data.runs = 0;
+    Save2.data.bestTime = 0;
     section("\u597D\u53CB\u6392\u884C");
     base();
     start();

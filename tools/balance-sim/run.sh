@@ -3,6 +3,10 @@
 # 用法：tools/balance-sim/run.sh [average|novice] [玩家数=20] [局数=5]
 # 依赖：node 18+，首次运行会通过 npx 下载 esbuild
 cd "$(dirname "$0")"
+if [ ! -f ../../temp/tsconfig.cocos.json ]; then
+  mkdir -p ../../temp
+  printf '{"compilerOptions":{"experimentalDecorators":true,"useDefineForClassFields":false}}\n' > ../../temp/tsconfig.cocos.json
+fi
 SKILL=${1:-average}; N=${2:-20}; R=${3:-5}
 mkdir -p out
 npx -y esbuild@0.23 meta.ts --bundle --platform=node --format=esm --outfile=out/meta.mjs --alias:cc=./cc.ts --alias:cc/env=./env.ts --log-level=warning || exit 1

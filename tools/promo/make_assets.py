@@ -14,7 +14,12 @@ ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 MK = os.path.join(ROOT, 'marketing')
 SHOTS = os.path.join(HERE, 'out', 'shots_png')
 ATLAS_DIR = os.path.join(HERE, 'out', 'shots')
-FONT = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
+FONT = next((p for p in (
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    '/System/Library/Fonts/STHeiti Medium.ttc',
+    '/System/Library/Fonts/Hiragino Sans GB.ttc',
+) if os.path.exists(p)), '/System/Library/Fonts/STHeiti Medium.ttc')
 
 YELLOW = (255, 236, 120)
 RED = (230, 50, 60)
@@ -115,14 +120,14 @@ def rounded(im, r):
 
 # ------------------------------------------------------------------ 商店截图（1080×1920）
 CAPTIONS = [
-    ('01_title', '呱！奶蛙来割草了', '像素肉鸽 · 竖屏单手 · 15 分钟一局'),
+    ('01_title', '呱！奶蛙来割草了', '像素肉鸽 · 竖屏单手 · 8 分钟爽局'),
     ('03_swarm', '满屏怪物 一路割爆', '连击不断 · 爽感拉满'),
     ('04_levelup', '16 种武器 随你搭配', '每一局的构筑都不一样'),
     ('05_boss', '7 大 Boss 技能各异', '躲激光 · 闪冲锋 · 破弹幕'),
-    ('06_bloodmoon', '红月降临 终极挑战', '最后两分钟 怪物狂潮'),
+    ('06_bloodmoon', '红月降临 终极挑战', '最后一分钟 怪物狂潮'),
     ('07_evolve', '武器进化 质变爆发', '16 种武器 × 16 种进化'),
     ('02_chars', '12 只奶蛙 各有绝活', '法师 · 游侠 · 骑士 · 爆破 …'),
-    ('08_victory', '活过 15 分钟 你就是王', '成就 · 永久强化 · 无尽模式'),
+    ('08_victory', '活过 8 分钟 你就是王', '成就 · 永久强化 · 无尽模式'),
     ('09_snow', '冰雪荒原 冰锥坠落', '把怪物引到红圈里！'),
     ('10_lava', '熔岩火山 陨石暴雨', '难度更高 · 金币更多'),
     ('17_swamp', '毒雾沼泽 毒云弥漫', '终极地图 · 金币 +90%'),
@@ -227,17 +232,17 @@ def key_visual(W, H, name, logo_size, hero_scale, slogan_size):
     lg = logo('奶蛙割草', logo_size, 'MILKY FROG SURVIVORS', logo_size // 4)
     paste_center(im, lg, W / 2, H * 0.17)
     d = ImageDraw.Draw(im)
-    text_center(d, W / 2, H * 0.86, '胖奶蛙 · 割草生存 · 你能活过 15 分钟吗？', slogan_size, (255, 255, 255), DARK, max(3, slogan_size // 10))
+    text_center(d, W / 2, H * 0.86, '胖奶蛙 · 割草生存 · 你能活过 8 分钟吗？', slogan_size, (255, 255, 255), DARK, max(3, slogan_size // 10))
     im.convert('RGB').save(out('宣传图', name), optimize=True)
 
 
 def share_cards():
     W, H = 500, 400
     specs = [
-        ('share_01_主视觉.png', None, '你能活过 15 分钟吗？'),
+        ('share_01_主视觉.png', None, '你能活过 8 分钟吗？'),
         ('share_02_割草.png', '03_swarm', '一局割倒 16888 只怪！'),
         ('share_03_Boss.png', '05_boss', '激光扫过来了，快跑呱！'),
-        ('share_04_红月.png', '06_bloodmoon', '红月降临，最后两分钟！'),
+        ('share_04_红月.png', '06_bloodmoon', '红月降临，最后一分钟！'),
     ]
     for name, shot, text in specs:
         if shot is None:

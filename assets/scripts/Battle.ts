@@ -41,6 +41,7 @@ export class Enemy {
     cvx = 0;        // 冲撞速度
     cvy = 0;
     uid = 0;        // 每次出生递增，延时回调用来确认还是同一只怪（对象池复用）
+    beacon: Sprite | null = null; // 祭坛底座发光圈
 }
 
 class Proj {
@@ -288,6 +289,14 @@ const C_EVO = new Color(255, 200, 90, 255);
 const C_GOLDEN = new Color(255, 225, 130, 255);
 const TAU = Math.PI * 2;
 const C_EVO_RED = new Color(255, 110, 110, 255);
+const C_POI_GOLD = new Color(255, 225, 95, 255);
+const C_POI_SHRINE = new Color(255, 110, 120, 255);
+const C_POI_DROP = new Color(255, 215, 90, 255);
+const C_GLOW_SHRINE = new Color(255, 95, 120, 220);
+const C_GLOW_GOLD = new Color(255, 225, 85, 230);
+const C_GLOW_ITEM = new Color(120, 240, 255, 200);
+const C_ALTAR_BEACON = new Color(255, 220, 90, 190);
+const POI_ARROWS = ['→', '↗', '↑', '↖', '←', '↙', '↓', '↘'];
 const tmpColor = new Color();
 
 export class Battle {
@@ -482,6 +491,7 @@ export class Battle {
     private bulletPool: Bullet[] = [];
     private hazards: Hazard[] = [];
     private hazardPool: Hazard[] = [];
+    private poiMarkers: { node: Node; label: Label }[] = [];
 
     // 地图装饰
     private decorChunks = new Map<string, Node[]>();
@@ -561,6 +571,7 @@ export class Battle {
         this.bullets.length = 0;
         for (const h of this.hazards) this.freeHazard(h);
         this.hazards.length = 0;
+        for (const m of this.poiMarkers) m.node.active = false;
         this.bosses.length = 0;
         this.bossWarned = false;
         this.victoryT = 0;
@@ -735,6 +746,7 @@ export class Battle {
         this.updateParticles(dt);
         this.updateTexts(dt);
         this.compact();
+        this.updatePoiMarkers();
         if (this.hp <= 0) this.onDeath();
         if (this.time >= (this.daily ? DAILY_GOAL : WIN_TIME) && !this.dead && !this.endless) this.won = true;
         if (this.victoryT > 0) {
@@ -759,6 +771,7 @@ export class Battle {
         for (const p of this.projs) p.alive = false;
         for (const h of this.hazards) if (h.alive) { h.alive = false; h.node.active = false; }
         for (const z of this.pzones) if (z.alive) { z.alive = false; z.node.active = false; }
+        for (const m of this.poiMarkers) m.node.active = false;
         this.endEpic();
         for (const t of this.tornados) t.sp.node.destroy();
         this.tornados = [];
@@ -785,6 +798,7 @@ export class Battle {
         this.dieT += dt;
         const t = this.dieT;
         for (const b of this.bullets) b.alive = false;
+        for (const m of this.poiMarkers) m.node.active = false;
         if (t < 0.55) {
             this.playerSp.color = Math.floor(t * 16) % 2 ? C_WHITE : new Color(255, 255, 255, 120);
             const k = 1 - t * 0.6;
@@ -1271,6 +1285,17 @@ export class Battle {
         e.shadow.setPosition(0, flying ? -h - 8 : -h);
         e.shadow.setScale(PX * s * (def.boss ? 2 : 1.2), PX * s, 1);
         e.node.setPosition(x, y);
+        if (def === ENEMIES.altar && !e.beacon) {
+            e.beacon = mkSprite(e.node, 'aura', 2.2, 'altar-glow');
+            e.beacon.node.setSiblingIndex(0);
+        }
+        if (e.beacon) {
+            e.beacon.node.active = def === ENEMIES.altar;
+            if (def === ENEMIES.altar) {
+                e.beacon.color = C_ALTAR_BEACON;
+                e.beacon.node.setScale(2.2, 2.2, 1);
+            }
+        }
         // 精英怪：金色、体型更大、血量 ×8，掉落丰厚
         if (!force && !def.boss && !def.prop && !def.flee && this.time > 30 && this.eliteT <= 0) {
             this.eliteT = this.mod('elites') ? 12 : (20 + Math.random() * 10) / (this.bloodMoon ? 3 : 1);
@@ -1292,6 +1317,7 @@ export class Battle {
     private freeEnemy(e: Enemy) {
         e.alive = false;
         e.node.active = false;
+        if (e.beacon) e.beacon.node.active = false;
         this.enemyPool.push(e);
     }
 
@@ -1309,8 +1335,14 @@ export class Battle {
             if (def.prop) {
                 // 火盆：原地不动，离得太远就回收
                 if (Math.abs(dx) > despawnX + 300 || Math.abs(dy) > despawnY + 300) { e.alive = false; continue; }
-                // 神兵祭坛：走过去碰一下也能打碎
-                if (def === ENEMIES.altar && d < def.radius + 22) { this.killEnemy(e); continue; }
+                // 神兵祭坛：走过去碰一下也能打碎，同时脉冲放大底座光圈提高辨识度
+                if (def === ENEMIES.altar) {
+                    if (d < def.radius + 22) { this.killEnemy(e); continue; }
+                    if (e.beacon) {
+                        const bs = 2.0 + 0.3 * Math.sin(this.time * 5);
+                        e.beacon.node.setScale(bs, bs, 1);
+                    }
+                }
                 this.animEnemy(e, dt, 1, 0);
                 continue;
             }
@@ -3662,11 +3694,17 @@ export class Battle {
         p.sp.spriteFrame = Art.f(frame);
         const special = kind !== 'gem' && kind !== 'coin';
         if (special && !p.glow) {
-            p.glow = mkSprite(p.node, 'aura', 0.5, 'pickup-glow');
+            p.glow = mkSprite(p.node, 'aura', 0.68, 'pickup-glow');
             p.glow.node.setSiblingIndex(0);
-            p.glow.color = new Color(255, 220, 120, 140);
         }
-        if (p.glow) p.glow.node.active = special;
+        if (p.glow) {
+            p.glow.node.active = special;
+            if (special) {
+                p.glow.color = kind === 'shrine' ? C_GLOW_SHRINE
+                    : (kind === 'chest' || kind.startsWith('epic_')) ? C_GLOW_GOLD
+                    : C_GLOW_ITEM;
+            }
+        }
         p.kind = kind;
         p.value = value;
         p.x = x; p.y = y;
@@ -3711,7 +3749,7 @@ export class Battle {
         for (const p of this.pickups) {
             if (!p.alive) continue;
             if (p.glow && p.glow.node.active) {
-                const pulse = 0.46 + 0.06 * Math.sin(this.time * 3 + p.x * 0.01);
+                const pulse = 0.68 + 0.16 * Math.sin(this.time * 6 + p.x * 0.01);
                 p.glow.node.setScale(pulse, pulse, 1);
             }
             if (p.vx !== 0 || p.vy !== 0) {
@@ -3974,6 +4012,68 @@ export class Battle {
                 t.label.color = tmpColor;
             }
         }
+    }
+
+    get activePoiCount() {
+        let n = 0;
+        for (const m of this.poiMarkers) if (m.node.active) n++;
+        return n;
+    }
+
+    // 在最上层为重要事件（祭坛/试炼/空投/屏外宝箱神兵）显示方位路标，防止被怪潮淹没
+    private updatePoiMarkers() {
+        const halfW = this.vw / 2 - 56, halfH = this.vh / 2 - 96;
+        const targets: { x: number; y: number; tag: string; color: Color; showOnScreen: boolean }[] = [];
+        for (const e of this.enemies) {
+            if (!e.alive || e.def !== ENEMIES.altar) continue;
+            targets.push({ x: e.x, y: e.y, tag: '祭坛', color: C_POI_GOLD, showOnScreen: true });
+            if (targets.length >= 4) break;
+        }
+        if (targets.length < 4) {
+            for (const p of this.pickups) {
+                if (!p.alive) continue;
+                if (p.kind === 'shrine') {
+                    targets.push({ x: p.x, y: p.y, tag: '试炼', color: C_POI_SHRINE, showOnScreen: true });
+                } else if ((p.kind === 'chest' || p.kind.startsWith('epic_')) && (Math.abs(p.x - this.px) > halfW || Math.abs(p.y - this.py) > halfH)) {
+                    targets.push({ x: p.x, y: p.y, tag: p.kind === 'chest' ? '宝箱' : '神兵', color: C_POI_GOLD, showOnScreen: false });
+                }
+                if (targets.length >= 4) break;
+            }
+        }
+        if (targets.length < 4) {
+            for (const h of this.hazards) {
+                if (!h.alive || h.kind !== 'circle' || h.r !== 70 || h.max !== 3) continue;
+                targets.push({ x: h.x, y: h.y, tag: '空投', color: C_POI_DROP, showOnScreen: true });
+                if (targets.length >= 4) break;
+            }
+        }
+        const bob = Math.sin(this.time * 6) * 5;
+        for (let i = 0; i < targets.length; i++) {
+            let m = this.poiMarkers[i];
+            if (!m) {
+                const label = mkLabel(this.textLayer, '', 22, C_WHITE, 'center', 4);
+                m = { node: label.node, label };
+                this.poiMarkers.push(m);
+            }
+            const t = targets[i];
+            const dx = t.x - this.px, dy = t.y - this.py;
+            const outX = Math.abs(dx) > halfW, outY = Math.abs(dy) > halfH;
+            m.label.color = t.color;
+            if (outX || outY) {
+                const k = Math.min(halfW / (Math.abs(dx) || 1), halfH / (Math.abs(dy) || 1));
+                m.node.active = true;
+                m.node.setPosition(this.px + dx * k, this.py + dy * k);
+                const dirIdx = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8;
+                m.label.string = `${POI_ARROWS[dirIdx]} ${t.tag}`;
+            } else if (t.showOnScreen) {
+                m.node.active = true;
+                m.node.setPosition(t.x, t.y + 54 + bob);
+                m.label.string = `▼ ${t.tag}`;
+            } else {
+                m.node.active = false;
+            }
+        }
+        for (let i = targets.length; i < this.poiMarkers.length; i++) this.poiMarkers[i].node.active = false;
     }
 
     // ------------------------------------------------------------------ 粒子 / 震屏 / 连杀

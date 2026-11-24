@@ -18,7 +18,12 @@ TMP = os.path.join(HERE, 'out', 'video_final')
 AUDIO = os.path.join(ROOT, 'assets', 'resources', 'audio')
 OUT_DIR = os.path.join(ROOT, 'marketing', '视频')
 GIF_DIR = os.path.join(ROOT, 'marketing', '动图')
-FONT = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
+FONT = next((p for p in (
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    '/System/Library/Fonts/STHeiti Medium.ttc',
+    '/System/Library/Fonts/Hiragino Sans GB.ttc',
+) if os.path.exists(p)), '/System/Library/Fonts/STHeiti Medium.ttc')
 FPS = 30
 YELLOW = (255, 236, 120)
 DARK = (24, 8, 22)
@@ -27,24 +32,24 @@ DARK = (24, 8, 22)
 VIDEOS = {
     '宣传片_竖版_27s': {
         'segments': [(0, 742)],
-        'captions': [(0, 47, '这只胖奶蛙', '要在红月下割草 15 分钟？'), (48, 227, '满屏怪物', '一路割爆！'),
+        'captions': [(0, 47, '这只胖奶蛙', '要在红月下割草 8 分钟？'), (48, 227, '满屏怪物', '一路割爆！'),
                      (228, 247, '16 种武器', '自由搭配 · 随机进化'), (248, 337, '连击停不下来', '爽感拉满！'),
                      (338, 487, '7 大 Boss 来袭！', '躲激光 · 破弹幕'), (488, 667, '红月降临', '最后的怪物狂潮'),
-                     (668, 742, '你能活过', '15 分钟吗？')],
+                     (668, 742, '你能活过', '8 分钟吗？')],
         'sfx': [(18, 'croak'), (60, 'start'), (228, 'levelup'), (338, 'roar'), (488, 'roar'), (668, 'win')],
         'bgm': 'bgm_battle',
     },
     '短视频_满屏割草_14s': {
         'segments': [(48, 227), (248, 337), (668, 742)],
         'captions': [(0, 60, '一只奶蛙', 'VS 一万只怪物'), (61, 179, '割！割！割！', '连击停不下来'),
-                     (180, 269, '越割越爽', '压力全没了'), (270, 344, '你能活过', '15 分钟吗？')],
+                     (180, 269, '越割越爽', '压力全没了'), (270, 344, '你能活过', '8 分钟吗？')],
         'sfx': [(0, 'croak'), (270, 'win')],
         'bgm': 'bgm_battle',
     },
     '短视频_Boss红月_13s': {
         'segments': [(338, 487), (488, 667)],
         'captions': [(0, 75, '这个激光', '你躲得过去吗？'), (76, 149, '水晶魔眼', '扫射全屏！'),
-                     (150, 239, '13:00', '红月降临…'), (240, 329, '最后两分钟', '怪物狂潮！')],
+                     (150, 239, '7:00', '红月降临…'), (240, 329, '最后一分钟', '怪物狂潮！')],
         'sfx': [(0, 'roar'), (150, 'roar')],
         'bgm': 'bgm_boss',
     },

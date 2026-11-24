@@ -1,6 +1,10 @@
 #!/bin/bash
 # 回归测试：MODE=A 无广告、B 广告可用、C 抖音录屏，三种环境各跑一遍
 cd "$(dirname "$0")"
+if [ ! -f ../../temp/tsconfig.cocos.json ]; then
+  mkdir -p ../../temp
+  printf '{"compilerOptions":{"experimentalDecorators":true,"useDefineForClassFields":false}}\n' > ../../temp/tsconfig.cocos.json
+fi
 mkdir -p out
 npx -y esbuild@0.23 regression.ts --bundle --platform=node --format=esm --outfile=out/regression.mjs --alias:cc=../promo/cc.ts --alias:cc/env=../promo/env.ts --log-level=warning || exit 1
 code=0
