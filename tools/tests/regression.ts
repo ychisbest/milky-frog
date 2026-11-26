@@ -170,7 +170,7 @@ if (MODE === 'C') {
 
     section('角色生命、初始武器与掉落光效');
     base(); Save.data.lossStreak = 0; Save.data.power.maxhp = 0; start();
-    ok(D.BASE_STATS.maxHp === 72 && B().stats.maxHp === 92, '基础生命降低且角色生命加成仍生效');
+    ok(D.BASE_STATS.maxHp === 56 && B().stats.maxHp === 68, '基础生命降低且角色生命加成仍生效');
     ok(new Set(D.CHARACTERS.map((c: any) => c.weapon)).size === D.CHARACTERS.length && D.CHARACTERS.every((c: any) => D.WEAPONS.some((w: any) => w.id === c.weapon)), '每个角色拥有不同的有效初始武器');
     B().spawnPickup('chicken', 500, 500, 1);
     const special = B().pickups[B().pickups.length - 1];

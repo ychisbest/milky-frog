@@ -27,7 +27,7 @@ export const DESIGN_H = 1280;
 export const GAME_NAME = '奶蛙割草';
 export const GAME_SUBTITLE = 'MILKY  FROG  SURVIVORS';
 export const AGE_RATING = '12+';
-export const GAME_VERSION = 'v1.0.0';
+export const GAME_VERSION = 'v1.0.4';
 // 新手渐进解锁：完成 N 局后开放（只影响主菜单入口，不影响局内数值）
 const UNLOCKS: { id: string; name: string; runs: number }[] = [
     { id: 'shop', name: '永久强化', runs: 1 },
@@ -1809,7 +1809,7 @@ export class GameRoot extends Component {
         const ok: Record<string, boolean> = {
             win1: win,
             kill1k: b.kills >= 1000,
-            kill5k: b.kills >= 3000,
+            kill5k: b.kills >= 1500,
             combo500: b.maxCombo >= 500,
             lv50: b.level >= 50,
             evo1: b.evolvedCount >= 1,

@@ -487,6 +487,12 @@ export class Battle {
     // 命运卡牌：能量涌动 / 浴火重生
     ultBuffT = 0;
     private phoenixUsed = false;
+    private leechBudget = 0; // 战斗吸血每秒上限令牌桶
+    private vampCd = 0;      // 治愈之吻内置冷却
+    private campX = 0;
+    private campY = 0;
+    private campT = 0;
+    private campStrikeT = 0;
     private bullets: Bullet[] = [];
     private bulletPool: Bullet[] = [];
     private hazards: Hazard[] = [];
@@ -609,6 +615,9 @@ export class Battle {
         this.windOn = 0;
         this.ultBuffT = 0;
         this.phoenixUsed = false;
+        this.leechBudget = 0;
+        this.vampCd = 0;
+        this.campX = this.campY = this.campT = this.campStrikeT = 0;
         this.dropT = 80;
         this.showerT = 125 + Math.random() * 30;
         this.showerOn = 0;
@@ -930,6 +939,45 @@ export class Battle {
             : this.epicIs('unicorn') ? this.rainbow(this.time * 2) : C_WHITE;
         if (this.char.charge === 'heal' && this.hp < this.stats.maxHp) this.chargeUlt(this.stats.recovery * dt / (this.stats.maxHp * 0.8));
         this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.recovery * dt);
+        this.leechBudget = Math.min(2.0, this.leechBudget + 1.4 * dt);
+        if (this.vampCd > 0) this.vampCd -= dt;
+        // 反站桩危险锁定：150 秒后在原地半径 50 内滞留超过 2.5 秒将触发穿甲红圈轰炸
+        if (this.time >= 150 && !this.dead && !this.won) {
+            if (Math.hypot(this.px - this.campX, this.py - this.campY) > 50) {
+                this.campX = this.px; this.campY = this.py; this.campT = 0; this.campStrikeT = 0;
+            } else {
+                this.campT += dt;
+                if (this.campT >= 2.5) {
+                    this.campStrikeT -= dt;
+                    if (this.campStrikeT <= 0) {
+                        if (this.campT < 3.1) this.onBanner('保持移动! 危险锁定!', new Color(255, 90, 90, 255));
+                        this.campStrikeT = 1.1;
+                        const tx = this.px, ty = this.py;
+                        this.warnCircle(tx, ty, 68, 0.8, 0xff3030, () => {
+                            const f = this.spawnFx('aura', tx, ty, 0.35, (68 * 2) / 64, 0.6);
+                            f.sp.color = colorOf(0xff4040);
+                            this.burst(tx, ty, 0xff4040, 16, 320);
+                            this.burst(tx, ty, 0xffffff, 6, 260);
+                            this.addShake(0.2, 6);
+                            if (Math.hypot(this.px - tx, this.py - ty) < 68 + 10 && this.invulnT <= 0 && this.dashT <= 0) {
+                                if (this.shieldHits > 0) {
+                                    this.shieldHits--;
+                                    this.iframe = Math.max(this.iframe, 0.35);
+                                    this.burst(this.px, this.py, 0x60a0ff, 12, 260);
+                                    Sound.play('hit');
+                                } else {
+                                    this.hp -= Math.max(this.stats.maxHp * 0.26, 12 * this.dmgRamp());
+                                    this.iframe = Math.max(this.iframe, 0.25);
+                                    this.sinceHurt = 0;
+                                    Sound.play('hurt');
+                                    vibrate();
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
         this.hpFill.setScale(Math.max(0, this.hp / this.stats.maxHp), 1, 1);
     }
 
@@ -969,10 +1017,11 @@ export class Battle {
         if (this.isChar('bomber') && Math.random() < 0.35) this.explodeFriendly(this.px, this.py, 110, 20 + this.level * 2, null, 260, 0xff8030);
         const armor = this.stats.armor + (this.isChar('knight') && this.hp < this.stats.maxHp * 0.5 ? 2 : 0);
         const calm = this.hp > this.stats.maxHp * 0.7 ? 1 - this.stats.calm : 1; // 苔藓护甲
-        const d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) * calm - armor);
+        const raw = dmg * (this.mod('glass') ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) * calm;
+        const d = Math.max(Math.max(1, raw * 0.15), raw - armor);
         this.hp -= d;
         if (this.char.charge === 'hurt') this.chargeUlt(0.12);
-        this.iframe = Math.max(this.iframe, 0.6);
+        this.iframe = Math.max(this.iframe, 0.52);
         this.sinceHurt = 0;
         this.addShake(0.2, 7);
         Sound.play('hurt');
@@ -983,6 +1032,13 @@ export class Battle {
         if (this.hp >= this.stats.maxHp) return;
         if (this.char.charge === 'heal') this.chargeUlt(Math.min(v, this.stats.maxHp - this.hp) / (this.stats.maxHp * 0.8));
         this.hp = Math.min(this.stats.maxHp, this.hp + v);
+    }
+
+    private leech(v: number) {
+        if (v <= 0 || this.hp >= this.stats.maxHp || this.leechBudget <= 0) return;
+        const allow = Math.min(v, this.leechBudget);
+        this.leechBudget -= allow;
+        this.heal(allow);
     }
 
     updateCamera(dt: number) {
@@ -1064,12 +1120,12 @@ export class Battle {
         if (this.spawnTimer <= 0) {
             this.spawnTimer = wave.interval;
             // Boss 战期间小怪减少 30%，保持战局紧张度
-            const count = Math.round((wave.batch + Math.floor(this.time / 65)) * (this.boss ? 0.7 : 1) * (this.hasB('greedpact') ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - WIN_TIME) / 320 : 1) * (this.bloodMoon ? 1.8 : 1) * this.flow * (this.mod('horde') ? 1.4 : 1) * (this.trial ? 2 : 1));
+            const count = Math.round((wave.batch + Math.floor(this.time / 180)) * (this.boss ? 0.7 : 1) * (this.hasB('greedpact') ? 1.3 : 1) * (this.endless ? 1 + Math.max(0, this.time - WIN_TIME) / 320 : 1) * (this.bloodMoon ? 1.35 : 1) * Math.min(1.4, this.flow) * (this.mod('horde') ? 1.4 : 1) * (this.trial ? 1.5 : 1));
             // 远程小恶魔同时存在数量有上限，避免弹幕失控
             let imps = 0;
             for (const e of this.enemies) if (e.alive && e.def.ranged) imps++;
-            const impCap = 4 + Math.floor(Math.max(0, this.time - 285) / 70);
-            for (let i = 0; i < count && this.enemies.length < (this.bloodMoon ? (Save.data.lite ? 290 : 420) : this.enemyCap); i++) {
+            const impCap = 5 + Math.floor(Math.max(0, this.time - 225) / 60);
+            for (let i = 0; i < count && this.enemies.length < (this.bloodMoon ? (Save.data.lite ? 115 : 160) : this.enemyCap); i++) {
                 let type = wave.types[Math.floor(Math.random() * wave.types.length)];
                 if (ENEMIES[type].ranged) {
                     if (imps >= impCap) type = 'skeleton';
@@ -1168,7 +1224,7 @@ export class Battle {
     }
 
     summon(type: string, x: number, y: number) {
-        if (this.enemies.length >= this.enemyCap + 60) return;
+        if (this.enemies.length >= this.enemyCap + 25) return;
         this.spawnEnemy(type, x, y, true);
     }
 
@@ -1202,11 +1258,12 @@ export class Battle {
         const types = wave.types.filter(k => !ENEMIES[k].ranged);
         const pick = () => types[Math.floor(Math.random() * types.length)];
         const kind = this.surgeIdx++ % 3;
-        const n = Math.min(40, 14 + Math.floor(t / 16));
+        const n = Math.min(18, 10 + Math.floor(t / 45));
+        const cap = this.enemyCap + 15;
         if (kind === 0) {
             // 包围圈：一圈怪物从屏幕外同时向奶蛙收缩
             const R = Math.hypot(this.vw, this.vh) / 2 + 40, type = pick();
-            for (let i = 0; i < n; i++) {
+            for (let i = 0; i < n && this.enemies.length < cap; i++) {
                 const a = (i / n) * Math.PI * 2;
                 this.spawnEnemy(type, this.px + Math.cos(a) * R, this.py + Math.sin(a) * R, true);
             }
@@ -1215,7 +1272,7 @@ export class Battle {
             // 侧翼冲锋：一大群怪物从同一侧涌来
             const a = Math.random() * Math.PI * 2, R = Math.hypot(this.vw, this.vh) / 2 + 60, type = pick();
             const nx = -Math.sin(a), ny = Math.cos(a);
-            for (let i = 0; i < n; i++) {
+            for (let i = 0; i < n && this.enemies.length < cap; i++) {
                 const off = (i - n / 2) * 22, back = (i % 3) * 30;
                 this.spawnEnemy(type, this.px + Math.cos(a) * (R + back) + nx * off, this.py + Math.sin(a) * (R + back) + ny * off, true);
             }
@@ -1237,8 +1294,9 @@ export class Battle {
         // 竖屏：蝙蝠群从上方或下方纵向穿过
         const side = Math.random() < 0.5 ? -1 : 1;
         const y0 = this.py - side * (this.vh / 2 + 60);
-        for (let i = 0; i < 40; i++) {
-            const e = this.spawnEnemy('bat', this.px + ((i % 8) - 3.5) * 40 + Math.random() * 10, y0 - side * Math.floor(i / 8) * 34, true)!;
+        const cap = this.enemyCap + 15;
+        for (let i = 0; i < 20 && this.enemies.length < cap; i++) {
+            const e = this.spawnEnemy('bat', this.px + ((i % 5) - 2) * 48 + Math.random() * 10, y0 - side * Math.floor(i / 5) * 36, true)!;
             e.sx = 0;
             e.sy = side * 170;
         }
@@ -1260,7 +1318,7 @@ export class Battle {
         e.node.active = true;
         e.x = x; e.y = y;
         e.kx = e.ky = e.sx = e.sy = 0;
-        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 120 + (this.time / 138) ** 2) * (this.bloodMoon ? 1.3 : 1) * this.flowHp() * this.stage.hpMul * (this.mod('xp2') ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
+        e.maxHp = e.hp = def.boss ? def.hp : def.hp * (1 + this.time / 160 + (this.time / 165) ** 2) * (this.bloodMoon ? 1.35 : 1) * this.flowHp() * this.stage.hpMul * (this.mod('xp2') ? 1.5 : 1) * (this.nightmare ? 1.6 : 1);
         e.flash = 0;
         e.punch = 0;
         e.anim = Math.random() * def.anim;
@@ -1442,8 +1500,8 @@ export class Battle {
                     e.shootT -= dt;
                     if (e.shootT < 0.35 && e.shootT + dt >= 0.35) { e.flash = 0.3; e.punch = 0.2; }
                     if (e.shootT <= 0 && d < 420) {
-                        e.shootT = 2.6 + Math.random() * 0.8;
-                        this.fireBullet('fireball', e.x, e.y, Math.atan2(dy, dx), 145, 4.5 * this.dmgRamp(), { radius: 9 });
+                        e.shootT = 2.4 + Math.random() * 0.8;
+                        this.fireBullet('fireball', e.x, e.y, Math.atan2(dy, dx), 165, 4.8 * this.dmgRamp(), { radius: 9 });
                     }
                 } else if (this.decoyT > 0 && Math.abs(this.decoyX - e.x) + Math.abs(this.decoyY - e.y) < 700) {
                     // 幻影蛙：附近的怪物改为扑向诱饵
@@ -1556,11 +1614,10 @@ export class Battle {
         return this.flow <= 1 ? 0.6 + 0.4 * this.flow : Math.pow(this.flow, 1.5);
     }
 
-    // 小怪接触伤害随时间的成长：适配 8 分钟节奏，前 1.5 分钟平稳上手，3 分钟后压力持续攀升
+    // 小怪接触伤害随时间的成长：前期（0~3:30）宽松，4 分钟后与红月剧烈施压
     private dmgRamp() {
-        const m = this.time / 330;
-        const early = 1 + 0.45 * Math.max(0, 1 - this.time / 150);
-        return early * 1.38 * (1 + 0.65 * m + 1.1 * m * m) * (this.bloodMoon ? 1.25 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
+        const m = this.time / 360;
+        return 0.78 * (1 + 0.45 * m + 1.1 * m * m) * (this.bloodMoon ? 1.45 : 1) * (0.8 + 0.2 * this.flow) * (this.nightmare ? 1.3 : 1);
     }
 
     // 每日挑战规则
@@ -1645,7 +1702,7 @@ export class Battle {
         const crit = !!w && (Math.random() < this.stats.crit + (this.cloverT > 0 ? 0.3 : 0) || (w.evolved && w.def.id === 'cross'));
         if (crit) {
             dmg = Math.round(dmg * this.stats.critDmg);
-            if (this.hasB('vampkiss')) this.heal(1);
+            if (this.hasB('vampkiss') && this.vampCd <= 0) { this.vampCd = 1.2; this.leech(1); }
             if (this.isChar('prism') && Math.random() < 0.35) this.refract(e, dmg);
             if (this.char.charge === 'crit') this.chargeUlt(1 / (150 + this.time * 0.7));
         }
@@ -1668,13 +1725,13 @@ export class Battle {
         } else Sound.play('hit');
         if (e.def.boss) this.addShake(0.08, 3);
         if (knock > 0 && e.sx === 0 && e.sy === 0) {
-            const kr = e.def.knockRes || 0;
+            const kr = Math.min(0.95, (e.def.knockRes || 0) + (e.elite ? 0.3 : 0) + Math.min(0.2, Math.max(0, (this.time - 280) / 800)));
             const dx = e.x - fromX, dy = e.y - fromY, d = Math.hypot(dx, dy) || 1;
             e.kx = (dx / d) * knock * (1 - kr);
             e.ky = (dy / d) * knock * (1 - kr);
         }
         // 进化武器吸血
-        if (w && w.evolved && (w.def.id === 'whip' || w.def.id === 'garlic' || w.def.id === 'spikes') && Math.random() < 0.12) this.heal(1);
+        if (w && w.evolved && (w.def.id === 'whip' || w.def.id === 'garlic' || w.def.id === 'spikes') && Math.random() < 0.03) this.leech(0.5);
         if (e.hp <= 0) this.killEnemy(e);
     }
 
@@ -1722,7 +1779,7 @@ export class Battle {
             this.burst(e.x, e.y, 0xf5c542, 24, 300);
             this.addShake(0.15, 5);
         }
-        if (this.stats.lifesteal > 0) this.heal(this.stats.lifesteal);
+        if (this.stats.lifesteal > 0) this.leech(this.stats.lifesteal);
         if (this.hasB('chainboom') && !e.def.boss && Math.random() < 0.15) {
             const x = e.x, y = e.y;
             this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 55, 10 + this.level, null, 120, 0xff8030));
@@ -1735,7 +1792,7 @@ export class Battle {
         this.attackKills++;
         if (this.trial) this.trial.got++;
         const ch = this.char.charge;
-        if (ch === 'kill' || ch === 'combo') this.chargeUlt((ch === 'combo' ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 1.4));
+        if (ch === 'kill' || ch === 'combo') this.chargeUlt((ch === 'combo' ? 1 + Math.min(1, this.combo / 300) : 1) / (120 + this.time * 0.75));
         // 果冻怪：分裂成两只小果冻（放到帧末，避免遍历时修改怪物列表）
         if (e.def.split) {
             const x = e.x, y = e.y, t = e.def.split;
@@ -1762,7 +1819,7 @@ export class Battle {
         if (e.def.boss) {
             this.spawnPickup('chest', e.x, e.y, 0);
             this.spawnPickup('coinbag', e.x + 30, e.y, 30, true);
-            if (Math.random() < 0.4) this.spawnPickup('chicken', e.x - 30, e.y, 0, true);
+            if (Math.random() < 0.25) this.spawnPickup('chicken', e.x - 30, e.y, 0, true);
             else this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], e.x - 30, e.y, 0, true);
             // Boss 有 40% 几率掉落神兵：打完 Boss 有 30 秒的爽快时间
             if (Math.random() < 0.4) this.spawnEpicPickup(e.x, e.y - 30);
@@ -1780,16 +1837,16 @@ export class Battle {
             this.spawnFx('aura', e.x, e.y, 0.5, 2, 5);
             Sound.play('bigkill');
         }
-        // 开局 100 秒怪物较少，经验加成 50% 弥补，保证前期升级节奏
-        this.spawnPickup('gem', e.x, e.y, e.def.xp * (this.time < 100 ? 1.5 : 1), true);
+        // 怪物总量减半后对应提升单怪经验与掉金，保证升级节奏平稳
+        this.spawnPickup('gem', e.x, e.y, e.def.xp * (this.time < 120 ? 1.9 : 2.35), true);
         const r = Math.random();
-        if (r < 0.0025) { if (!this.mod('gold3')) this.spawnPickup('chicken', e.x + 10, e.y, 0); }
-        else if (r < 0.0055) this.spawnPickup('magnet', e.x + 10, e.y, 0);
+        if (r < 0.0018) { if (!this.mod('gold3')) this.spawnPickup('chicken', e.x + 10, e.y, 0); }
+        else if (r < 0.0048) this.spawnPickup('magnet', e.x + 10, e.y, 0);
         else {
             // 金币掉率随本局击杀数递减，防止后期金币爆炸；四叶草期间 ×3
-            const k = 1 / (1 + this.kills / 1500) * (this.cloverT > 0 ? 3 : 1);
-            if (r < 0.0055 + 0.002 * k) this.spawnPickup('coinbag', e.x + 10, e.y, 20);
-            else if (r < 0.0055 + 0.02 * k) this.spawnPickup('coin', e.x + 10, e.y, 1 + Math.floor(Math.random() * 2));
+            const k = 1 / (1 + this.kills / 800) * (this.cloverT > 0 ? 3 : 1);
+            if (r < 0.0048 + 0.002 * k) this.spawnPickup('coinbag', e.x + 10, e.y, 20);
+            else if (r < 0.0048 + 0.028 * k) this.spawnPickup('coin', e.x + 10, e.y, 1 + Math.floor(Math.random() * 2));
         }
     }
 
@@ -1926,7 +1983,7 @@ export class Battle {
                 const q = this.grid.query(cx, cy, hw + 40, this.qbuf).slice();
                 for (const e of q) {
                     if (e.alive && Math.abs(e.x - cx) < hw + e.def.radius && Math.abs(e.y - cy) < hh + e.def.radius) {
-                        this.hurtEnemy(e, this.dmgOf(w), 320, this.px, this.py, w);
+                        this.hurtEnemy(e, this.dmgOf(w), 290, this.px, this.py, w);
                     }
                 }
                 // 鞭影从奶蛙手边向外甩出（锚点在靠近奶蛙的一端）
@@ -2042,7 +2099,7 @@ export class Battle {
                     if (along < 0 || along > len || Math.abs(rx * dy - ry * dx) > half + e.def.radius) continue;
                     // 击退方向取"远离 舌尖外侧一点"，即把敌人拽向奶蛙
                     this.hurtEnemy(e, this.dmgOf(w), 260, e.x + dx * 60, e.y + dy * 60, w);
-                    if (w.evolved && Math.random() < 0.3) this.heal(1);
+                    if (w.evolved && Math.random() < 0.06) this.leech(0.5);
                 }
                 this.lineFx(this.px, this.py, this.px + dx * len, this.py + dy * len, w.evolved ? 0xff4070 : 0xff7090, half * 2);
                 this.lineFx(this.px, this.py, this.px + dx * len, this.py + dy * len, 0xffc0d0, Math.max(2, half * 0.5));
@@ -2257,7 +2314,7 @@ export class Battle {
             const next = e.hits.get('garlic') || 0;
             if (this.time < next) continue;
             e.hits.set('garlic', this.time + interval);
-            this.hurtEnemy(e, this.dmgOf(w), 200, this.px, this.py, w);
+            this.hurtEnemy(e, this.dmgOf(w), 180, this.px, this.py, w);
         }
     }
 
@@ -2386,7 +2443,7 @@ export class Battle {
                     const next = e.hits.get('bible') || 0;
                     if (this.time < next) continue;
                     e.hits.set('bible', this.time + 0.6);
-                    this.hurtEnemy(e, p.w ? this.dmgOf(p.w) : 10, 240, this.px, this.py, p.w);
+                    this.hurtEnemy(e, p.w ? this.dmgOf(p.w) : 10, 215, this.px, this.py, p.w);
                 } else {
                     if (p.hit.has(e)) continue;
                     p.hit.add(e);
@@ -2559,8 +2616,8 @@ export class Battle {
                 e.hits.set(key, this.time + 0.5);
                 this.hurtEnemy(e, dmg, 0, z.x, z.y, w);
             }
-            // 圣泉：站在池中回血
-            if (z.kind === 'holy' && w && w.evolved && Math.hypot(this.px - z.x, this.py - z.y) < z.r) this.heal(2 * dt);
+            // 圣泉：站在池中缓慢回血
+            if (z.kind === 'holy' && w && w.evolved && Math.hypot(this.px - z.x, this.py - z.y) < z.r) this.leech(0.8 * dt);
         }
     }
 
@@ -3129,7 +3186,7 @@ export class Battle {
                     }
                     this.burst(this.px, this.py, 0x60c050, 24, 300);
                 });
-                this.heal(this.stats.maxHp * 0.15);
+                this.heal(this.stats.maxHp * 0.10);
                 const f = this.spawnFx('aura', px, py, 0.6, 680 / 64 * 0.5, -0.8);
                 f.sp.color = colorOf(0x60c050);
                 this.ultT = 0.5;
@@ -3261,7 +3318,7 @@ export class Battle {
                 const pulse = 1 + Math.sin(this.time * 5) * 0.04;
                 z.sp.node.setScale(R * 2 / 64 * pulse, R * 2 / 64 * pulse, 1);
                 z.sp.color = tmpColor.set(255, 230, 140, Math.floor(200 * Math.min(1, this.ultT)));
-                if (Math.hypot(px - z.x, py - z.y) < R) this.heal(3 * dt);
+                if (Math.hypot(px - z.x, py - z.y) < R) this.heal(1.8 * dt);
                 // 圣域内的敌方弹幕被净化
                 for (const b of this.bullets) {
                     if (b.alive && Math.hypot(b.x - z.x, b.y - z.y) < R) { b.alive = false; this.burst(b.x, b.y, 0xfff0a0, 3, 120); }
@@ -3559,7 +3616,7 @@ export class Battle {
         if (r < 0.22) { this.spawnEpicPickup(this.px, this.py + 40); txt = '大吉! 神兵降临'; }
         else if (r < 0.42) { this.gainXp(Math.max(0, this.xpNext - this.xp)); txt = '吉! 等级 +1'; }
         else if (r < 0.58) { this.chainBoomQueue.push(() => this.nukeScreen()); txt = '吉! 星光审判'; }
-        else if (r < 0.7) { this.heal(this.stats.maxHp); txt = '吉! 生命回满'; }
+        else if (r < 0.7) { this.heal(this.stats.maxHp * 0.5); txt = '吉! 回复一半生命'; }
         else if (r < 0.85) { for (let i = 0; i < 3; i++) this.spawnPickup('coinbag', this.px, this.py, 15, true); txt = '小吉! 金币袋 ×3'; }
         else {
             let wave = WAVES[0];
@@ -3577,7 +3634,7 @@ export class Battle {
     }
 
     private startTrial(x: number, y: number) {
-        const need = 35 + Math.floor(this.time / 7);
+        const need = 22 + Math.floor(this.time / 14);
         this.trial = { t: 20, need, got: 0 };
         this.spawnFx('aura', x, y, 0.5, 1.5, 6).sp.color = colorOf(0xff5040);
         this.burst(x, y, 0xff5040, 24, 320);
@@ -3588,7 +3645,7 @@ export class Battle {
         let wave = WAVES[0];
         for (const w of WAVES) if (this.time >= w.t) wave = w;
         const types = wave.types.filter(k => !ENEMIES[k].ranged);
-        const R = Math.hypot(this.vw, this.vh) / 2 + 30, n = 26;
+        const R = Math.hypot(this.vw, this.vh) / 2 + 30, n = 14;
         for (let i = 0; i < n; i++) {
             const a = (i / n) * TAU;
             this.spawnEnemy(types[i % types.length], this.px + Math.cos(a) * R, this.py + Math.sin(a) * R, true);
@@ -3628,7 +3685,7 @@ export class Battle {
             this.warnCircle(x, y, 70, 3, 0xffd040, () => {
                 this.explodeFriendly(x, y, 90, 40 + this.level * 4, null, 400, 0xffd040);
                 this.addShake(0.3, 8);
-                const loot = [Math.random() < 0.5 ? 'chicken' : 'coinbag', BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], Math.random() < 0.35 ? 'battery' : 'magnet'];
+                const loot = [Math.random() < 0.35 ? 'chicken' : 'coinbag', BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], Math.random() < 0.35 ? 'battery' : 'magnet'];
                 for (const k of loot) this.spawnPickup(k, x, y, k === 'coinbag' ? 20 : 0, true);
             });
             const f = this.spawnFx('chest', x, y + 420, 3, PX * 1.6, 0);
@@ -3878,8 +3935,8 @@ export class Battle {
                 break;
             }
             case 'chicken':
-                this.heal(30);
-                this.dmgText(this.px, this.py + 40, 30, C_HEAL, '+');
+                this.heal(18);
+                this.dmgText(this.px, this.py + 40, 18, C_HEAL, '+');
                 Sound.play('heal');
                 break;
             case 'magnet':
@@ -3960,7 +4017,7 @@ export class Battle {
     }
 
     // 同屏怪物上限（性能模式更低）
-    get enemyCap() { return Save.data.lite ? 240 : MAX_ENEMIES; }
+    get enemyCap() { return Save.data.lite ? 95 : MAX_ENEMIES; }
 
     private dmgText(x: number, y: number, v: number, color: Color = C_WHITE, prefix = '', crit = false) {
         if (Save.data.lite && !crit && !prefix) return;
@@ -4146,7 +4203,7 @@ export class Battle {
 
     // 升级冲击波：击退周围敌人
     levelBlast() {
-        if (this.hasB('holylight')) this.heal(this.stats.maxHp * 0.15);
+        if (this.hasB('holylight')) this.heal(this.stats.maxHp * 0.08);
         // 星爆：全屏伤害（Boss 也会受伤）
         if (this.hasB('nova')) {
             const dmg = 25 + this.level * 4;
@@ -4168,7 +4225,7 @@ export class Battle {
         }
         this.spawnFx('aura', this.px, this.py, 0.45, 1.5, 7);
         this.burst(this.px, this.py, 0x80d0ff, 24, 380);
-        this.iframe = Math.max(this.iframe, 0.8);
+        this.iframe = Math.max(this.iframe, 0.45);
     }
 
     // 移除失效对象并回收
@@ -4464,7 +4521,7 @@ export class Battle {
             if (p) p.level++; else { this.passives.push({ def: o.pdef!, level: 1 }); this.discover('p:' + o.pdef!.id); }
             this.recalcStats();
         } else if (o.kind === 'heal') {
-            this.heal(30);
+            this.heal(18);
         } else {
             this.gold += 25;
         }
@@ -4532,7 +4589,7 @@ export function describe(o: Option): { icon: string; name: string; tag: string; 
         const d = o.pdef!;
         return { icon: d.icon, name: d.name, tag: o.level === 1 ? '新道具!' : 'LV ' + o.level, desc: d.desc };
     }
-    if (o.kind === 'heal') return { icon: 'icon_heal', name: '烤鸡', tag: '', desc: '恢复 30 点生命' };
+    if (o.kind === 'heal') return { icon: 'icon_heal', name: '烤鸡', tag: '', desc: '恢复 18 点生命' };
     return { icon: 'coinbag', name: '金币袋', tag: '', desc: '获得 25 金币' };
 }
 
