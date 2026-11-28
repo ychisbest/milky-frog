@@ -9,7 +9,7 @@ import { Analytics } from './Analytics';
 import { Art } from './Art';
 import { Backdrop } from './Backdrop';
 import { Battle, blessingOptions, describe, Option } from './Battle';
-import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, CHARGE_DESC, EPIC_TIME, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
+import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, CHARGE_DESC, EPIC_TIME, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, EVOLUTIONS, PASSIVES, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPON_MAX_LEVEL, WEAPONS, WIN_TIME } from './Defs';
 import { paginate, PRIVACY_VER, privacyPolicy, privacySummary, userTerms } from './Legal';
 import { Recorder } from './Recorder';
 import { Save } from './Save';
@@ -27,7 +27,7 @@ export const DESIGN_H = 1280;
 export const GAME_NAME = '奶蛙割草';
 export const GAME_SUBTITLE = 'MILKY  FROG  SURVIVORS';
 export const AGE_RATING = '12+';
-export const GAME_VERSION = 'v1.0.4';
+export const GAME_VERSION = 'v1.0.5';
 // 新手渐进解锁：完成 N 局后开放（只影响主菜单入口，不影响局内数值）
 const UNLOCKS: { id: string; name: string; runs: number }[] = [
     { id: 'shop', name: '永久强化', runs: 1 },
@@ -244,6 +244,17 @@ export class GameRoot extends Component {
         game.off(Game.EVENT_HIDE, this.onHide, this);
     }
 
+    private shareTitle(): string {
+        const b = this.battle;
+        const evos = b.weapons.filter(w => w.evolved).map(w => w.name);
+        const evoPart = evos.length ? `凑齐 ${evos.length} 把超武（${evos.slice(0, 2).join('+')}${evos.length > 2 ? '等' : ''}），` : '';
+        if (this.dailyRun) return `今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，${evoPart}同一关卡，敢来比比吗？`;
+        if (b.won) return `8 分钟红月通关！${evoPart}割倒 ${b.kills} 只怪，你敢接这局战书吗？`;
+        if (b.endless) return `无尽之夜坚持了 ${this.fmtTime(b.time)}！${evoPart}割倒 ${b.kills} 只怪，能超过我吗？`;
+        if (WIN_TIME - b.time <= 90) return `差 ${Math.ceil(WIN_TIME - b.time)} 秒通关红月！${evoPart}割倒 ${b.kills} 只怪，谁来替我顶住？`;
+        return `我的奶蛙坚持了 ${this.fmtTime(b.time)}，${evoPart}割倒 ${b.kills} 只怪，你能撑过红月吗？`;
+    }
+
     // 分享本局战绩（截取结算画面上半部分作为分享图；按平台规则，分享不发放任何奖励）
     private shareResult() {
         const w = mgApi();
@@ -255,7 +266,7 @@ export class GameRoot extends Component {
             if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) { /* 截图失败则使用默认分享图 */ }
         const daily = this.dailyRun ? Social.dateKey() : '';
-        const title = daily ? `今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，同一关卡，敢来比比吗？` : b.won ? `我的奶蛙在《${GAME_NAME}》里击败了暗夜魔术师！你也来试试？` : `我的奶蛙坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
+        const title = this.shareTitle();
         // 卡片携带战绩：好友点开后显示挑战横幅（不发放任何奖励）
         const query = Social.shareQuery({ time: b.time, kills: b.kills, won: b.won ? 1 : 0, daily });
         Analytics.track('share', { from: daily ? 'daily' : 'result', won: b.won ? 1 : 0 });
@@ -789,10 +800,22 @@ export class GameRoot extends Component {
         const dbtn = mkButton(s, '每日挑战', 212, 84, this.gated('daily', () => this.setState('daily')), new Color(150, 60, 30, 255), 32);
         this.gateLook(dbtn, 'daily');
         dbtn.node.setPosition(-114, btnTop - 104);
-        // 今日挑战未完成时显示红点
+        const dsub = mkLabel(dbtn.node, '', 15, C_GOLD, 'center', 2);
+        dsub.node.setPosition(0, -24);
+        // 今日挑战未完成时显示红点与今日试玩词缀预览
         const ddot = mkRect(dbtn.node, 18, 18, new Color(240, 60, 60, 255), 'dot');
         ddot.node.setPosition(94, 30);
-        this.refreshers.push(() => { ddot.node.active = Save.data.dailyDone !== this.today && !this.locked('daily'); });
+        this.refreshers.push(() => {
+            const active = Save.data.dailyDone !== this.today && !this.locked('daily');
+            ddot.node.active = active;
+            dsub.node.active = active;
+            dbtn.label.node.setPosition(0, active ? 11 : 0);
+            if (active) {
+                const ds = dailySetup(this.today);
+                const ch = CHARACTERS.find(c => c.id === ds.char) || CHARACTERS[0];
+                dsub.string = `今日:${ch.name}·${ds.mod.name}`;
+            }
+        });
         mkButton(s, '选择角色', 212, 84, () => this.setState('chars'), C_BTN_BLUE, 32).node.setPosition(114, btnTop - 104);
         const shopBtn = mkButton(s, '永久强化', 440, 84, this.gated('shop', () => this.setState('shop')), C_BTN_BLUE, 34);
         shopBtn.node.setPosition(0, btnTop - 200);
@@ -978,11 +1001,12 @@ export class GameRoot extends Component {
         const by = this.bottom + 80;
         mkButton(s, '返回', 260, 88, () => this.setState('menu'), C_BTN_GREY).node.setPosition(-150, by);
         mkButton(s, '出发!', 260, 88, () => this.startGame(), C_BTN_GREEN, 36).node.setPosition(150, by);
-        // 模式切换：无尽模式在首次胜利后解锁
+        // 模式切换：无尽模式 5 局或首胜解锁，噩梦难度首胜解锁
         const mode = mkButton(s, '', 560, 64, () => {
-            if (Save.data.wins <= 0) { this.showToast('首次胜利后解锁无尽模式与噩梦难度'); return; }
-            const order: ('normal' | 'endless' | 'nightmare')[] = ['normal', 'endless', 'nightmare'];
-            Save.data.mode = order[(order.indexOf(Save.data.mode) + 1) % order.length];
+            if (!this.endlessUnlocked) { this.showToast('完成 5 局或首胜解锁无尽模式，首胜解锁噩梦难度'); return; }
+            const order: ('normal' | 'endless' | 'nightmare')[] = Save.data.wins > 0 ? ['normal', 'endless', 'nightmare'] : ['normal', 'endless'];
+            const idx = order.indexOf(Save.data.mode);
+            Save.data.mode = order[(idx + 1) % order.length];
             Save.save();
             this.refreshAll();
         }, C_BTN_GREY, 26);
@@ -1014,9 +1038,16 @@ export class GameRoot extends Component {
             stageBtn.label.string = `地图：${st.name}${st.event ? '（活动限定）' : `（${n}/${regular.length}）`}  ${st.hpMul > 1 ? `生命+${Math.round((st.hpMul - 1) * 100)}% 金币+${Math.round((st.goldMul - 1) * 100)}%` : '标准难度'}`;
         });
         this.refreshers.push(() => {
-            const locked = Save.data.wins <= 0;
             const e = this.endlessMode, n = this.nightmareMode;
-            mode.label.string = locked ? '模式：普通（无尽 / 噩梦 首胜解锁）' : e ? '模式：无尽（Boss 循环，越来越强）' : n ? '模式：噩梦（生命 +60% 伤害 +30% 金币 +60%）' : '模式：普通（存活 8 分钟胜利）';
+            mode.label.string = !this.endlessUnlocked
+                ? '模式：普通（5 局解锁无尽 / 首胜解锁噩梦）'
+                : e
+                    ? '模式：无尽（Boss 循环，越来越强）'
+                    : n
+                        ? '模式：噩梦（生命 +60% 伤害 +30% 金币 +60%）'
+                        : Save.data.wins > 0
+                            ? '模式：普通（存活 8 分钟胜利）'
+                            : '模式：普通（已解锁无尽 · 首胜解锁噩梦）';
             mode.bg.color = e ? new Color(110, 40, 120, 255) : n ? new Color(140, 30, 40, 255) : C_BTN_GREY;
         });
     }
@@ -1552,7 +1583,8 @@ export class GameRoot extends Component {
 
     private get currentStage() { return STAGES.find(x => x.id === Save.data.stage && this.stageOpen(x.id)) || STAGES[0]; }
 
-    private get endlessMode() { return Save.data.mode === 'endless' && Save.data.wins > 0; }
+    private get endlessUnlocked() { return Save.data.wins > 0 || Save.data.runs >= 5; }
+    private get endlessMode() { return Save.data.mode === 'endless' && this.endlessUnlocked; }
     private get nightmareMode() { return Save.data.mode === 'nightmare' && Save.data.wins > 0; }
 
     private toMenu() {
@@ -1771,6 +1803,26 @@ export class GameRoot extends Component {
         return codexEntries().filter(e => c.includes(e.key)).length;
     }
 
+    private nextEvolutionHint(): string {
+        const b = this.battle;
+        const candidates = b.weapons.filter(w => !w.evolved && EVOLUTIONS[w.def.id]).slice().sort((a, c) => c.level - a.level);
+        for (const w of candidates) {
+            const evo = EVOLUTIONS[w.def.id];
+            if (w.level >= 5 && b.passives.some(p => p.def.id === evo.passive)) {
+                return w.level >= WEAPON_MAX_LEVEL
+                    ? `差一步超武：「${w.def.name}」满级开宝箱即进化「${evo.name}」!`
+                    : `差 ${WEAPON_MAX_LEVEL - w.level} 级超武：${w.def.name} Lv${w.level}/${WEAPON_MAX_LEVEL} → 进化「${evo.name}」!`;
+            }
+        }
+        for (const w of candidates) {
+            if (w.level < 5) continue;
+            const evo = EVOLUTIONS[w.def.id];
+            const pdef = PASSIVES.find(p => p.id === evo.passive);
+            if (pdef) return `超武配方提示：${w.def.name} + ${pdef.name} →「${evo.name}」!`;
+        }
+        return '';
+    }
+
     // 结算提示：差一点的遗憾感 + 下一个可达成的目标，驱动"再来一局"
     private nearMiss(win: boolean, daily: boolean) {
         const b = this.battle, d = Save.data;
@@ -1790,6 +1842,8 @@ export class GameRoot extends Component {
                 lines.push(nb && nb.t < goal ? `再坚持 ${this.fmtTime(left)} 就能见到 ${ENEMIES[nb.id].name}` : `距离胜利只差 ${this.fmtTime(left)}!`);
             }
             if (d.lossStreak > 0) lines.push(`下一局获得「不屈意志」伤害与生命 +${d.lossStreak * 5}%`);
+            const evoHint = this.nextEvolutionHint();
+            if (evoHint) lines.push(evoHint);
         }
         // 下一个强化目标
         let best: { name: string; cost: number } | null = null;
@@ -2428,6 +2482,7 @@ export class GameRoot extends Component {
         if (b.giantT > 0) buffs.push(`巨人 ${Math.ceil(b.giantT)}s`);
         if (b.bootsT > 0) buffs.push(`疾风 ${Math.ceil(b.bootsT)}s`);
         if (b.decoyT > 0) buffs.push(`幻影 ${Math.ceil(b.decoyT)}s`);
+        if (b.bloodMoonRushT > 0) buffs.push(`红月双倍 ${Math.ceil(b.bloodMoonRushT)}s`);
         if (b.endless) buffs.push('无尽');
         const bs = buffs.join('  ');
         if (this.buffLabel.string !== bs) this.buffLabel.string = bs;

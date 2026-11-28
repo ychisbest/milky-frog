@@ -425,6 +425,7 @@ export class Battle {
     daily: { mod: DailyMod; blessing: string } | null = null;  // 每日挑战
     private hazardT = 0;
     bloodMoon = false;
+    bloodMoonRushT = 0;
     streak = 0;
     flow = 1;              // 动态难度（心流）系数 0.8 ~ 1.7
     private sinceHurt = 0;
@@ -648,6 +649,7 @@ export class Battle {
         this.decorChunks.clear();
         this.lastChunk = '';
         this.bloodMoon = false;
+        this.bloodMoonRushT = 0;
         this.flow = 1;
         this.surgeIdx = 0;
         this.celebrateT = 0;
@@ -1101,18 +1103,29 @@ export class Battle {
     // ------------------------------------------------------------------ 刷怪
 
     private updateSpawner(dt: number) {
-        // 血月：最后一分钟的终局冲刺
+        if (this.bloodMoonRushT > 0) this.bloodMoonRushT = Math.max(0, this.bloodMoonRushT - dt);
+        let wave = WAVES[0];
+        for (const w of WAVES) if (this.time >= w.t) wave = w;
+        // 血月：最后一分钟的终局冲刺（刷新 3 只红月先锋精英 + 20 秒双倍掉落）
         if (!this.endless && !this.bloodMoon && this.time >= BLOOD_MOON) {
             this.bloodMoon = true;
+            this.bloodMoonRushT = 20;
             this.ground.color = C_BLOODMOON;
-            this.onBanner('红月降临! 坚持最后一分钟!', new Color(255, 60, 60, 255));
+            this.onBanner('红月狂潮! 赏金精英来袭 · 20秒双倍掉落!', new Color(255, 60, 60, 255));
             Sound.play('roar');
             Sound.playBgm('bgm_boss');
             this.bossMusic = false;
             this.addShake(0.6, 6);
+            const rushTypes = wave.types.filter(k => !ENEMIES[k].ranged);
+            const pool = rushTypes.length ? rushTypes : ['mummy'];
+            for (let i = 0; i < 3; i++) {
+                const a = (i * Math.PI * 2) / 3 + Math.random() * 0.4;
+                const r = this.spawnRadius(a);
+                const type = pool[Math.floor(Math.random() * pool.length)];
+                const el = this.spawnEnemy(type, this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, true);
+                if (el) this.eliteify(el);
+            }
         }
-        let wave = WAVES[0];
-        for (const w of WAVES) if (this.time >= w.t) wave = w;
         // 刷怪节奏：开局 1 分钟逐步加速；之后每 45 秒一个波峰（怪潮）和波谷（喘息）
         const pace = this.spawnPace();
         this.spawnTimer -= dt * pace;
@@ -3894,7 +3907,7 @@ export class Battle {
                 this.onBanner('智慧卷轴! 等级 +1', new Color(255, 230, 140, 255));
                 break;
             case 'gem':
-                this.gainXp(p.value * this.stats.growth * (this.mod('xp2') ? 2 : 1));
+                this.gainXp(p.value * this.stats.growth * (this.mod('xp2') ? 2 : 1) * (this.bloodMoonRushT > 0 ? 2 : 1));
                 Sound.play('gem');
                 if (this.hasB('gemstorm') && Math.random() < 0.06) {
                     const t = this.randomOnScreen();
@@ -3927,7 +3940,7 @@ export class Battle {
             case 'coin':
             case 'coinbag': {
                 const lucky = this.isChar('fu') && Math.random() < 0.2;
-                const g = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB('greedpact') ? 2 : 1) * (this.mod('gold3') ? 3 : 1) * (this.nightmare ? 1.6 : 1) * (lucky ? 2 : 1)));
+                const g = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB('greedpact') ? 2 : 1) * (this.mod('gold3') ? 3 : 1) * (this.nightmare ? 1.6 : 1) * (lucky ? 2 : 1) * (this.bloodMoonRushT > 0 ? 2 : 1)));
                 this.gold += g;
                 if (this.char.charge === 'gold') this.chargeUlt(g / 40);
                 this.dmgText(this.px, this.py + 40, g, C_GOLD, '+');

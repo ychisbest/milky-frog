@@ -781,8 +781,66 @@ if (MODE === 'C') {
         ok(g.state === 'settings', '从隐私政策返回设置');
     }
 
+    section('v1.0.5 红月狂潮 / 留存提示 / 无尽门槛 / 战绩分享');
+    base(); start(); B().time = D.BLOOD_MOON; B().bossIdx = 5;
+    const elite0 = B().enemies.filter((e: any) => e.alive && e.elite).length;
+    step(1);
+    const elite1 = B().enemies.filter((e: any) => e.alive && e.elite).length;
+    ok(B().bloodMoon && B().bloodMoonRushT > 19.9 && elite1 >= elite0 + 3, '7:00 红月触发 20 秒双倍并刷出 3 只红月先锋精英');
+    g.updateHud(0);
+    ok(g.buffLabel.string.includes('红月双倍'), 'HUD 状态栏展示红月双倍倒计时');
+    B().xp = 0; B().xpNext = 1e9; B().stats.growth = 1;
+    const xpBefore = B().xp; B().collect({ kind: 'gem', value: 10 }); const xpRush = B().xp - xpBefore;
+    const gBefore = B().gold; B().collect({ kind: 'coin', value: 5 }); const goldRush = B().gold - gBefore;
+    B().bloodMoonRushT = 0;
+    const xpAfter = B().xp; B().collect({ kind: 'gem', value: 10 }); const xpNorm = B().xp - xpAfter;
+    const gAfter = B().gold; B().collect({ kind: 'coin', value: 5 }); const goldNorm = B().gold - gAfter;
+    ok(xpRush === xpNorm * 2 && goldRush === goldNorm * 2, `红月双倍期间经验与金币翻倍（XP ${xpRush}/${xpNorm} · 金币 ${goldRush}/${goldNorm}）`);
+    clearCards(); g.endRun(false);
+
+    base(); start();
+    B().weapons = []; B().passives = [];
+    B().applyOption({ kind: 'weapon', wdef: D.WEAPONS.find((w: any) => w.id === 'whip'), level: 1 });
+    B().weapons[0].level = 6; B().weapons[0].recalc();
+    const hintNeedPassive = g.nextEvolutionHint();
+    ok(hintNeedPassive.includes('超武配方提示') && hintNeedPassive.includes('空心之心') && hintNeedPassive.includes('炽心之鞭'), '缺被动时结算提示对应超武配方');
+    B().applyOption({ kind: 'passive', pdef: D.PASSIVES.find((p: any) => p.id === 'heart'), level: 1 });
+    const hintNearEvo = g.nextEvolutionHint();
+    ok(hintNearEvo.includes('差 2 级超武') && hintNearEvo.includes('炽心之鞭') && g.nearMiss(false, false).includes('炽心之鞭'), '有被动差级时结算 nearMiss 展示差级超武提示');
+    B().weapons[0].level = 8; B().weapons[0].recalc();
+    ok(g.nextEvolutionHint().includes('差一步超武'), '满级待开箱时展示差一步进化提示');
+    clearCards(); g.endRun(false);
+
+    base(); Save.data.wins = 0; Save.data.runs = 4; Save.data.mode = 'endless'; g.setState('chars');
+    ok(!g.endlessUnlocked && !g.endlessMode && !g.nightmareMode, '未满 5 局且未首胜时无尽与噩梦均锁定');
+    Save.data.runs = 5; g.refreshAll();
+    ok(g.endlessUnlocked && g.endlessMode && !g.nightmareMode, '累计 5 局提前解锁无尽模式，噩梦仍需首胜');
+    const modeBtn = findButton('模式：无尽（Boss 循环，越来越强）');
+    ok(!!modeBtn, '角色页显示已解锁无尽模式按钮');
+    if (modeBtn) {
+        modeBtn.emit('te');
+        ok(Save.data.mode === 'normal' && !g.nightmareMode, '未首胜时模式按钮仅在普通与无尽间切换');
+        modeBtn.emit('te');
+        ok(Save.data.mode === 'endless', '可切回无尽模式');
+    }
+    Save.data.wins = 1; Save.data.mode = 'nightmare'; g.refreshAll();
+    ok(g.endlessUnlocked && g.nightmareMode, '首胜后正常解锁噩梦难度');
+
+    base(); Save.data.runs = 2; Save.data.dailyDone = ''; g.toMenu();
+    const dailyBtn = findButton('每日挑战');
+    const dailySub = dailyBtn && dailyBtn.children.find((n: any) => n.active && (n.comps || []).some((c: any) => typeof c.string === 'string' && c.string.startsWith('今日:')));
+    ok(!!dailySub, '主菜单每日挑战未完成时显示今日试玩角色与词缀预览');
+
+    base(); start(); B().time = 450; B().won = false; B().endless = false; B().kills = 888;
+    B().weapons[0].evolved = true;
+    const shareNear = g.shareTitle();
+    B().won = true;
+    const shareWin = g.shareTitle();
+    ok(shareNear.includes('差 30 秒通关红月') && shareNear.includes('炽心之鞭') && shareWin.includes('8 分钟红月通关'), '战绩分享文案按超武数与红月遗憾秒数生成');
+    clearCards(); g.endRun(false);
+
     section('内容合规（显示文字不含敏感词）');
-    const texts: string[] = [];
+    const texts: string[] = [hintNeedPassive, hintNearEvo, shareNear, shareWin, '红月狂潮! 赏金精英来袭 · 20秒双倍掉落!'];
     for (const k in D.ENEMIES) texts.push(D.ENEMIES[k].name || '');
     for (const k in D.MONSTER_INFO) texts.push(D.MONSTER_INFO[k].name, D.MONSTER_INFO[k].desc);
     for (const w of D.WEAPONS) texts.push(w.name, w.desc);
